@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from starlette.responses import Response
 from sqlalchemy.orm import sessionmaker
 
-from reconpilot_web import auth, days, db, funds
+from reconpilot_web import auth, cases, days, db, funds
 from reconpilot_web.config import Settings
 from reconpilot_web.models import assert_instance_mode
 
@@ -71,4 +71,5 @@ def create_app(settings: Settings) -> FastAPI:
     app.include_router(funds.router)
     app.include_router(days.router)
     app.include_router(days.jobs_router)
+    app.include_router(cases.router)
     return app
