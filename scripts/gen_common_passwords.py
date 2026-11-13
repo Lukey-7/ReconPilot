@@ -160,4 +160,6 @@ def main(path: str) -> None:
 
 
 if __name__ == "__main__":
+    if len(sys.argv) != 2 or sys.argv[1].startswith("-"):
+        sys.exit("usage: python scripts/gen_common_passwords.py OUTPUT_FILE")
     main(sys.argv[1])
