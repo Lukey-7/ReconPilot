@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import getpass
+import os
 import sys
 from pathlib import Path
 
@@ -63,6 +65,45 @@ def _cmd_migrate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _read_new_password() -> str:
+    """The new user's password from ``RP_NEW_PASSWORD``, else typed twice at a prompt."""
+    password = os.environ.get("RP_NEW_PASSWORD")
+    if password:
+        return password
+    first = getpass.getpass("Password: ")
+    if getpass.getpass("Repeat password: ") != first:
+        raise ValueError("The two passwords differ.")
+    return first
+
+
+def create_user(settings: Settings, username: str, password: str, role: str,
+                is_admin: bool = False, display_name: str = "") -> None:
+    """Add a user to the configured database (audited as ``USER_CREATED``)."""
+    from reconpilot_web import auth, db
+    from reconpilot_web.models import assert_instance_mode
+
+    url, _ = database_urls(settings)
+    engine = db.make_engine(url)
+    try:
+        with db.SessionLocal(bind=engine) as session, session.begin():
+            assert_instance_mode(session, settings.mode)
+            auth.create_user(session, username, password, role, is_admin=is_admin, display_name=display_name)
+    finally:
+        engine.dispose()
+
+
+def _cmd_create_user(args: argparse.Namespace) -> int:
+    try:
+        settings = load_settings()
+        password = _read_new_password()
+        create_user(settings, args.username, password, args.role, args.admin, args.display_name)
+    except (ValueError, RuntimeError) as exc:
+        print(f"reconpilot-web: {exc}", file=sys.stderr)
+        return 1
+    print(f"Created {args.role} {args.username}{' (admin)' if args.admin else ''}.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="reconpilot-web",
@@ -77,6 +118,18 @@ def build_parser() -> argparse.ArgumentParser:
         "(real or demo) in the database; later runs refuse a different mode.",
     )
     p.set_defaults(func=_cmd_migrate)
+
+    p = sub.add_parser(
+        "create-user",
+        help="add a user account",
+        description="Add a user. The password is read from RP_NEW_PASSWORD or typed at a prompt; "
+        "it needs at least 12 characters and must not be a common password.",
+    )
+    p.add_argument("--username", required=True)
+    p.add_argument("--role", required=True, choices=("analyst", "approver", "viewer"))
+    p.add_argument("--admin", action="store_true", help="allow user and fund administration")
+    p.add_argument("--display-name", default="", help="name shown in the app (default: the username)")
+    p.set_defaults(func=_cmd_create_user)
     return parser
 
 

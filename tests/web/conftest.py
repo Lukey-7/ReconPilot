@@ -8,6 +8,7 @@ tables, except ``instance_settings``, which keeps the mode written by ``migrate`
 from __future__ import annotations
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import make_url, text
 
 from reconpilot_web import cli, db, devdb
@@ -16,6 +17,9 @@ from reconpilot_web.models import Base
 
 APP_ROLE = "rp_app"
 APP_PASSWORD = "rp_app_dev"
+
+# Every test user's password unless a test says otherwise (long enough and not common).
+TEST_PASSWORD = "Ledger-Walrus-4817"
 
 
 def make_settings(pg_uri: str, data_dir, mode: str = "real") -> Settings:
@@ -91,3 +95,68 @@ def db_session(clean_db, db_engine):
     finally:
         session.rollback()
         session.close()
+
+
+# --------------------------------------------------------------------------- app, users, clients
+
+
+@pytest.fixture
+def app(clean_db, settings):
+    from reconpilot_web.app import create_app
+
+    application = create_app(settings)
+    yield application
+    application.state.engine.dispose()
+
+
+@pytest.fixture
+def make_user(clean_db, db_engine):
+    """``make_user(username, role="analyst", password=TEST_PASSWORD, is_admin=False)`` -> ``User``."""
+    from reconpilot_web.auth import create_user
+
+    def _make(username: str, role: str = "analyst", password: str = TEST_PASSWORD, is_admin: bool = False,
+              display_name: str = ""):
+        with db.SessionLocal(bind=db_engine) as session, session.begin():
+            return create_user(session, username, password, role, is_admin=is_admin, display_name=display_name)
+
+    return _make
+
+
+@pytest.fixture
+def users(make_user):
+    """The four standard users: ``analyst1``, ``approver1``, ``approver2`` and ``viewer1``."""
+    return {
+        "analyst1": make_user("analyst1", "analyst", display_name="Priya Shah"),
+        "approver1": make_user("approver1", "approver", display_name="Ann Lee"),
+        "approver2": make_user("approver2", "approver", display_name="Tom Reed"),
+        "viewer1": make_user("viewer1", "viewer", display_name="Vic Moss"),
+    }
+
+
+def sign_in(client: TestClient, username: str, password: str = TEST_PASSWORD) -> TestClient:
+    """Sign ``client`` in and send the CSRF token on its later requests. Asserts success."""
+    response = client.post("/api/auth/login", json={"username": username, "password": password})
+    assert response.status_code == 200, response.text
+    client.headers["X-CSRF-Token"] = client.cookies["rp_csrf"]
+    return client
+
+
+@pytest.fixture
+def make_client(app):
+    """``make_client(username=None)`` -> a new ``TestClient``, signed in as ``username`` if given."""
+    clients: list[TestClient] = []
+
+    def _make(username: str | None = None, password: str = TEST_PASSWORD) -> TestClient:
+        c = TestClient(app)
+        clients.append(c)
+        return sign_in(c, username, password) if username else c
+
+    yield _make
+    for c in clients:
+        c.close()
+
+
+@pytest.fixture
+def client(make_client) -> TestClient:
+    """A signed-out client."""
+    return make_client()
