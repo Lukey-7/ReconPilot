@@ -170,7 +170,10 @@ def test_run_creates_cases_and_snapshots(make_client, users, fund, day_files, fa
     assert day["status"] == "ready" and day["error"] is None and day["run_by"] == "analyst1"
     assert day["nav"]["nav_per_share"] == expected.nav.nav_per_share
     assert day["nav"]["nav"] == expected.nav.nav
-    assert [(c["name"], c["status"]) for c in day["checks"]] == [(c.name, c.status) for c in expected.checks]
+    # The engine's own "NAV release" check reaches clients under its accurate name (Task 12).
+    renamed = {"NAV release": "Material cases approved"}
+    assert [(c["name"], c["status"]) for c in day["checks"]] == [
+        (renamed.get(c.name, c.name), c.status) for c in expected.checks]
     assert day["summary"]["ai"] == {"enabled": False, "available": False, "provider": None, "model": None,
                                     "disagreements": 0}
 

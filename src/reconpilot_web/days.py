@@ -25,7 +25,7 @@ from sqlalchemy.orm import Session
 
 from reconpilot_web.auditlog import DbAuditLog
 from reconpilot_web.auth import current_user, get_db, require_roles
-from reconpilot_web.funds import get_fund, is_business_day, previous_business_day
+from reconpilot_web.funds import fund_settings, get_fund, is_business_day, previous_business_day
 from reconpilot_web.jobs import enqueue, job_payload
 from reconpilot_web.models import BusinessDay, Fund, InputFile, Job, User
 from reconpilot_web.validation import (
@@ -62,8 +62,8 @@ def parse_as_of(value: str) -> date:
 
 def get_day(db: Session, fund: Fund, as_of: date, *, for_update: bool = False) -> BusinessDay | None:
     query = select(BusinessDay).where(BusinessDay.fund_id == fund.id, BusinessDay.as_of == as_of)
-    if for_update:
-        query = query.with_for_update()
+    if for_update:  # under the lock, read the row afresh rather than any copy already loaded
+        query = query.with_for_update().execution_options(populate_existing=True)
     return db.execute(query).scalar_one_or_none()
 
 
@@ -118,6 +118,21 @@ def latest_run_job(db: Session, day: BusinessDay) -> Job | None:
     ).scalar_one_or_none()
 
 
+def live_release(db: Session, fund: Fund, day: BusinessDay) -> tuple[dict[str, Any], list[dict]]:
+    """The day's one release status and its checks as clients see them (see ``release``).
+
+    Both come from the day's current cases, so the day's record never contradicts
+    the release endpoint: the engine's ``NAV release`` check is shown renamed and
+    recomputed, exactly as ``GET .../release`` shows it.
+    """
+    from reconpilot_web import release  # release builds on this module
+
+    cases = release.day_cases(db, fund, day)
+    status_ = release.compute_release(day, cases, day.checks or [])
+    checks = release.client_checks(day.checks, cases, float(fund_settings(fund)["materiality_bp"]))
+    return status_.to_dict(), checks
+
+
 def day_payload(db: Session, fund: Fund, day: BusinessDay) -> dict[str, Any]:
     files = db.execute(
         select(InputFile).where(InputFile.business_day_id == day.id)
@@ -127,6 +142,7 @@ def day_payload(db: Session, fund: Fund, day: BusinessDay) -> dict[str, Any]:
     has_run = day.status in RUN_STATUSES
     job = latest_run_job(db, day)
     prev = previous_business_day(fund, day.as_of)
+    release_status, checks = live_release(db, fund, day) if has_run else (None, None)
     return {
         "fund": fund.code,
         "as_of": str(day.as_of),
@@ -155,8 +171,8 @@ def day_payload(db: Session, fund: Fund, day: BusinessDay) -> dict[str, Any]:
             "prior_nav_per_share": day.prior_nav_per_share,
             "detail": day.nav_detail,
         } if has_run else None,
-        "checks": day.checks if has_run else None,
-        "release": day.release if has_run else None,
+        "checks": checks,
+        "release": release_status,
         "summary": day.summary if has_run else None,
         "job": job_payload(job) if job is not None else None,
     }
