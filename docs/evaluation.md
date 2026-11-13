@@ -1,7 +1,8 @@
 # Evaluation results
 
-All figures come from `reconpilot evaluate`, seed 42. AI runs used medium
-reasoning effort and prompt version `2026-11-14.1`, and are reproducible
+All figures come from `reconpilot evaluate`, seed 42, except the carried-case
+check, which comes from `scripts/ai_carried_check.py` (seed 21). AI runs used
+medium reasoning effort and prompt version `2026-11-14.1`, and are reproducible
 from the response cache.
 
 There are two kinds of evaluation:
@@ -43,6 +44,65 @@ There are two kinds of evaluation:
   ties cases to planted breaks by security, so they still count as missed
   dividends and false alarms.
 
+## Multi-day, hard data: rules versus AI
+
+`reconpilot evaluate --multi-day --hard --ai` with gpt-6-luna: 598 AI calls
+(every open case is re-assessed each day), 597 accepted by the guardrails and
+one fallback to the rules (an explanation quoting a figure not in the
+evidence).
+
+| | Rules only | AI (gpt-6-luna) |
+|---|---|---|
+| Detected on the day they appeared | 190/200 (95.0%) | 190/200 (95.0%) |
+| Cause right on the first day (of detected) | 178/190 (93.7%) | 189/190 (99.5%) |
+| Cleared automatically on the fix day | 160/167 (95.8%) | 160/167 (95.8%) |
+| Cleared before the data was fixed | 0 | 0 |
+| Cause right at resolution (of cleared) | 157/160 (98.1%) | 160/160 (100.0%) |
+| Cases with no planted break (false alarms) | 1/191 (0.5%) | 1/191 (0.5%) |
+| Average business days to resolve | 3.16 | 3.16 |
+| Open at the end (0-1 / 2-5 / >5 days) | 17 / 13 / 1 | 17 / 13 / 1 |
+| Open at the end: escalated / SLA breached | 5 / 2 | 5 / 2 |
+
+| Planted cause | Rules only: right on day one / cleared on fix day / right at resolution | AI (gpt-6-luna): right on day one / cleared on fix day / right at resolution |
+|---|---|---|
+| MISSING_TRADE | 34/34 / 30/30 / 30/30 | 34/34 / 30/30 / 30/30 |
+| PRICE_MISMATCH | 34/34 / 26/26 / 26/26 | 34/34 / 26/26 / 26/26 |
+| STOCK_SPLIT | 33/33 / 25/25 / 25/25 | 33/33 / 25/25 / 25/25 |
+| DIVIDEND | 22/33 / 19/26 / 18/19 | 23/33 / 19/26 / 19/19 |
+| FX_DIFFERENCE | 31/33 / 30/30 / 28/30 | 33/33 / 30/30 / 30/30 |
+| TIMING | 24/33 / 30/30 / 30/30 | 32/33 / 30/30 / 30/30 |
+
+- **The lifecycle does not depend on the AI.** Detection, clearing, ageing,
+  escalation and SLAs are identical: the AI explains cases, it never raises,
+  clears or ages them.
+- **The cause is right more often on day one and at resolution.** Late
+  settlements the custodian had not reported, FX differences and an
+  unidentified dividend are named correctly on the day they appear, and every
+  cleared case is recorded with the right cause.
+
+### Carried cases
+
+A case carried into later days used to lose the context it was first
+diagnosed with: the original trade was no longer in that day's files, so the
+AI saw less evidence than on day one, and when the rules kept their earlier
+diagnosis the "AI disagrees: needs review" flag was not recomputed. Both are
+fixed in the engine (the carried item keeps its trade, and the flag is judged
+again after the diagnosis is carried). `scripts/ai_carried_check.py` measures
+it on an 8-day hard run (seed 21, 6 new breaks a day), counting every open
+case each day against the planted break live on its security:
+
+| gpt-6-luna, 8 days, seed 21 | Before the fixes | After |
+|---|---|---|
+| New cases (first day): rules right | 41/44 | 41/44 (93.2%) |
+| New cases (first day): AI right | 44/44 | 44/44 (100.0%) |
+| Carried cases (day two onwards): rules right | 74/75 | 74/75 (98.7%) |
+| Carried cases (day two onwards): AI right | 54/75 | 75/75 (100.0%) |
+| Disagreements with the rules not flagged | 20 | 0 |
+
+All 126 AI answers (119 live calls, 7 from the cache) passed the guardrails.
+The AI is now at least as accurate on carried cases as on new ones, and all 11
+disagreements with the rules are flagged for an analyst.
+
 ## Multi-day lifecycle (rules only)
 
 ## Standard and hard data, 20 consecutive business days
@@ -80,9 +140,9 @@ There are two kinds of evaluation:
 - **Dividends with no security identifier remain the hard case.** They are
   grouped together under no security, so they neither score as detected nor
   clear until every one of them is booked.
-- The multi-day evaluation was run on the rules only. With `--ai` every open
-  case is re-assessed each day, and carried cases whose evidence changes cost a
-  new call; that is supported but was not run for these figures.
+- The rules-versus-AI comparison over the same 20 days is in the section
+  above. With `--ai` every open case is re-assessed each day, and carried
+  cases whose evidence changes cost a new call.
 
 ## Single-day, standard data (rules only)
 

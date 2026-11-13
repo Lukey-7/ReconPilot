@@ -101,6 +101,23 @@ What this does and does not show:
   accuracy on real statements. On the standard data set the rules alone score
   100% on every measure.
 
+Over 20 consecutive business days on the same hard data, with every open case
+re-assessed each day (`reconpilot evaluate --multi-day --hard --ai`):
+
+| | Rules only | AI (gpt-6-luna) |
+|---|---|---|
+| Detected on the day they appeared | 190/200 (95.0%) | 190/200 (95.0%) |
+| Cause right on the first day | 178/190 (93.7%) | 189/190 (99.5%) |
+| Cleared automatically on the fix day | 160/167 (95.8%) | 160/167 (95.8%) |
+| Cause right at resolution | 157/160 (98.1%) | 160/160 (100.0%) |
+| AI responses accepted by guardrails | n/a | 597/598 |
+
+Cases carried from one day to the next keep the trade they came from, so the
+AI is as accurate on them as on new ones: on an 8-day hard run (seed 21) it
+named the right cause on 44/44 new and 75/75 carried cases, against the rules'
+41/44 and 74/75, and every disagreement with the rules was flagged for review
+(`scripts/ai_carried_check.py`).
+
 Full tables and confusion matrices: [docs/evaluation.md](docs/evaluation.md).
 
 ## The deterministic engine
@@ -353,9 +370,8 @@ Run the tests with `pytest`. No API key is needed.
 - Cases are matched to the answer key by security, so a break spanning two
   securities would be scored as two.
 
-- The multi-day evaluation was run on the rules alone. With `--ai`, open cases
-  are re-assessed every day, and a carried case whose evidence changes costs a
-  new call.
+- With `--ai`, open cases are re-assessed every day, and a carried case whose
+  evidence changes costs a new call (598 calls over the 20-day evaluation).
 
 Planned: AI extraction of corporate-action notices checked against the
 custodian, per-currency cash accounts, and measuring analyst time per case
