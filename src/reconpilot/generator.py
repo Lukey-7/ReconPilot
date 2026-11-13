@@ -47,6 +47,14 @@ _DIVIDEND_TEXT = ["CASH DIVIDEND", "DIV PAYMENT", "INCOME DISTRIBUTION"]
 _DIVIDEND_TEXT_HARD = ["CREDIT", "MISC RECEIPT", "CASH DIVIDEND"]
 
 
+_DAILY_VOL = {"EQUITY": 0.012, "BOND": 0.002}
+
+
+def _bond_name(rng: random.Random, as_of: date) -> str:
+    coupon = rng.choice([1.25, 2.0, 2.75, 3.5, 4.125, 4.75, 5.5])
+    return f"{coupon:g}% {as_of.year + rng.randint(2, 15)}"
+
+
 @dataclass
 class GeneratorConfig:
     n_securities: int = 80
@@ -57,6 +65,7 @@ class GeneratorConfig:
     opening_cash: float = 50_000_000.0
     shares_outstanding: float = 10_000_000.0
     difficulty: str = "standard"  # "standard" or "hard"
+    bond_share: float = 0.15  # share of the universe that is bonds rather than equities
 
 
 def _make_universe(rng: random.Random, n: int) -> dict[str, Security]:
@@ -98,6 +107,14 @@ def generate_day(
         if sec.currency == "JPY":
             p *= 150
         price[sid] = round(p, 2)
+
+    # Asset classes and prior-day prices come from a separate random stream, so
+    # the breaks planted for a given seed are unchanged by these additions.
+    side = random.Random(f"{seed}-static")
+    for sid, sec in list(securities.items()):
+        if side.random() < cfg.bond_share:
+            securities[sid] = Security(sid, sec.name.split()[0] + " " + _bond_name(side, as_of), sec.currency, "BOND")
+            price[sid] = round(side.uniform(92, 108), 3)
 
     # Reserve a distinct security for each planted break.
     pool = list(securities)
@@ -225,6 +242,11 @@ def generate_day(
         for sid in securities
     }
 
+    prior_prices = {
+        sid: round(price[sid] / (1 + side.gauss(0, _DAILY_VOL[securities[sid].asset_class])), 4)
+        for sid in securities
+    }
+
     day = DayData(
         as_of=as_of,
         securities=securities,
@@ -238,6 +260,7 @@ def generate_day(
         prior_nav_per_share=0.0,
         shares_outstanding=cfg.shares_outstanding,
         accrued_expenses=0.0,
+        prior_prices=prior_prices,
     )
     gross = sum(p.quantity * p.price * fx[p.currency] for p in positions.values())
     day.accrued_expenses = round(gross * 0.0002, 2)

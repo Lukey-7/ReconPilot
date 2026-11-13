@@ -9,6 +9,11 @@ from reconpilot.matching import ReconResult
 from reconpilot.models import BreakKind, DayData
 
 PASS, WARN, FAIL = "PASS", "WARN", "FAIL"
+
+# Day-on-day price move that needs a second look, by asset class. Equity moves of
+# 10% and bond moves of 2% are well outside normal days and usually mean a bad
+# price, a missed corporate action or a genuine event that should be confirmed.
+PRICE_MOVE_LIMITS = {"EQUITY": 0.10, "BOND": 0.02}
 _CASH_KINDS = {BreakKind.CASH_AMOUNT, BreakKind.CASH_MISSING_AT_CUSTODIAN, BreakKind.CASH_MISSING_IN_BOOK}
 
 
@@ -56,6 +61,7 @@ def run_checks(
     max_price_age_days: int = 1,
     movement_threshold: float = 0.02,
     cash_tolerance: float = 1.00,
+    price_move_limits: dict[str, float] | None = None,
 ) -> list[Check]:
     checks: list[Check] = []
 
@@ -78,6 +84,8 @@ def run_checks(
             f"No usable price for: {', '.join(missing)}" if missing else "Every held position has a price.",
         )
     )
+
+    checks.append(price_move_check(day, price_move_limits or PRICE_MOVE_LIMITS))
 
     move = nav.movement
     checks.append(
@@ -107,3 +115,34 @@ def run_checks(
         )
     checks.append(Check("Cash tie-out", status, detail))
     return checks
+
+
+def price_moves(day: DayData, limits: dict[str, float] | None = None) -> list[tuple[str, str, float, float]]:
+    """Held positions whose book price moved more than the asset-class limit since the prior day.
+
+    Returns (security_id, asset_class, move, limit), largest move first.
+    """
+    limits = limits or PRICE_MOVE_LIMITS
+    out = []
+    for sid, p in day.book_positions.items():
+        prior = day.prior_prices.get(sid)
+        if not p.quantity or not prior or prior <= 0 or p.price <= 0:
+            continue
+        sec = day.securities.get(sid)
+        cls = sec.asset_class if sec else "EQUITY"
+        limit = limits.get(cls, limits.get("EQUITY", 0.10))
+        move = p.price / prior - 1
+        if abs(move) > limit:
+            out.append((sid, cls, move, limit))
+    return sorted(out, key=lambda x: -abs(x[2]))
+
+
+def price_move_check(day: DayData, limits: dict[str, float]) -> Check:
+    if not day.prior_prices:
+        return Check("Day-on-day price moves", PASS, "No prior-day prices supplied; check skipped.")
+    flagged = price_moves(day, limits)
+    if not flagged:
+        text = ", ".join(f"{k.lower()} {v:.0%}" for k, v in sorted(limits.items()))
+        return Check("Day-on-day price moves", PASS, f"No held position moved beyond its limit ({text}).")
+    detail = "; ".join(f"{sid} ({cls.lower()}) {move:+.1%} vs limit {limit:.0%}" for sid, cls, move, limit in flagged)
+    return Check("Day-on-day price moves", WARN, f"{len(flagged)} price(s) to confirm: {detail}.")
