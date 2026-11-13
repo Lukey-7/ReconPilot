@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "reconpilot"
+version = "0.1.0"
+description = "Daily fund reconciliation, break triage and NAV checks for fund operations teams."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["openpyxl>=3.1"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+reconpilot = "reconpilot.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/reconpilot"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
