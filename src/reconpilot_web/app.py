@@ -70,4 +70,5 @@ def create_app(settings: Settings) -> FastAPI:
     app.include_router(auth.router)
     app.include_router(funds.router)
     app.include_router(days.router)
+    app.include_router(days.jobs_router)
     return app

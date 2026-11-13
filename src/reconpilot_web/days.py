@@ -5,6 +5,10 @@ day can be uploaded only once the previous business day is signed off, and a
 signed-off day's files never change. Each upload replaces earlier files of the
 same kind for that day, then the whole set held for the day is validated again,
 so files can arrive in several uploads.
+
+Running a day queues a ``run_day`` job (see ``runner``) and answers 202 with the
+job's id; ``GET /api/jobs/{id}`` reports its progress. Only the fund's latest
+day can be run, and only until it is signed off.
 """
 
 from __future__ import annotations
@@ -22,7 +26,8 @@ from sqlalchemy.orm import Session
 from reconpilot_web.auditlog import DbAuditLog
 from reconpilot_web.auth import current_user, get_db, require_roles
 from reconpilot_web.funds import get_fund, is_business_day, previous_business_day
-from reconpilot_web.models import BusinessDay, Fund, InputFile, User
+from reconpilot_web.jobs import enqueue, job_payload
+from reconpilot_web.models import BusinessDay, Fund, InputFile, Job, User
 from reconpilot_web.validation import (
     FILE_KINDS,
     KIND_BY_FILENAME,
@@ -32,6 +37,11 @@ from reconpilot_web.validation import (
 )
 
 _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+RUN_JOB_KIND = "run_day"
+
+# Day statuses from which a run may be started (``uploaded`` means validation failed).
+RUNNABLE_STATUSES = ("validated", "ready", "failed")
 
 # Statuses whose NAV, checks and release status come from a finished run.
 RUN_STATUSES = ("ready", "signed_off")
@@ -98,6 +108,16 @@ def _username(db: Session, user_id: int | None) -> str | None:
     return user.username if user else None
 
 
+def latest_run_job(db: Session, day: BusinessDay) -> Job | None:
+    """The most recent ``run_day`` job for the day, if it has ever been run."""
+    return db.execute(
+        select(Job)
+        .where(Job.kind == RUN_JOB_KIND, Job.payload["business_day_id"].as_integer() == day.id)
+        .order_by(Job.id.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+
+
 def day_payload(db: Session, fund: Fund, day: BusinessDay) -> dict[str, Any]:
     files = db.execute(
         select(InputFile).where(InputFile.business_day_id == day.id)
@@ -105,6 +125,7 @@ def day_payload(db: Session, fund: Fund, day: BusinessDay) -> dict[str, Any]:
     order = list(FILE_KINDS)
     files = sorted(files, key=lambda f: order.index(f.kind) if f.kind in order else len(order))
     has_run = day.status in RUN_STATUSES
+    job = latest_run_job(db, day)
     prev = previous_business_day(fund, day.as_of)
     return {
         "fund": fund.code,
@@ -137,6 +158,7 @@ def day_payload(db: Session, fund: Fund, day: BusinessDay) -> dict[str, Any]:
         "checks": day.checks if has_run else None,
         "release": day.release if has_run else None,
         "summary": day.summary if has_run else None,
+        "job": job_payload(job) if job is not None else None,
     }
 
 
@@ -248,3 +270,64 @@ def read_day(code: str, as_of: str, user: User = Depends(current_user), db: Sess
     if day is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"No files have been uploaded for {day_date}.")
     return day_payload(db, fund, day)
+
+
+@router.post("/{as_of}/run", status_code=status.HTTP_202_ACCEPTED)
+def start_run(
+    code: str,
+    as_of: str,
+    user: User = Depends(require_roles("analyst", "approver")),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Queue a run of the day's validated files (202 with the job id).
+
+    409 when the day is signed off, already running, has validation errors, is not
+    the fund's latest day, or its previous business day is not signed off.
+    """
+    fund = get_fund(db, code)
+    day_date = parse_as_of(as_of)
+    check_day_order(db, fund, day_date)
+    day = get_day(db, fund, day_date, for_update=True)
+    if day is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"No files have been uploaded for {day_date}.")
+    if day.status == "signed_off":
+        raise HTTPException(status.HTTP_409_CONFLICT, f"{day_date} is signed off; it cannot be run again.")
+    if day.status == "running":
+        raise HTTPException(status.HTTP_409_CONFLICT, f"{day_date} is already running.")
+    if day.status not in RUNNABLE_STATUSES:
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            f"{day_date}'s files have validation errors; fix them before running.")
+    later = db.execute(
+        select(BusinessDay.as_of)
+        .where(BusinessDay.fund_id == fund.id, BusinessDay.as_of > day_date)
+        .order_by(BusinessDay.as_of)
+        .limit(1)
+    ).scalar_one_or_none()
+    if later is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            f"Only the latest day can be run; files for {later} are already loaded.")
+
+    previous_status = day.status
+    day.status = "running"
+    day.error = None
+    day.run_by = user.id
+    job_id = enqueue(db, RUN_JOB_KIND, {"business_day_id": day.id, "user_id": user.id}, user.id)
+    DbAuditLog(db, fund_id=fund.id).append(user.username, user.role, "RUN_STARTED", {
+        "as_of": str(day_date),
+        "job_id": job_id,
+        "rerun": previous_status != "validated" or day.run_at is not None,
+        "previous_status": previous_status,
+    })
+    db.commit()
+    return {"job_id": job_id}
+
+
+jobs_router = APIRouter(prefix="/api/jobs", tags=["jobs"])
+
+
+@jobs_router.get("/{job_id}")
+def read_job(job_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
+    job = db.get(Job, job_id)
+    if job is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"No job {job_id}.")
+    return job_payload(job)
