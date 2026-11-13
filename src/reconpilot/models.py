@@ -139,6 +139,7 @@ class CarriedItem:
     security_id: str
     amount: float
     origin_date: date
+    trade: Trade | None = None  # the book trade behind the item, when there is one
 
 
 @dataclass

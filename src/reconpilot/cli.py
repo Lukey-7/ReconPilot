@@ -184,7 +184,7 @@ def cmd_run(a) -> int:
     cases = result.open_cases
     save_cases(cases, run / "cases.json")
     save_ledger(run, day.as_of, already_cleared + result.cleared + cases)
-    save_open_items(run, day.as_of, result.recon)
+    save_open_items(run, day.as_of, result.recon, day)
     audit.append(a.user, a.role, "CASES_RAISED", {
         "matches": len(result.recon.matches), "breaks": len(result.recon.breaks), "open_cases": len(cases),
         "cleared_today": [c.case_id for c in result.cleared],

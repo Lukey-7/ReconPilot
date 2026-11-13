@@ -31,10 +31,11 @@ from dataclasses import asdict, dataclass
 from datetime import date, timedelta
 from pathlib import Path
 
+from reconpilot.ai import DISAGREEMENT_FLAG
 from reconpilot.audit import AuditLog
 from reconpilot.matching import ReconResult, carry_forward
-from reconpilot.models import BreakKind, CarriedItem, Case, CashLine, Category
-from reconpilot.storage import load_cases, save_cases
+from reconpilot.models import BreakKind, CarriedItem, Case, CashLine, Category, DayData
+from reconpilot.storage import load_cases, save_cases, trade_from_dict, trade_to_dict
 
 STATE_DIR = "state"
 BUCKETS = ("0-1", "2-5", ">5")
@@ -142,6 +143,9 @@ def roll_forward(
                     t.ai_explanation, t.ai_steps, t.ai_query, t.ai_model = (
                         p.ai_explanation, p.ai_steps, p.ai_query, p.ai_model)
                     t.ai_flag = p.ai_flag
+                # The rules' diagnosis has changed, so judge the AI's answer against it again.
+                t.ai_flag = (DISAGREEMENT_FLAG if t.ai_status == "ACCEPTED" and t.ai_category is not t.category
+                             else "")
             t.case_id = p.case_id
             t.first_seen = p.first_seen
             t.escalated, t.escalation_reason = p.escalated, p.escalation_reason
@@ -218,12 +222,17 @@ def save_ledger(run: str | Path, as_of: date | str, cases: list[Case]) -> None:
     save_cases(cases, folder / "ledger.json")
 
 
-def save_open_items(run: str | Path, as_of: date, recon: ReconResult) -> None:
-    book, cust = carry_forward(recon)
+def save_open_items(run: str | Path, as_of: date, recon: ReconResult, day: DayData | None = None) -> None:
+    """Write the day's open cash items. With ``day``, book items keep their original trade."""
+    book, cust = carry_forward(recon, day)
     folder = snapshot_dir(run, as_of)
     folder.mkdir(parents=True, exist_ok=True)
     payload = {
-        "book": [{**asdict(i), "origin_date": str(i.origin_date)} for i in book],
+        "book": [
+            {**asdict(i), "origin_date": str(i.origin_date),
+             "trade": trade_to_dict(i.trade) if i.trade is not None else None}
+            for i in book
+        ],
         "custodian": [{**asdict(c), "value_date": str(c.value_date)} for c in cust],
     }
     (folder / "open_items.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -234,7 +243,8 @@ def load_open_items(run: str | Path, as_of: date) -> tuple[list[CarriedItem], li
     if not path.exists():
         return [], []
     raw = json.loads(path.read_text(encoding="utf-8"))
-    book = [CarriedItem(r["reference"], r["security_id"], r["amount"], date.fromisoformat(r["origin_date"]))
+    book = [CarriedItem(r["reference"], r["security_id"], r["amount"], date.fromisoformat(r["origin_date"]),
+                        trade_from_dict(r["trade"]) if r.get("trade") else None)
             for r in raw["book"]]
     cust = [CashLine(r["entry_id"], date.fromisoformat(r["value_date"]), r["security_id"], r["reference"],
                      r["description"], r["amount"]) for r in raw["custodian"]]

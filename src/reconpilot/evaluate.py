@@ -268,7 +268,7 @@ def run_sequence_evaluation(
     seen_case_ids: set[str] = set()
     for day, truth in seq:
         if prev is not None:
-            day.carried_book_items, day.carried_custodian_lines = carry_forward(prev.recon)
+            day.carried_book_items, day.carried_custodian_lines = carry_forward(prev.recon, prev.day)
         res = run_day(day, prior_open, settings, use_ai=ai_client is not None, ai_client=ai_client,
                       ai_cache=ai_cache, audit=audit, actor="evaluate", max_workers=max_workers)
         prev, prior_open = res, res.open_cases

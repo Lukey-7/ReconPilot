@@ -37,7 +37,7 @@ from typing import Protocol
 
 from reconpilot.audit import AuditLog
 from reconpilot.matching import ReconResult
-from reconpilot.models import BASE_CURRENCY, BreakKind, Case, Category, DayData
+from reconpilot.models import BASE_CURRENCY, BreakKind, Case, Category, DayData, Trade
 
 PROMPT_VERSION = "2026-11-14.1"
 DISAGREEMENT_FLAG = "AI disagrees: needs review"
@@ -272,6 +272,13 @@ def _r(x: float | None, nd: int = 6) -> float | None:
     return None if x is None else round(float(x), nd)
 
 
+def _qty(x: float | None) -> float | int | None:
+    """A quantity as a whole number when it is one, so it reads 25900 rather than 25900.0."""
+    if x is None or isinstance(x, bool):
+        return x
+    return int(x) if float(x).is_integer() else x
+
+
 def build_evidence(day: DayData, recon: ReconResult, case: Case) -> dict:
     """Everything the model may rely on for one case, and nothing else."""
     breaks = [b for b in recon.breaks if b.break_id in set(case.break_ids)]
@@ -283,7 +290,13 @@ def build_evidence(day: DayData, recon: ReconResult, case: Case) -> dict:
     pos = day.book_positions.get(sid)
     hold = day.custodian_holdings.get(sid)
 
-    trades = [t for t in day.book_trades if (sid and t.security_id == sid) or t.trade_id in refs]
+    # Today's trades, then the original trades behind items carried from earlier days, so a
+    # carried case keeps the context it was first diagnosed with.
+    known: dict[str, Trade] = {t.trade_id: t for t in day.book_trades}
+    for item in day.carried_book_items:
+        if item.trade is not None:
+            known.setdefault(item.trade.trade_id, item.trade)
+    trades = [t for t in known.values() if (sid and t.security_id == sid) or t.trade_id in refs]
     settled = [ln for ln in day.custodian_cash if ln.value_date == day.as_of]
     cash_lines = [ln for ln in settled if (sid and ln.security_id == sid) or ln.reference in refs or ln.entry_id in refs]
     pending = [ln for ln in recon.pending if (sid and ln.security_id == sid) or ln.reference in refs]
@@ -295,7 +308,7 @@ def build_evidence(day: DayData, recon: ReconResult, case: Case) -> dict:
     price = by_kind[BreakKind.PRICE][0] if by_kind[BreakKind.PRICE] else None
     unit_price = pos.price if pos and pos.price > 0 else (hold.price if hold else 0.0)
     if qty:
-        derived["quantity_gap_custodian_minus_book"] = _r(qty.custodian_value - qty.book_value, 2)
+        derived["quantity_gap_custodian_minus_book"] = _qty(_r(qty.custodian_value - qty.book_value, 2))
         if qty.book_value:
             derived["quantity_ratio_custodian_to_book"] = _r(qty.custodian_value / qty.book_value, 6)
         derived["value_of_quantity_gap_base"] = _r(abs(qty.custodian_value - qty.book_value) * unit_price * fx, 2)
@@ -313,7 +326,7 @@ def build_evidence(day: DayData, recon: ReconResult, case: Case) -> dict:
     if unmatched_at_cust:
         derived["book_cash_not_at_custodian_total"] = _r(sum(b.book_value or 0 for b in unmatched_at_cust), 2)
     for b in by_kind[BreakKind.CASH_AMOUNT]:
-        trade = next((t for t in day.book_trades if t.trade_id == b.reference), None)
+        trade = known.get(b.reference)
         derived["cash_difference"] = _r(b.difference, 2)
         if trade:
             book_gross = abs(b.book_value + trade.fees)
@@ -331,16 +344,16 @@ def build_evidence(day: DayData, recon: ReconResult, case: Case) -> dict:
             if sec else {"security_id": sid or None, "note": "custodian gave no security identifier"}
         ),
         "book_position": (
-            {"quantity": pos.quantity, "price": pos.price, "price_date": str(pos.price_date)} if pos else None
+            {"quantity": _qty(pos.quantity), "price": pos.price, "price_date": str(pos.price_date)} if pos else None
         ),
-        "custodian_holding": {"quantity": hold.quantity, "price": hold.price} if hold else None,
+        "custodian_holding": {"quantity": _qty(hold.quantity), "price": hold.price} if hold else None,
         "breaks": [
             {
                 "break_id": b.break_id,
                 "kind": b.kind.value,
-                "book_value": b.book_value,
-                "custodian_value": b.custodian_value,
-                "difference": _r(b.difference, 6),
+                "book_value": _qty(b.book_value) if b.kind is BreakKind.QUANTITY else b.book_value,
+                "custodian_value": _qty(b.custodian_value) if b.kind is BreakKind.QUANTITY else b.custodian_value,
+                "difference": _qty(_r(b.difference, 6)) if b.kind is BreakKind.QUANTITY else _r(b.difference, 6),
                 "reference": b.reference,
                 "custodian_narrative": b.note or None,
             }
@@ -349,7 +362,7 @@ def build_evidence(day: DayData, recon: ReconResult, case: Case) -> dict:
         "book_trades": [
             {
                 "trade_id": t.trade_id, "trade_date": str(t.trade_date), "settle_date": str(t.settle_date),
-                "side": t.side.value, "quantity": t.quantity, "price": t.price, "currency": t.currency,
+                "side": t.side.value, "quantity": _qty(t.quantity), "price": t.price, "currency": t.currency,
                 "fx_rate": t.fx_rate, "fees": t.fees, "settlement_cash_base": t.cash_amount,
             }
             for t in trades

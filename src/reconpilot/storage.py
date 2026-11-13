@@ -164,6 +164,22 @@ def read_truth(folder: str | Path) -> list[PlantedBreak]:
     ]
 
 
+def trade_to_dict(t: Trade) -> dict:
+    """A trade as JSON-safe values (dates as ISO strings, side as its value)."""
+    row = asdict(t)
+    row["trade_date"], row["settle_date"] = str(t.trade_date), str(t.settle_date)
+    row["side"] = t.side.value
+    return row
+
+
+def trade_from_dict(d: dict) -> Trade:
+    return Trade(
+        d["trade_id"], date.fromisoformat(d["trade_date"]), date.fromisoformat(d["settle_date"]),
+        d["security_id"], Side(d["side"]), float(d["quantity"]), float(d["price"]), d["currency"],
+        float(d["fx_rate"]), float(d["fees"]),
+    )
+
+
 def save_cases(cases: list[Case], path: str | Path) -> None:
     def enc(c: Case) -> dict:
         row = asdict(c)

@@ -18,7 +18,7 @@ from __future__ import annotations
 import itertools
 from dataclasses import dataclass, field
 
-from reconpilot.models import Break, BreakKind, CarriedItem, CashLine, DayData
+from reconpilot.models import Break, BreakKind, CarriedItem, CashLine, DayData, Trade
 
 
 @dataclass
@@ -211,12 +211,23 @@ def _key(line: CashLine) -> str:
     return f"{line.value_date}:{line.entry_id}"
 
 
-def carry_forward(result: ReconResult) -> tuple[list[CarriedItem], list[CashLine]]:
-    """Open items from today's matching, in the form the next day's DayData expects."""
+def carry_forward(
+    result: ReconResult, day: DayData | None = None
+) -> tuple[list[CarriedItem], list[CashLine]]:
+    """Open items from today's matching, in the form the next day's DayData expects.
+
+    When ``day`` is given, each carried book item keeps the book trade with the
+    same reference (from today's trades or from an item already carried in), so
+    later days still have the context the item came from.
+    """
     from datetime import date
 
+    trades: dict[str, Trade] = {}
+    if day is not None:
+        trades.update({c.trade.trade_id: c.trade for c in day.carried_book_items if c.trade is not None})
+        trades.update({t.trade_id: t for t in day.book_trades})
     book = [
-        CarriedItem(i.reference, i.security_id, i.amount, date.fromisoformat(i.origin_date))
+        CarriedItem(i.reference, i.security_id, i.amount, date.fromisoformat(i.origin_date), trades.get(i.reference))
         for i in result.open_book_items
     ]
     return book, list(result.open_custodian_lines)
