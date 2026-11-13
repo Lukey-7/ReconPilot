@@ -1,0 +1,419 @@
+/* The frame: top bar, the sticky NAV strip, the screen area, dialogs, menus, popovers. */
+
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -40px;
+  z-index: 50;
+  padding: 6px 10px;
+  background: var(--raise);
+  color: var(--ink);
+  border-radius: var(--radius);
+}
+.skip-link:focus {
+  top: 8px;
+}
+
+/* The chrome's children take part in the page's flow, so the strip can stick to the top. */
+.chrome {
+  display: contents;
+}
+
+/* ===== Top bar ===== */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 8px var(--gutter);
+  background: var(--panel);
+  border-bottom: 1px solid var(--rule);
+}
+.brand-name {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.screens {
+  display: flex;
+  gap: 2px;
+}
+.screens a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  color: var(--ink-2);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.screens a:hover {
+  color: var(--ink);
+  background: var(--panel-2);
+}
+.screens a.active {
+  color: var(--ink);
+  background: var(--raise);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.screens .kbd-hint {
+  margin-inline-start: 2px;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: 9px;
+  font: 600 11.5px/1.4 var(--font-fig);
+  background: var(--signal-fill);
+  color: var(--signal-ink);
+}
+.context {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.field-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.field-inline select {
+  max-width: 280px;
+}
+.tools {
+  margin-inline-start: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.user-btn {
+  gap: 7px;
+}
+.user-name {
+  color: var(--ink);
+}
+.role-tag {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0 6px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+  color: var(--ink-2);
+}
+@media (max-width: 1180px) {
+  .screens .kbd-hint,
+  .tools .kbd-hint {
+    display: none;
+  }
+}
+
+/* ===== NAV strip (Night desk's rail): sticky on every screen ===== */
+.strip {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: stretch;
+  background: var(--panel);
+  border-bottom: 1px solid var(--rule);
+}
+.strip-empty {
+  display: block;
+  padding: 12px var(--gutter);
+}
+.strip > div {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding: 9px var(--gutter);
+  border-inline-end: 1px solid var(--rule);
+  min-width: 0;
+}
+.strip .lbl {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.strip .big {
+  font: 500 19px/1.15 var(--font-fig);
+  font-variant-numeric: tabular-nums slashed-zero;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.strip .mv {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.strip .mv .fig {
+  font-size: 12.5px;
+}
+.strip .lamp {
+  position: relative;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  background: var(--signal-wash);
+  transition: background-color var(--t-status) var(--ease);
+}
+.strip .lamp::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 4px;
+  background: var(--signal-fill);
+  transition: background-color var(--t-status) var(--ease);
+}
+.strip .lamp[data-state="ready"],
+.strip .lamp[data-state="signedOff"] {
+  background: var(--pos-wash);
+}
+.strip .lamp[data-state="ready"]::before,
+.strip .lamp[data-state="signedOff"]::before {
+  background: var(--pos);
+}
+.strip .why {
+  color: var(--ink-2);
+  font-size: 13px;
+  min-width: 0;
+}
+.reasons-btn {
+  min-height: 26px;
+  padding: 2px 8px;
+  font-size: 13px;
+}
+.strip .go {
+  justify-content: center;
+  border-inline-end: 0;
+}
+@media (max-width: 900px) {
+  .strip {
+    grid-template-columns: 1fr 1fr;
+  }
+  .strip .lamp,
+  .strip .go {
+    grid-column: span 2;
+  }
+}
+
+/* ===== Release badge ===== */
+.release-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 700;
+  font-size: 15px;
+  white-space: nowrap;
+}
+.release-badge svg {
+  width: 16px;
+  height: 16px;
+}
+.release-blocked {
+  color: var(--signal);
+}
+.release-ready,
+.release-signedOff {
+  color: var(--pos);
+}
+
+/* ===== Screens ===== */
+.main {
+  padding: 14px var(--gutter) 40px;
+}
+.main:focus {
+  outline: none;
+}
+.screen {
+  animation: screen-in var(--t-panel) var(--ease);
+}
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.screen-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-bottom: 14px;
+}
+.screen-head h1 {
+  font-size: 19px;
+  font-weight: 600;
+}
+.screen-head p {
+  font-size: 13.5px;
+}
+.boot {
+  display: grid;
+  place-items: center;
+  min-height: 60vh;
+}
+
+/* ===== Dialogs, menus, popovers (Radix) ===== */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: var(--scrim);
+  animation: fade-in var(--t-fast) var(--ease);
+}
+.dialog {
+  position: fixed;
+  z-index: 41;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  overflow: auto;
+  padding: 18px 20px 20px;
+  background: var(--panel);
+  border: 1px solid var(--rule-strong);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  animation: dialog-in var(--t-panel) var(--ease);
+}
+.dialog:focus {
+  outline: none;
+}
+.dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.dialog-head h2 {
+  font-size: 17px;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 6px));
+  }
+}
+.help-group {
+  margin-top: 16px;
+}
+.help-group h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-3);
+  margin-bottom: 4px;
+}
+.help-group dl {
+  margin: 0;
+}
+.help-row {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 12px;
+  padding: 6px 0;
+  border-top: 1px solid var(--rule);
+}
+.help-row dd {
+  margin: 0;
+}
+.keys .then {
+  margin: 0 5px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.menu,
+.popover {
+  z-index: 45;
+  min-width: 220px;
+  padding: 6px;
+  background: var(--raise);
+  border: 1px solid var(--rule-strong);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  animation: fade-in var(--t-fast) var(--ease);
+}
+.menu-label {
+  padding: 6px 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.menu-sep {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--rule);
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  outline: none;
+}
+.menu-item[data-highlighted] {
+  background: var(--accent-wash);
+  color: var(--ink);
+}
+.popover {
+  position: relative;
+  max-width: min(460px, calc(100vw - 32px));
+  padding: 12px 36px 12px 14px;
+}
+.popover-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.popover ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.popover li {
+  display: grid;
+  gap: 1px;
+  padding: 6px 0;
+  border-top: 1px solid var(--rule);
+  font-size: 13px;
+}
+.popover li:first-child {
+  border-top: 0;
+}
+.reason-code {
+  font-weight: 600;
+  color: var(--signal);
+}
+.popover-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-height: 26px;
+  padding: 2px 6px;
+}

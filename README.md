@@ -307,12 +307,13 @@ reconpilot evaluate --multi-day --hard
 The web application wraps the same engine for a team: built-in accounts and
 roles, a PostgreSQL system of record, a job queue for runs, a server-side
 release status, four-eyes sign-off and the hash-chained audit log in the
-database. The API is in place; the browser front end is being built on top of
-it. Nothing needs Docker: development uses an embedded PostgreSQL started from
-Python.
+database, with a browser front end in `web/` (React, TypeScript and Vite) on
+top of the API. Nothing needs Docker: development uses an embedded PostgreSQL
+started from Python, and Node 20.19 or later for the front end.
 
 ```bash
 pip install -e ".[dev,web]"
+(cd web && npm install)
 reconpilot-web dev
 ```
 
@@ -327,11 +328,17 @@ Created fund DEMO1 starting 2026-11-09 and these users. The passwords are shown 
   approver1  approver  admin  ********************
   approver2  approver         ********************
   viewer1    viewer           ********************
-API on http://127.0.0.1:8000/api with a worker running in-process. Ctrl+C stops everything.
+API on http://127.0.0.1:8000/api with a worker running in-process.
+Front end on http://localhost:5173 (Vite, proxying /api to the API).
+Ctrl+C stops everything.
 ```
 
 It then serves the API on `127.0.0.1:8000` with a worker running in the same
-process; Ctrl+C stops the API, the worker and the database. A day is worked
+process and, once `npm install` has been run in `web/`, Vite's dev server on
+`localhost:5173`, which proxies `/api` to the API; open that address and sign
+in. Ctrl+C stops the API, the worker, Vite and the database. For a single
+server, build the front end once (`npm run build` in `web/`) and
+`reconpilot-web serve` serves it from `web/dist` beside the API. A day is worked
 through the API in the same order as on the command line: upload the files,
 run, decide, sign off. Days go strictly in order, so the next business day can
 be uploaded only once the previous one is signed off.
@@ -377,7 +384,7 @@ everything and decide nothing.
 | Command | What it does |
 |---|---|
 | `reconpilot-web dev [--host --port --start-date]` | Everything for development, as above |
-| `reconpilot-web serve [--host --port]` | The API only |
+| `reconpilot-web serve [--host --port]` | The API, and the built front end from `web/dist` when it exists |
 | `reconpilot-web worker [--once]` | Run queued day runs (retried up to three times) |
 | `reconpilot-web migrate` | Create or upgrade the schema and record the instance mode |
 | `reconpilot-web create-user --username --role [--admin]` | Add an account (password from `RP_NEW_PASSWORD` or a prompt) |
@@ -395,6 +402,9 @@ everything and decide nothing.
 `reconpilot-web migrate` creates an application role, `rp_app`, that can only
 insert into and read the audit log; production runs the API and worker as that
 role and migrations as the owner.
+
+Front-end checks, run in `web/`: `npm run typecheck`, `npm run lint` and
+`npm test -- --run` (Vitest with Testing Library).
 
 ## Input files
 
