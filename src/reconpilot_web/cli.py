@@ -140,6 +140,26 @@ def _cmd_create_fund(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_worker(args: argparse.Namespace) -> int:
+    import logging
+
+    from reconpilot_web.jobs import run_worker
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    try:
+        settings = load_settings()
+        done = run_worker(settings, once=args.once)
+    except (ValueError, RuntimeError) as exc:
+        print(f"reconpilot-web: {exc}", file=sys.stderr)
+        return 1
+    except KeyboardInterrupt:
+        print("Worker stopped.")
+        return 0
+    if args.once:
+        print(f"Ran {done} job(s); the queue is empty.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="reconpilot-web",
@@ -180,6 +200,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--non-business-date", action="append", type=_iso_date, default=[], metavar="DATE",
                    help="a holiday (YYYY-MM-DD); repeat for several")
     p.set_defaults(func=_cmd_create_fund)
+
+    p = sub.add_parser(
+        "worker",
+        help="run queued jobs (day runs)",
+        description="Claim and run jobs from the database queue until stopped with Ctrl+C. "
+        "A failed job is retried up to three times before it is marked failed.",
+    )
+    p.add_argument("--once", action="store_true", help="run every job that is due, then exit")
+    p.set_defaults(func=_cmd_worker)
     return parser
 
 
