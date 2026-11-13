@@ -7,6 +7,14 @@ Each record has the engine's fields (``seq``, ``ts``, ``actor``, ``role``,
 ``reconpilot.audit.record_hash`` of them, so a chain exported from the database
 verifies exactly like an ``audit.jsonl`` file.
 
+The payload is hashed exactly as PostgreSQL stores and returns it: before
+hashing, ``append`` passes it through a ``CAST(... AS jsonb)`` round trip, so
+values JSONB writes differently (``-0.0`` comes back as ``0.0``, a whole float
+of 1e16 or more as an integer) are hashed in their stored form and
+``verify_chain`` recomputes the same hash from the row. NUL characters, which
+PostgreSQL text and JSONB cannot hold, are replaced with U+FFFD, and lone
+surrogates with ``?``.
+
 Appends are serialised with a transaction-level advisory lock, so two requests
 can never read the same previous hash and fork the chain. The lock is held
 until the caller's transaction ends: an entry is part of the caller's work and
@@ -22,7 +30,8 @@ import math
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import select, text
+from sqlalchemy import cast, select, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session
 
 from reconpilot.audit import GENESIS, record_hash
@@ -33,20 +42,39 @@ AUDIT_LOCK_KEY = 727274  # pg_advisory_xact_lock key that serialises appends
 RECORD_FIELDS = ("seq", "ts", "actor", "role", "action", "payload", "prev_hash", "hash")
 
 
+def _storable_text(value: str) -> str:
+    """``value`` with the characters PostgreSQL text cannot hold replaced (NUL, lone surrogates)."""
+    if "\x00" in value:
+        value = value.replace("\x00", "\ufffd")
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        value = value.encode("utf-8", "replace").decode("utf-8")
+    return value
+
+
 def _json_safe(value: Any) -> Any:
     """``value`` as plain JSON types, the way the engine's hash sees it (``default=str``).
 
-    Non-finite floats become strings because PostgreSQL's JSONB cannot hold them.
+    Non-finite floats become strings because PostgreSQL's JSONB cannot hold them,
+    and strings lose the characters PostgreSQL cannot store.
     """
     if isinstance(value, float) and not math.isfinite(value):
         return str(value)
+    if isinstance(value, str):
+        return _storable_text(value)
     if isinstance(value, dict):
-        return {str(k): _json_safe(v) for k, v in value.items()}
+        return {_storable_text(str(k)): _json_safe(v) for k, v in value.items()}
     if isinstance(value, (list, tuple)):
         return [_json_safe(v) for v in value]
-    if value is None or isinstance(value, (str, int, float, bool)):
+    if value is None or isinstance(value, (int, float, bool)):
         return value
-    return json.loads(json.dumps(value, default=str))
+    return _json_safe(json.loads(json.dumps(value, default=str)))
+
+
+def _as_stored(session: Session, payload: dict | None) -> Any:
+    """``payload`` exactly as the ``audit_log.payload`` JSONB column will return it."""
+    return session.execute(select(cast(_json_safe(payload or {}), JSONB))).scalar_one()
 
 
 def _record(entry: AuditEntry) -> dict:
@@ -79,13 +107,13 @@ class DbAuditLog:
         last = session.execute(
             select(AuditEntry.seq, AuditEntry.hash).order_by(AuditEntry.seq.desc()).limit(1)
         ).first()
-        body = _json_safe(payload or {})
+        body = _as_stored(session, payload)
         record = {
             "seq": (last.seq if last else 0) + 1,
             "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "actor": str(actor),
-            "role": str(role),
-            "action": str(action),
+            "actor": _storable_text(str(actor)),
+            "role": _storable_text(str(role)),
+            "action": _storable_text(str(action)),
             "payload": body,
             "prev_hash": last.hash if last else GENESIS,
         }

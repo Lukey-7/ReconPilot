@@ -99,3 +99,31 @@ def test_rollback_discards_entry(db_session):
     assert record["seq"] == 2
     db_session.commit()
     assert verify_chain(db_session) == (True, None)
+
+
+def test_chain_verifies_for_values_jsonb_rewrites(db_session):
+    """-0.0 (from a rounded tiny negative impact) and whole floats >= 1e16 come back from JSONB in another form."""
+    log = DbAuditLog(db_session, fund_id=1)
+    payloads = [
+        {"nav_impact": -0.0},
+        {"v": 1e16},
+        {"v": -1.5e16, "nested": [{"w": 1e300}, -0.0]},
+        {"v": 1e-7, "w": 0.1 + 0.2, "x": 1.0, "y": float("nan")},
+    ]
+    records = [log.append("priya", "analyst", "CASE_ESCALATED", p) for p in payloads]
+    db_session.commit()
+    assert verify_chain(db_session) == (True, None)
+    stored = [e["payload"] for e in log.entries()]
+    assert [r["payload"] for r in records] == stored
+    assert [r["hash"] for r in records] == [e["hash"] for e in log.entries()]
+    for entry in log.entries():
+        assert entry["hash"] == record_hash({k: v for k, v in entry.items() if k != "hash"})
+
+
+def test_nul_characters_are_stored_and_chain_verifies(db_session):
+    log = DbAuditLog(db_session)
+    record = log.append("a\x00b", "analyst", "SIGN_IN_FAILED", {"username": "x\x00y", "k\x00": ["\x00"]})
+    db_session.commit()
+    assert record["actor"] == "a�b"
+    assert record["payload"] == {"username": "x�y", "k�": ["�"]}
+    assert verify_chain(db_session) == (True, None)
