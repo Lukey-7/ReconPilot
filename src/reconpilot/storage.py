@@ -180,26 +180,34 @@ def trade_from_dict(d: dict) -> Trade:
     )
 
 
-def save_cases(cases: list[Case], path: str | Path) -> None:
-    def enc(c: Case) -> dict:
-        row = asdict(c)
-        row["category"] = c.category.value
-        row["final_category"] = c.final_category.value if c.final_category else None
-        row["ai_category"] = c.ai_category.value if c.ai_category else None
-        row["resolved_category"] = c.resolved_category.value if c.resolved_category else None
-        return row
+_CASE_CATEGORIES = ("category", "final_category", "ai_category", "resolved_category")
 
-    Path(path).write_text(json.dumps([enc(c) for c in cases], indent=2), encoding="utf-8")
+
+def case_to_dict(case: Case) -> dict:
+    """A case as JSON-safe values, with categories as their enum values."""
+    row = asdict(case)
+    for key in _CASE_CATEGORIES:
+        value = getattr(case, key)
+        row[key] = value.value if value else None
+    return row
+
+
+def case_from_dict(d: dict) -> Case:
+    """The inverse of ``case_to_dict``. The input is not modified."""
+    row = dict(d)
+    row["category"] = Category(row["category"])
+    for key in _CASE_CATEGORIES[1:]:
+        row[key] = Category(row[key]) if row.get(key) else None
+    for key in ("break_ids", "ai_steps", "break_kinds"):
+        if key in row:
+            row[key] = list(row[key])
+    return Case(**row)
+
+
+def save_cases(cases: list[Case], path: str | Path) -> None:
+    Path(path).write_text(json.dumps([case_to_dict(c) for c in cases], indent=2), encoding="utf-8")
 
 
 def load_cases(path: str | Path) -> list[Case]:
     rows = json.loads(Path(path).read_text(encoding="utf-8"))
-    out = []
-    for r in rows:
-        r["category"] = Category(r["category"])
-        r["final_category"] = Category(r["final_category"]) if r["final_category"] else None
-        for key in ("ai_category", "resolved_category"):
-            if r.get(key):
-                r[key] = Category(r[key])
-        out.append(Case(**r))
-    return out
+    return [case_from_dict(r) for r in rows]

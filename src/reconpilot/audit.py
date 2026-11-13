@@ -15,9 +15,13 @@ from pathlib import Path
 GENESIS = "0" * 64
 
 
-def _digest(record: dict) -> str:
+def record_hash(record: dict) -> str:
+    """SHA-256 of an entry without its ``hash`` field, in the canonical form the chain uses."""
     canonical = json.dumps(record, sort_keys=True, separators=(",", ":"), default=str)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+_digest = record_hash  # older name, kept for existing callers
 
 
 class AuditLog:
