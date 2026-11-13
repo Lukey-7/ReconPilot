@@ -165,6 +165,16 @@ class Case:
     final_category: Category | None = None
     reviewed_by: str = ""
     review_note: str = ""
+    # Second opinion from the language model (see ai.py). Empty unless --ai is used.
+    ai_category: Category | None = None
+    ai_confidence: float | None = None
+    ai_explanation: str = ""
+    ai_steps: list[str] = field(default_factory=list)
+    ai_query: str = ""
+    ai_model: str = ""
+    ai_status: str = ""  # "", ACCEPTED or FALLBACK
+    ai_flag: str = ""  # set when the model disagrees with the rules
+    ai_fallback_reason: str = ""
 
 
 @dataclass
