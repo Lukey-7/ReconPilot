@@ -13,6 +13,10 @@ from reconpilot_web.config import Settings, load_settings
 
 MIGRATIONS_DIR = Path(__file__).resolve().parent / "migrations"
 
+# The front end's source folder in a checkout (``web/`` beside ``src/``).
+WEB_DIR = Path(__file__).resolve().parents[2] / "web"
+VITE_URL = "http://localhost:5173"
+
 
 def database_urls(settings: Settings) -> tuple[str, str]:
     """``(app_url, migration_url)``; with no ``RP_DATABASE_URL`` both point at the embedded server."""
@@ -212,12 +216,54 @@ def dev_bootstrap(session, start_date: date = DEV_START_DATE) -> dict[str, str]:
     return created
 
 
-def _serve_api(settings: Settings, host: str, port: int) -> None:
+def web_dist(web_dir: Path = WEB_DIR) -> Path | None:
+    """The built front end (``web/dist``), or ``None`` until ``npm run build`` has made it."""
+    dist = web_dir / "dist"
+    return dist if (dist / "index.html").is_file() else None
+
+
+def vite_command(web_dir: Path = WEB_DIR) -> list[str] | None:
+    """The command that starts Vite's dev server for ``web_dir``, or ``None`` when it cannot run
+    (``npm install`` not yet run in ``web/``, or Node not on the PATH).
+
+    Node runs Vite's own script directly rather than through ``npm run dev``, so stopping
+    the process stops Vite too (on Windows ``npm`` is a batch file with Node as its child).
+    """
+    import shutil
+
+    script = web_dir / "node_modules" / "vite" / "bin" / "vite.js"
+    node = shutil.which("node")
+    if not (web_dir / "node_modules").is_dir() or not script.is_file() or node is None:
+        return None
+    return [node, str(script)]
+
+
+def start_vite(web_dir: Path = WEB_DIR):
+    """Start Vite in ``web_dir`` (``subprocess.Popen``), or return ``None`` if it cannot run."""
+    import subprocess
+
+    command = vite_command(web_dir)
+    if command is None:
+        return None
+    return subprocess.Popen(command, cwd=web_dir)
+
+
+def stop_process(process) -> None:
+    if process is None or process.poll() is not None:
+        return
+    process.terminate()
+    try:
+        process.wait(timeout=10)
+    except Exception:  # noqa: BLE001 - still running: make sure it goes
+        process.kill()
+
+
+def _serve_api(settings: Settings, host: str, port: int, dist: Path | None = None) -> None:
     import uvicorn
 
     from reconpilot_web.app import create_app
 
-    uvicorn.run(create_app(settings), host=host, port=port, log_level="info")
+    uvicorn.run(create_app(settings, web_dist=dist), host=host, port=port, log_level="info")
 
 
 def _cmd_dev(args: argparse.Namespace) -> int:
@@ -260,13 +306,20 @@ def _cmd_dev(args: argparse.Namespace) -> int:
     worker = threading.Thread(target=run_worker, args=(settings,), kwargs={"stop": stop},
                               name="reconpilot-worker", daemon=True)
     worker.start()
-    print(f"API on http://{args.host}:{args.port}/api with a worker running in-process. Ctrl+C stops everything.")
+    vite = start_vite()
+    print(f"API on http://{args.host}:{args.port}/api with a worker running in-process.")
+    if vite is not None:
+        print(f"Front end on {VITE_URL} (Vite, proxying /api to the API).")
+    else:
+        print(f"No front end: run 'npm install' in {WEB_DIR} to have dev start Vite as well.")
+    print("Ctrl+C stops everything.")
     try:
         _serve_api(settings, args.host, args.port)
     except KeyboardInterrupt:
         pass
     finally:
         stop.set()
+        stop_process(vite)
         worker.join(timeout=30)
     print("Stopped.")
     return 0
@@ -275,7 +328,10 @@ def _cmd_dev(args: argparse.Namespace) -> int:
 def _cmd_serve(args: argparse.Namespace) -> int:
     try:
         settings = load_settings()
-        _serve_api(settings, args.host, args.port)
+        dist = web_dist()
+        print(f"Serving the front end from {dist}." if dist else
+              f"API only: no built front end in {WEB_DIR / 'dist'} (run 'npm run build' in {WEB_DIR}).")
+        _serve_api(settings, args.host, args.port, dist)
     except (ValueError, RuntimeError) as exc:
         print(f"reconpilot-web: {exc}", file=sys.stderr)
         return 1
@@ -302,7 +358,8 @@ def build_parser() -> argparse.ArgumentParser:
         description="Start the embedded PostgreSQL in RP_DATA_DIR (or use RP_DATABASE_URL), bring the "
         f"schema up to date and, if the database is empty, create the fund {DEV_FUND_CODE} and the users "
         f"{', '.join(u[0] for u in DEV_USERS)} with one-time passwords printed once. Then serve the API "
-        "with a worker running in the same process. Ctrl+C stops everything.",
+        "with a worker running in the same process, and start the Vite dev server for the front end "
+        "when web/node_modules exists. Ctrl+C stops everything.",
     )
     _add_listen_args(p)
     p.add_argument("--start-date", type=_iso_date, default=DEV_START_DATE,
@@ -311,9 +368,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser(
         "serve",
-        help="serve the API only (run the worker separately)",
-        description="Serve the API against RP_DATABASE_URL (or the embedded database). Run "
-        "'reconpilot-web migrate' first and 'reconpilot-web worker' alongside to run days.",
+        help="serve the API and the built front end (run the worker separately)",
+        description="Serve the API against RP_DATABASE_URL (or the embedded database), and the built "
+        "front end from web/dist when it exists. Run 'reconpilot-web migrate' first and "
+        "'reconpilot-web worker' alongside to run days.",
     )
     _add_listen_args(p)
     p.set_defaults(func=_cmd_serve)

@@ -9,3 +9,7 @@ data/
 *.xlsx
 .reconpilot_cache/
 .rp_data/
+web/node_modules/
+web/dist/
+web/*.tsbuildinfo
+web/coverage/
