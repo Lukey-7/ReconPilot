@@ -8,6 +8,7 @@
     reconpilot verify-audit --run runs/fund1
     reconpilot evaluate --days 20 --breaks 10 --hard --ai
     reconpilot demo --ai
+    reconpilot demo --days 5
 
 A run directory holds one fund's history: run each business day into the same
 ``--out`` folder and open cases carry over, age, escalate and clear
@@ -31,7 +32,13 @@ from pathlib import Path
 
 from reconpilot.ai import DEFAULT_MODELS, ResponseCache, make_client
 from reconpilot.audit import AuditLog
-from reconpilot.evaluate import comparison_markdown, run_evaluation, to_markdown
+from reconpilot.evaluate import (
+    comparison_markdown,
+    run_evaluation,
+    run_sequence_evaluation,
+    sequence_markdown,
+    to_markdown,
+)
 from reconpilot.generator import GeneratorConfig, generate_day
 from reconpilot.impact import DEFAULT_MATERIALITY_BP, release_check, sort_by_impact
 from reconpilot.ledger import (
@@ -51,6 +58,7 @@ from reconpilot.nav import compute_nav, run_checks
 from reconpilot.pipeline import run_day
 from reconpilot.report import write_report
 from reconpilot.review import PermissionDenied, ReviewError, ReviewSession
+from reconpilot.sequence import SequenceConfig, generate_sequence
 from reconpilot.storage import load_cases, read_day, save_cases, write_day
 
 ROLES = ["analyst", "approver", "viewer"]
@@ -65,6 +73,14 @@ def _plants(n: int, seed: int) -> list[Category]:
 
 def cmd_generate(a) -> int:
     as_of = date.fromisoformat(a.as_of)
+    if getattr(a, "days", 1) > 1:
+        seq = generate_sequence(as_of, a.days, a.breaks, seed=a.seed,
+                                config=SequenceConfig(difficulty="hard" if a.hard else "standard"))
+        for day, truth in seq:
+            write_day(day, Path(a.out) / str(day.as_of), truth)
+        print(f"Wrote {len(seq)} business days ({seq[0][0].as_of} to {seq[-1][0].as_of}) to {a.out}, "
+              f"one folder per day, with {a.breaks} new planted breaks a day")
+        return 0
     day, truth = generate_day(as_of, _plants(a.breaks, a.seed), seed=a.seed,
                               config=GeneratorConfig(difficulty="hard" if a.hard else "standard"))
     out = write_day(day, a.out, truth)
@@ -282,6 +298,20 @@ def cmd_verify(a) -> int:
 
 def cmd_evaluate(a) -> int:
     difficulty = "hard" if a.hard else "standard"
+    if a.multi_day:
+        results = [run_sequence_evaluation(days=a.days, breaks_per_day=a.breaks, seed=a.seed,
+                                           difficulty=difficulty)]
+        client, cache = _ai_setup(a)
+        if client is not None:
+            audit = AuditLog(Path(a.ai_cache).parent / "evaluate_audit.jsonl")
+            results.append(run_sequence_evaluation(days=a.days, breaks_per_day=a.breaks, seed=a.seed,
+                                                   difficulty=difficulty, ai_client=client, ai_cache=cache,
+                                                   audit=audit))
+        text = sequence_markdown(results, f"Multi-day ({difficulty} data, seed {a.seed})")
+        print(text)
+        if a.out:
+            Path(a.out).write_text(text, encoding="utf-8")
+        return 0
     base = run_evaluation(days=a.days, breaks_per_day=a.breaks, seed=a.seed, difficulty=difficulty)
     text = to_markdown(base, f"Rules only ({difficulty} data, seed {a.seed})")
     client, cache = _ai_setup(a)
@@ -300,10 +330,18 @@ def cmd_evaluate(a) -> int:
 
 def cmd_demo(a) -> int:
     root = Path(a.dir)
-    as_of = "2026-11-13"
-    cmd_generate(argparse.Namespace(as_of=as_of, out=root / "data", seed=7, breaks=12, hard=a.hard))
-    return cmd_run(_run_args(data=root / "data", out=root / "run", user="analyst1", role="analyst",
-                             **{k: getattr(a, k) for k in _AI_ARGS}))
+    ai = {k: getattr(a, k) for k in _AI_ARGS}
+    if a.days > 1:
+        start = "2026-11-09"
+        cmd_generate(argparse.Namespace(as_of=start, out=root / "data", seed=7, breaks=4, hard=a.hard, days=a.days))
+        for folder in sorted((root / "data").iterdir()):
+            print()
+            rc = cmd_run(_run_args(data=folder, out=root / "run", user="analyst1", role="analyst", **ai))
+            if rc:
+                return rc
+        return 0
+    cmd_generate(argparse.Namespace(as_of="2026-11-13", out=root / "data", seed=7, breaks=12, hard=a.hard, days=1))
+    return cmd_run(_run_args(data=root / "data", out=root / "run", user="analyst1", role="analyst", **ai))
 
 
 _AI_ARGS = ("ai", "ai_provider", "ai_model", "ai_effort", "ai_timeout", "ai_cache")
@@ -355,6 +393,9 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--seed", type=int, default=7)
     g.add_argument("--breaks", type=int, default=12)
     g.add_argument("--hard", action="store_true", help="noisier data that is harder to classify")
+    g.add_argument("--days", type=int, default=1,
+                   help="generate this many consecutive business days, one folder each, with breaks "
+                        "that persist until fixed (--breaks is then new breaks per day)")
     g.set_defaults(func=cmd_generate)
 
     r = sub.add_parser("run", help="reconcile a day, roll cases forward, check NAV and write the report")
@@ -398,6 +439,8 @@ def build_parser() -> argparse.ArgumentParser:
     e.add_argument("--breaks", type=int, default=10)
     e.add_argument("--seed", type=int, default=42)
     e.add_argument("--hard", action="store_true")
+    e.add_argument("--multi-day", action="store_true",
+                   help="score ageing and auto-clearing over consecutive days instead of independent days")
     e.add_argument("--out")
     _add_ai_args(e)
     e.set_defaults(func=cmd_evaluate)
@@ -405,6 +448,7 @@ def build_parser() -> argparse.ArgumentParser:
     d = sub.add_parser("demo", help="generate a sample day and run it end to end")
     d.add_argument("--dir", default="demo")
     d.add_argument("--hard", action="store_true", help="generate the noisier data")
+    d.add_argument("--days", type=int, default=1, help="run this many consecutive business days")
     _add_ai_args(d)
     d.set_defaults(func=cmd_demo)
     return p

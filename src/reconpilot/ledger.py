@@ -131,6 +131,17 @@ def roll_forward(
         if p is None:
             t.first_seen = str(as_of)
         else:
+            if (t.category is Category.UNKNOWN and p.category is not Category.UNKNOWN
+                    and t.break_kinds == p.break_kinds):
+                # Same breaks as yesterday, but today's records no longer hold the context the
+                # rules used (for example the original trade). Keep yesterday's diagnosis.
+                t.category, t.confidence, t.query_draft = p.category, p.confidence, p.query_draft
+                t.explanation = f"Carried from {p.first_seen}: {p.explanation}"
+                if t.ai_status != "ACCEPTED" and p.ai_status == "ACCEPTED":
+                    t.ai_status, t.ai_category, t.ai_confidence = p.ai_status, p.ai_category, p.ai_confidence
+                    t.ai_explanation, t.ai_steps, t.ai_query, t.ai_model = (
+                        p.ai_explanation, p.ai_steps, p.ai_query, p.ai_model)
+                    t.ai_flag = p.ai_flag
             t.case_id = p.case_id
             t.first_seen = p.first_seen
             t.escalated, t.escalation_reason = p.escalated, p.escalation_reason
