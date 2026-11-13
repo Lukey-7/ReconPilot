@@ -7,3 +7,4 @@ demo/
 runs/
 data/
 *.xlsx
+.reconpilot_cache/
