@@ -116,6 +116,7 @@ def roll_forward(
             p.clear_reason = f"No break on {as_of}: book and custodian agree again."
         p.cleared_on = str(as_of)
         p.age_days = business_days_between(date.fromisoformat(p.first_seen), as_of)
+        p.age_bucket = age_bucket(p.age_days)
         cleared.append(p)
         _audit(audit, actor, role, "CASE_AUTO_CLEARED", {
             "case_id": p.case_id, "security_id": p.security_id, "first_seen": p.first_seen,

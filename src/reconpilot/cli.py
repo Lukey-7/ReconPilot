@@ -41,8 +41,10 @@ from reconpilot.ledger import (
     load_open_items,
     save_ledger,
     save_open_items,
+    snapshot_dates,
     update_ledger_cases,
 )
+from reconpilot.mi import write_mi_csv
 from reconpilot.matching import reconcile
 from reconpilot.models import PLANTABLE, Category, DayData
 from reconpilot.nav import compute_nav, run_checks
@@ -130,9 +132,10 @@ def _render(run: Path, state: dict) -> Path:
     cases = load_cases(run / "cases.json")
     settings = _settings(state)
     checks.append(release_check(cases, settings.materiality_bp))
-    ledger = load_ledger(run, as_of)
+    history = {str(d): load_ledger(run, d) for d in snapshot_dates(run) if str(d) <= as_of}
+    write_mi_csv(run / "mi.csv", history)
     return write_report(run / f"exceptions_{day.as_of}.xlsx", day, recon, cases, nav, checks,
-                        info.get("signed_off_by", ""), ledger=ledger)
+                        info.get("signed_off_by", ""), ledger=history[as_of], history=history)
 
 
 def cmd_run(a) -> int:

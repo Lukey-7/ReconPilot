@@ -10,6 +10,8 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 from reconpilot.impact import sort_by_impact
+from reconpilot.ledger import BUCKETS, current_category
+from reconpilot.mi import build_mi
 from reconpilot.matching import ReconResult
 from reconpilot.models import Case, DayData
 from reconpilot.nav import Check, NavResult
@@ -56,6 +58,7 @@ def write_report(
     checks: list[Check],
     signed_off_by: str = "",
     ledger: list[Case] | None = None,
+    history: dict[str, list[Case]] | None = None,
 ) -> Path:
     wb = Workbook()
 
@@ -150,7 +153,67 @@ def write_report(
         if fill:
             row[1].fill = fill
 
+    _mi_sheet(wb.create_sheet("MI"), build_mi(day.as_of, ledger if ledger is not None else cases, history), names)
+
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
     wb.save(out)
     return out
+
+
+def _block(ws, row: int, title: str, header: list[str], rows: list[list], money_cols=()) -> int:
+    """Write a titled table starting at ``row``; return the next free row."""
+    ws.cell(row=row, column=1, value=title).font = Font(bold=True, size=12)
+    row += 1
+    for col, text in enumerate(header, start=1):
+        cell = ws.cell(row=row, column=col, value=text)
+        cell.fill = _HEADER_FILL
+        cell.font = _HEADER_FONT
+    for values in rows or [["none"]]:
+        row += 1
+        for col, value in enumerate(values, start=1):
+            cell = ws.cell(row=row, column=col, value=value)
+            if col in money_cols:
+                cell.number_format = _MONEY
+    return row + 2
+
+
+def _mi_sheet(ws, mi, names: dict[str, str]) -> None:
+    ws["A1"] = f"Management information, {mi.as_of}"
+    ws["A1"].font = Font(bold=True, size=14)
+    row = 3
+
+    causes = mi.causes
+    grid = [[cause, *[mi.by_cause_age.get((cause, b), 0) for b in BUCKETS],
+             sum(mi.by_cause_age.get((cause, b), 0) for b in BUCKETS),
+             round(sum(mi.impact_by_cause_age.get((cause, b), 0.0) for b in BUCKETS), 2)]
+            for cause in causes]
+    if grid:
+        grid.append(["Total", *[sum(r[i] for r in grid) for i in range(1, 5)], round(sum(r[5] for r in grid), 2)])
+    row = _block(ws, row, "Open breaks by cause and age (business days)",
+                 ["Cause", *BUCKETS, "Total", "Net NAV impact"], grid, money_cols=(6,))
+
+    resolve = [[cause, n, avg] for cause, (n, avg) in sorted(mi.resolve_by_cause.items())]
+    if resolve:
+        resolve.append(["All causes", sum(r[1] for r in resolve), mi.avg_days_to_resolve])
+    row = _block(ws, row, "Time to resolve (cleared cases)",
+                 ["Cause", "Cases cleared", "Average business days"], resolve)
+
+    top = [[c.case_id, c.security_id, names.get(c.security_id, ""), current_category(c).value, c.nav_impact,
+            c.nav_impact_bp, c.age_days, "YES" if c.material else "", c.status] for c in mi.top_cases]
+    row = _block(ws, row, "Top 5 open cases by NAV impact",
+                 ["Case", "Security", "Name", "Cause", "NAV impact", "Impact (bp)", "Age", "Material", "Status"],
+                 top, money_cols=(5,))
+
+    sla = [[c.case_id, c.security_id, current_category(c).value, c.age_days, c.sla_days,
+            "YES" if c.material else "", c.cleared_on or "open"] for c in mi.sla_breaches]
+    row = _block(ws, row, "SLA breaches",
+                 ["Case", "Security", "Cause", "Age (days)", "SLA (days)", "Material", "Cleared on"], sla)
+
+    trend = [[t.as_of, t.open_cases, t.new_cases, t.cleared_cases, t.material_open, t.escalated_open,
+              t.sla_breaches_open, t.aged_over_5, t.open_nav_impact, t.avg_days_to_resolve] for t in mi.trend]
+    _block(ws, row, f"Trend, last {len(mi.trend)} business day(s)",
+           ["Date", "Open", "New", "Cleared", "Material", "Escalated", "SLA breached", "Aged >5",
+            "Open net NAV impact", "Avg days to resolve"], trend, money_cols=(9,))
+    for col, width in zip("ABCDEFGHIJ", (22, 15, 22, 18, 16, 12, 14, 12, 20, 20)):
+        ws.column_dimensions[col].width = width

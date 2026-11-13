@@ -72,7 +72,8 @@ def test_cli_end_to_end(tmp_path, capsys):
     assert main(["verify-audit", "--run", str(run)]) == 0
 
     wb = load_workbook(run / "exceptions_2026-11-13.xlsx")
-    assert wb.sheetnames == ["Summary", "Exceptions", "Breaks", "Cash matching", "NAV checks"]
+    assert wb.sheetnames == ["Summary", "Exceptions", "Breaks", "Cash matching", "NAV checks", "MI"]
+    assert (run / "mi.csv").read_text().startswith("as_of,metric,cause,age_bucket,value")
     summary = {r[0].value: r[1].value for r in wb["Summary"].iter_rows(min_row=3) if r[0].value}
     assert summary["Signed off by"] == "tom"
     assert wb["Exceptions"].max_row == 13
