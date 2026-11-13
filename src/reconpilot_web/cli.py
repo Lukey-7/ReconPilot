@@ -6,6 +6,7 @@ import argparse
 import getpass
 import os
 import sys
+from datetime import date
 from pathlib import Path
 
 from reconpilot_web.config import Settings, load_settings
@@ -104,6 +105,41 @@ def _cmd_create_user(args: argparse.Namespace) -> int:
     return 0
 
 
+def create_fund(settings: Settings, code: str, name: str, start_date: date,
+                base_currency: str = "USD", non_business_dates: list[date] | None = None) -> None:
+    """Add a fund to the configured database (audited as ``FUND_CREATED``)."""
+    from reconpilot_web import db, funds
+    from reconpilot_web.models import assert_instance_mode
+
+    url, _ = database_urls(settings)
+    engine = db.make_engine(url)
+    try:
+        with db.SessionLocal(bind=engine) as session, session.begin():
+            assert_instance_mode(session, settings.mode)
+            funds.create_fund(session, code, name, start_date, base_currency=base_currency,
+                              non_business_dates=non_business_dates or ())
+    finally:
+        engine.dispose()
+
+
+def _iso_date(value: str) -> date:
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"not a date in YYYY-MM-DD form: {value!r}") from None
+
+
+def _cmd_create_fund(args: argparse.Namespace) -> int:
+    try:
+        settings = load_settings()
+        create_fund(settings, args.code, args.name, args.start_date, args.base_currency, args.non_business_date)
+    except (ValueError, RuntimeError) as exc:
+        print(f"reconpilot-web: {exc}", file=sys.stderr)
+        return 1
+    print(f"Created fund {args.code.strip().upper()} starting {args.start_date}.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="reconpilot-web",
@@ -130,6 +166,20 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--admin", action="store_true", help="allow user and fund administration")
     p.add_argument("--display-name", default="", help="name shown in the app (default: the username)")
     p.set_defaults(func=_cmd_create_user)
+
+    p = sub.add_parser(
+        "create-fund",
+        help="add a fund",
+        description="Add a fund with the engine's default settings. Its business days are the weekdays "
+        "from the start date on, less any non-business dates.",
+    )
+    p.add_argument("--code", required=True, help="short fund code used in URLs, for example GEF1")
+    p.add_argument("--name", required=True)
+    p.add_argument("--start-date", required=True, type=_iso_date, help="the fund's first business day (YYYY-MM-DD)")
+    p.add_argument("--base-currency", default="USD")
+    p.add_argument("--non-business-date", action="append", type=_iso_date, default=[], metavar="DATE",
+                   help="a holiday (YYYY-MM-DD); repeat for several")
+    p.set_defaults(func=_cmd_create_fund)
     return parser
 
 

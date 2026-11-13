@@ -7,6 +7,8 @@ tables, except ``instance_settings``, which keeps the mode written by ``migrate`
 
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import make_url, text
@@ -160,3 +162,46 @@ def make_client(app):
 def client(make_client) -> TestClient:
     """A signed-out client."""
     return make_client()
+
+
+# --------------------------------------------------------------------------- funds and day files
+
+FUND_CODE = "GEF1"
+FUND_START = date(2026, 11, 9)  # a Monday
+
+
+@pytest.fixture
+def make_fund(clean_db, db_engine):
+    """``make_fund(code=FUND_CODE, start_date=FUND_START, **kwargs)`` -> ``Fund`` (see ``funds.create_fund``)."""
+    from reconpilot_web.funds import create_fund
+
+    def _make(code: str = FUND_CODE, start_date: date = FUND_START, name: str = "Global Equity Fund",
+              **kwargs):
+        with db.SessionLocal(bind=db_engine, expire_on_commit=False) as session, session.begin():
+            return create_fund(session, code, name, start_date, **kwargs)
+
+    return _make
+
+
+@pytest.fixture
+def fund(make_fund):
+    return make_fund()
+
+
+@pytest.fixture(scope="session")
+def day_files(tmp_path_factory) -> list[dict[str, bytes]]:
+    """Three generated business days from ``FUND_START`` as ``{kind: bytes}`` (no ``truth`` file).
+
+    Made with the engine's own sequence generator and ``storage.write_day``, so
+    the bytes are exactly what the command line reads.
+    """
+    from reconpilot.sequence import generate_sequence
+    from reconpilot.storage import write_day
+    from reconpilot_web.validation import FILE_KINDS
+
+    root = tmp_path_factory.mktemp("days")
+    out = []
+    for day, truth in generate_sequence(FUND_START, 3, 4, seed=11):
+        folder = write_day(day, root / str(day.as_of), truth)
+        out.append({kind: (folder / name).read_bytes() for kind, name in FILE_KINDS.items()})
+    return out
