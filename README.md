@@ -302,6 +302,100 @@ reconpilot evaluate --hard --ai
 reconpilot evaluate --multi-day --hard
 ```
 
+## Running the web application
+
+The web application wraps the same engine for a team: built-in accounts and
+roles, a PostgreSQL system of record, a job queue for runs, a server-side
+release status, four-eyes sign-off and the hash-chained audit log in the
+database. The API is in place; the browser front end is being built on top of
+it. Nothing needs Docker: development uses an embedded PostgreSQL started from
+Python.
+
+```bash
+pip install -e ".[dev,web]"
+reconpilot-web dev
+```
+
+`reconpilot-web dev` starts the embedded database in `.rp_data/` (or uses
+`RP_DATABASE_URL`), brings the schema up to date and, the first time, creates
+the fund `DEMO1` (first business day 2026-11-09) and four users, printing
+their one-time passwords once:
+
+```
+Created fund DEMO1 starting 2026-11-09 and these users. The passwords are shown once only; note them now:
+  analyst1   analyst          ********************
+  approver1  approver  admin  ********************
+  approver2  approver         ********************
+  viewer1    viewer           ********************
+API on http://127.0.0.1:8000/api with a worker running in-process. Ctrl+C stops everything.
+```
+
+It then serves the API on `127.0.0.1:8000` with a worker running in the same
+process; Ctrl+C stops the API, the worker and the database. A day is worked
+through the API in the same order as on the command line: upload the files,
+run, decide, sign off. Days go strictly in order, so the next business day can
+be uploaded only once the previous one is signed off.
+
+```bash
+reconpilot generate --as-of 2026-11-09 --days 2 --breaks 4 --hard --out data
+```
+
+```python
+from pathlib import Path
+
+import httpx
+
+def sign_in(user, password):
+    c = httpx.Client(base_url="http://127.0.0.1:8000")
+    c.post("/api/auth/login", json={"username": user, "password": password}).raise_for_status()
+    c.headers["X-CSRF-Token"] = c.cookies["rp_csrf"]  # required on every POST
+    return c
+
+analyst = sign_in("analyst1", "<password printed by dev>")
+approver = sign_in("approver1", "<password printed by dev>")
+signer = sign_in("approver2", "<password printed by dev>")      # four-eyes: decides nothing
+fund, day = "DEMO1", "2026-11-09"
+
+files = [("files", (p.name, p.read_bytes(), "text/csv")) for p in Path(f"data/{day}").glob("*.csv")]
+analyst.post(f"/api/funds/{fund}/days/{day}/files", files=files).json()   # {'status': 'validated', ...}
+job = analyst.post(f"/api/funds/{fund}/days/{day}/run").json()["job_id"]   # 202: queued for the worker
+analyst.get(f"/api/jobs/{job}").json()["status"]                         # 'done' a moment later
+
+for case in analyst.get(f"/api/funds/{fund}/days/{day}/cases").json():   # largest NAV impact first
+    who = approver if case["escalated"] else analyst                     # escalated cases need an approver
+    who.post(f"/api/funds/{fund}/cases/{case['case_id']}/decision",
+             json={"decision": "approve", "version": case["version"]})
+
+signer.get(f"/api/funds/{fund}/days/{day}/release?for_user=me").json()  # ready, reasons, signable_by_me
+signer.post(f"/api/funds/{fund}/days/{day}/signoff").json()["status"]  # 'signed_off'
+```
+
+Whoever signs off must not have decided any of the day's open cases, so
+`approver2` signs off the cases `approver1` decided. A viewer can read
+everything and decide nothing.
+
+| Command | What it does |
+|---|---|
+| `reconpilot-web dev [--host --port --start-date]` | Everything for development, as above |
+| `reconpilot-web serve [--host --port]` | The API only |
+| `reconpilot-web worker [--once]` | Run queued day runs (retried up to three times) |
+| `reconpilot-web migrate` | Create or upgrade the schema and record the instance mode |
+| `reconpilot-web create-user --username --role [--admin]` | Add an account (password from `RP_NEW_PASSWORD` or a prompt) |
+| `reconpilot-web create-fund --code --name --start-date` | Add a fund with the engine's default settings |
+
+| Variable | Meaning |
+|---|---|
+| `RP_DATABASE_URL` | PostgreSQL 15+ for the API and worker; empty means the embedded database |
+| `RP_MIGRATION_DATABASE_URL` | The schema owner for `migrate` (default `RP_DATABASE_URL`) |
+| `RP_MODE` | `real` (default) or `demo`; a database is written for one mode only |
+| `RP_DATA_DIR` | Local state: the embedded database and AI cache (default `.rp_data`) |
+| `RP_COOKIE_SECURE` | `1` behind HTTPS |
+| `OPENAI_API_KEY` and the others | The AI provider, used only for funds with AI switched on |
+
+`reconpilot-web migrate` creates an application role, `rp_app`, that can only
+insert into and read the audit log; production runs the API and worker as that
+role and migrations as the owner.
+
 ## Input files
 
 | File | Contents |
@@ -340,7 +434,21 @@ src/reconpilot/
   evaluate.py    scoring against the answer key, rules versus AI
   storage.py     CSV and JSON reading and writing
   cli.py         command line
+src/reconpilot_web/
+  app.py         FastAPI application: security headers, CSRF on every change
+  auth.py        accounts, sessions, roles and lockout
+  funds.py       funds, settings and the business calendar
+  days.py        upload, validation and day status; queuing runs
+  validation.py  file checks before any run
+  jobs.py        PostgreSQL job queue and worker
+  runner.py      a day through the engine, persisted in one transaction
+  cases.py       case queue, detail and decisions
+  release.py     release status and four-eyes sign-off
+  auditlog.py    the hash-chained audit log in PostgreSQL
+  cli.py         reconpilot-web: dev, serve, worker, migrate, create-user, create-fund
+scripts/         the common-password list generator and the AI carried-case check
 tests/           unit and end-to-end tests; AI tests use a fake client, no network
+tests/web/       the web layer against an embedded PostgreSQL, including CLI equivalence
 ```
 
 Run the tests with `pytest`. No API key is needed.

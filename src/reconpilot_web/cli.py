@@ -160,12 +160,163 @@ def _cmd_worker(args: argparse.Namespace) -> int:
     return 0
 
 
+# --------------------------------------------------------------------------- serving
+
+DEFAULT_HOST = "127.0.0.1"
+DEFAULT_PORT = 8000
+
+# What ``dev`` creates in an empty database: one fund and one user per role.
+DEV_FUND_CODE = "DEMO1"
+DEV_FUND_NAME = "Demo Global Equity Fund"
+DEV_START_DATE = date(2026, 11, 9)  # a Monday: generate days from here with ``reconpilot generate``
+DEV_USERS: tuple[tuple[str, str, bool, str], ...] = (
+    # username, role, admin, display name
+    ("analyst1", "analyst", False, "Analyst One"),
+    ("approver1", "approver", True, "Approver One"),
+    ("approver2", "approver", False, "Approver Two"),
+    ("viewer1", "viewer", False, "Viewer One"),
+)
+
+
+def one_time_password() -> str:
+    """A random password that meets the password policy, for a user to sign in with first."""
+    import secrets
+
+    from reconpilot_web.security import check_password_policy
+
+    while True:
+        password = secrets.token_urlsafe(15)  # 20 characters
+        if not check_password_policy(password):
+            return password
+
+
+def dev_bootstrap(session, start_date: date = DEV_START_DATE) -> dict[str, str]:
+    """Give an empty database the development fund and users, in ``session``'s transaction.
+
+    Returns ``{username: one-time password}`` for the users created, or ``{}`` when
+    the database already has a user or a fund (nothing is touched then).
+    """
+    from sqlalchemy import select
+
+    from reconpilot_web import auth, funds
+    from reconpilot_web.models import Fund, User
+
+    if session.execute(select(User.id).limit(1)).first() or session.execute(select(Fund.id).limit(1)).first():
+        return {}
+    funds.create_fund(session, DEV_FUND_CODE, DEV_FUND_NAME, start_date)
+    created: dict[str, str] = {}
+    for username, role, is_admin, display_name in DEV_USERS:
+        password = one_time_password()
+        auth.create_user(session, username, password, role, is_admin=is_admin, display_name=display_name)
+        created[username] = password
+    return created
+
+
+def _serve_api(settings: Settings, host: str, port: int) -> None:
+    import uvicorn
+
+    from reconpilot_web.app import create_app
+
+    uvicorn.run(create_app(settings), host=host, port=port, log_level="info")
+
+
+def _cmd_dev(args: argparse.Namespace) -> int:
+    """Embedded database, migrations, first-run fund and users, then the API and a worker thread."""
+    import logging
+    import signal
+    import threading
+
+    from reconpilot_web import db
+    from reconpilot_web.jobs import run_worker
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    for noisy in ("pgserver", "alembic"):  # their INFO lines are start-up chatter, not news
+        logging.getLogger(noisy).setLevel(logging.WARNING)
+    try:
+        settings = load_settings()
+        url, _ = database_urls(settings)  # starts (or reuses) the embedded server when no URL is set
+        mode = migrate(settings)
+        engine = db.make_engine(url)
+        try:
+            with db.SessionLocal(bind=engine) as session, session.begin():
+                created = dev_bootstrap(session, args.start_date)
+        finally:
+            engine.dispose()
+    except (ValueError, RuntimeError) as exc:
+        print(f"reconpilot-web: {exc}", file=sys.stderr)
+        return 1
+
+    where = "RP_DATABASE_URL" if settings.database_url else f"the embedded database in {settings.data_dir}"
+    print(f"Database: {where} ({mode} mode), schema up to date.")
+    if created:
+        print(f"Created fund {DEV_FUND_CODE} starting {args.start_date} and these users. "
+              "The passwords are shown once only; note them now:")
+        for username, role, is_admin, _ in DEV_USERS:
+            print(f"  {username:<10} {role:<9}{' admin' if is_admin else '      '}  {created[username]}")
+
+    if hasattr(signal, "SIGBREAK"):  # Windows: let Ctrl+Break stop everything as tidily as Ctrl+C
+        signal.signal(signal.SIGBREAK, signal.default_int_handler)
+    stop = threading.Event()
+    worker = threading.Thread(target=run_worker, args=(settings,), kwargs={"stop": stop},
+                              name="reconpilot-worker", daemon=True)
+    worker.start()
+    print(f"API on http://{args.host}:{args.port}/api with a worker running in-process. Ctrl+C stops everything.")
+    try:
+        _serve_api(settings, args.host, args.port)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        stop.set()
+        worker.join(timeout=30)
+    print("Stopped.")
+    return 0
+
+
+def _cmd_serve(args: argparse.Namespace) -> int:
+    try:
+        settings = load_settings()
+        _serve_api(settings, args.host, args.port)
+    except (ValueError, RuntimeError) as exc:
+        print(f"reconpilot-web: {exc}", file=sys.stderr)
+        return 1
+    except KeyboardInterrupt:
+        pass
+    return 0
+
+
+def _add_listen_args(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--host", default=DEFAULT_HOST, help=f"address to listen on (default {DEFAULT_HOST})")
+    p.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"port to listen on (default {DEFAULT_PORT})")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="reconpilot-web",
         description="Run the ReconPilot web application.",
     )
     sub = parser.add_subparsers(dest="command", metavar="command")
+
+    p = sub.add_parser(
+        "dev",
+        help="run everything for development: database, migrations, API and worker",
+        description="Start the embedded PostgreSQL in RP_DATA_DIR (or use RP_DATABASE_URL), bring the "
+        f"schema up to date and, if the database is empty, create the fund {DEV_FUND_CODE} and the users "
+        f"{', '.join(u[0] for u in DEV_USERS)} with one-time passwords printed once. Then serve the API "
+        "with a worker running in the same process. Ctrl+C stops everything.",
+    )
+    _add_listen_args(p)
+    p.add_argument("--start-date", type=_iso_date, default=DEV_START_DATE,
+                   help=f"first business day of {DEV_FUND_CODE} when it is created (default {DEV_START_DATE})")
+    p.set_defaults(func=_cmd_dev)
+
+    p = sub.add_parser(
+        "serve",
+        help="serve the API only (run the worker separately)",
+        description="Serve the API against RP_DATABASE_URL (or the embedded database). Run "
+        "'reconpilot-web migrate' first and 'reconpilot-web worker' alongside to run days.",
+    )
+    _add_listen_args(p)
+    p.set_defaults(func=_cmd_serve)
 
     p = sub.add_parser(
         "migrate",
