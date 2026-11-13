@@ -1,9 +1,15 @@
-"""A simple NAV and the operational checks run before it is released."""
+"""A simple NAV and the operational checks run before it is released.
+
+NAV = market value of positions + book cash - accrued liabilities, where the
+liabilities are those brought forward plus today's accruals (management fee
+and expenses). A day's accrual covers every calendar day since the previous
+business day, so Monday's accrual includes the weekend.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import date, timedelta
 
 from reconpilot.matching import ReconResult
 from reconpilot.models import BreakKind, DayData
@@ -43,11 +49,12 @@ class Check:
 def compute_nav(day: DayData) -> NavResult:
     gross = sum(p.quantity * p.price * day.fx_rates[p.currency] for p in day.book_positions.values())
     cash = day.book_closing_cash
-    nav = gross + cash - day.accrued_expenses
+    liabilities = round(day.accrued_expenses + day.accrued_today, 2)
+    nav = gross + cash - liabilities
     return NavResult(
         gross_assets=round(gross, 2),
         cash=cash,
-        liabilities=day.accrued_expenses,
+        liabilities=liabilities,
         nav=round(nav, 2),
         nav_per_share=round(nav / day.shares_outstanding, 6),
         prior_nav_per_share=day.prior_nav_per_share,
@@ -86,6 +93,7 @@ def run_checks(
     )
 
     checks.append(price_move_check(day, price_move_limits or PRICE_MOVE_LIMITS))
+    checks.append(accrual_check(day))
 
     move = nav.movement
     checks.append(
@@ -146,3 +154,47 @@ def price_move_check(day: DayData, limits: dict[str, float]) -> Check:
         return Check("Day-on-day price moves", PASS, f"No held position moved beyond its limit ({text}).")
     detail = "; ".join(f"{sid} ({cls.lower()}) {move:+.1%} vs limit {limit:.0%}" for sid, cls, move, limit in flagged)
     return Check("Day-on-day price moves", WARN, f"{len(flagged)} price(s) to confirm: {detail}.")
+
+
+def accrual_days(as_of: date) -> int:
+    """Calendar days covered by an accrual booked on ``as_of`` (3 on a Monday)."""
+    prev = as_of - timedelta(days=1)
+    while prev.weekday() >= 5:
+        prev -= timedelta(days=1)
+    return (as_of - prev).days
+
+
+def expected_accruals(day: DayData) -> dict[str, float]:
+    """What should have been accrued today: fee on the prior NAV, plus the expense budget."""
+    days = accrual_days(day.as_of)
+    prior_nav = day.prior_nav_per_share * day.shares_outstanding
+    out = {}
+    if day.management_fee_rate:
+        out["MANAGEMENT_FEE"] = round(prior_nav * day.management_fee_rate / 365 * days, 2)
+    if day.daily_expense_budget:
+        out["EXPENSES"] = round(day.daily_expense_budget * days, 2)
+    return out
+
+
+def accrual_check(day: DayData, tolerance: float = 0.01) -> Check:
+    expected = expected_accruals(day)
+    if not expected:
+        return Check("Accruals", PASS, "No fee or expense accruals configured for this fund.")
+    booked: dict[str, float] = {}
+    for a in day.accruals:
+        if a.accrual_date == day.as_of:
+            booked[a.kind] = booked.get(a.kind, 0.0) + a.amount
+    missed, wrong = [], []
+    for kind, amount in expected.items():
+        got = round(booked.get(kind, 0.0), 2)
+        if got == 0:
+            missed.append(f"{kind.replace('_', ' ').lower()} not accrued (expected {amount:,.2f})")
+        elif abs(got / amount - 1) > tolerance:
+            wrong.append(f"{kind.replace('_', ' ').lower()} accrued {got:,.2f}, expected {amount:,.2f}")
+    days = accrual_days(day.as_of)
+    if missed:
+        return Check("Accruals", FAIL, "Missed accrual: " + "; ".join(missed + wrong) + f" ({days} day(s)).")
+    if wrong:
+        return Check("Accruals", WARN, "Accrual differs from expected: " + "; ".join(wrong) + f" ({days} day(s)).")
+    total = sum(expected.values())
+    return Check("Accruals", PASS, f"Fee and expense accruals booked as expected: {total:,.2f} for {days} day(s).")

@@ -20,6 +20,7 @@ from datetime import date, timedelta
 
 from reconpilot.models import (
     BASE_CURRENCY,
+    Accrual,
     CashLine,
     Category,
     DayData,
@@ -66,6 +67,9 @@ class GeneratorConfig:
     shares_outstanding: float = 10_000_000.0
     difficulty: str = "standard"  # "standard" or "hard"
     bond_share: float = 0.15  # share of the universe that is bonds rather than equities
+    management_fee_rate: float = 0.0075  # 75 bp a year, accrued daily on NAV
+    daily_expense_budget: float = 1_500.0  # other expenses, per calendar day
+    missed_accrual_rate: float = 0.0  # chance the book forgets the day's fee accrual
 
 
 def _make_universe(rng: random.Random, n: int) -> dict[str, Security]:
@@ -266,4 +270,17 @@ def generate_day(
     day.accrued_expenses = round(gross * 0.0002, 2)
     nav_ps = (gross + day.book_closing_cash - day.accrued_expenses) / cfg.shares_outstanding
     day.prior_nav_per_share = round(nav_ps * (1 + rng.uniform(-0.008, 0.008)), 6)
+    _book_accruals(day, cfg, side)
     return day, truth
+
+
+def _book_accruals(day: DayData, cfg: GeneratorConfig, rng: random.Random) -> None:
+    """Book the day's fee and expense accruals, occasionally forgetting the fee."""
+    from reconpilot.nav import expected_accruals
+
+    day.management_fee_rate = cfg.management_fee_rate
+    day.daily_expense_budget = cfg.daily_expense_budget
+    for kind, amount in expected_accruals(day).items():
+        if kind == "MANAGEMENT_FEE" and rng.random() < cfg.missed_accrual_rate:
+            continue
+        day.accruals.append(Accrual(day.as_of, kind, amount))
