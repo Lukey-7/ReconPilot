@@ -39,7 +39,7 @@ def mount_web(app: FastAPI, dist: Path) -> None:
     root = dist.resolve()
     index = root / "index.html"
 
-    @app.get("/{path:path}", include_in_schema=False)
+    @app.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
     def front_end(path: str) -> FileResponse:
         if path == "api" or path.startswith("api/"):
             raise HTTPException(404, "Not Found")

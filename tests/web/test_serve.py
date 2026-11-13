@@ -39,6 +39,7 @@ def test_pages_get_index_html_with_security_headers(web_client):
         assert response.headers["Content-Security-Policy"] == "default-src 'self'; frame-ancestors 'none'"
         assert response.headers["X-Content-Type-Options"] == "nosniff"
         assert response.headers["Cache-Control"] == "no-cache"
+    assert web_client.head("/cases").status_code == 200
 
 
 def test_files_are_served_and_assets_cached(web_client):
