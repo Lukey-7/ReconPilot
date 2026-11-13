@@ -1,0 +1,127 @@
+/*
+ * Design tokens: Night desk, dark first.
+ *
+ * Deep slate surfaces, light ink, a blue accent for links, focus and selection, and
+ * orange-amber (--signal) as the one colour that means "needs you". Green and red are
+ * restrained and always come with an icon or a word, never colour alone.
+ *
+ * The dark palette is the default. The light palette applies when the system prefers
+ * light and the user has not chosen dark, or when the user chose light
+ * (data-theme on <html>, set by theme/ThemeProvider.tsx and public/theme-init.js).
+ */
+:root {
+  color-scheme: dark;
+  --bg: #131b26;
+  --panel: #18222f;
+  --panel-2: #1d2836;
+  --raise: #243243;
+  --rule: #2c3a4c;
+  --rule-strong: #3d4e63;
+  --field: #687b94; /* form-field boundary, at least 3:1 on every surface */
+  --ink: #e2e8f0;
+  --ink-2: #a9b6c6;
+  --ink-3: #8c9bae;
+  --accent: #7db7ff; /* links, selection, current screen */
+  --accent-wash: rgba(125, 183, 255, 0.14);
+  --focus: #93c8ff;
+  --signal: #f2b54b; /* "needs you": text and icons */
+  --signal-fill: #f2b54b; /* badge fill */
+  --signal-ink: #1c1405; /* text on the badge fill */
+  --signal-wash: rgba(242, 181, 75, 0.11);
+  --pos: #86cda3;
+  --pos-wash: rgba(134, 205, 163, 0.1);
+  --neg: #f39a8c;
+  --neg-wash: rgba(243, 154, 140, 0.1);
+  --bar: #6a819c;
+  --bar-material: #c7d3e0;
+  --scrim: rgba(6, 10, 16, 0.66);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+
+  --font-ui: "Sofia Sans Semi Condensed", "Segoe UI", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-fig: "Red Hat Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+
+  --t-fast: 150ms;
+  --t-panel: 180ms;
+  --t-status: 600ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  --radius: 3px;
+  --gutter: 16px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --bg: #e6ebf1;
+    --panel: #f6f8fa;
+    --panel-2: #edf1f5;
+    --raise: #ffffff;
+    --rule: #cbd4de;
+    --rule-strong: #a9b7c6;
+    --field: #728296;
+    --ink: #15202c;
+    --ink-2: #435163;
+    --ink-3: #566477;
+    --accent: #1d5cc0;
+    --accent-wash: rgba(29, 92, 192, 0.1);
+    --focus: #1d5cc0;
+    --signal: #8a5700;
+    --signal-fill: #f2b54b;
+    --signal-ink: #1c1405;
+    --signal-wash: rgba(242, 181, 75, 0.2);
+    --pos: #1e6e43;
+    --pos-wash: rgba(30, 110, 67, 0.08);
+    --neg: #ae3127;
+    --neg-wash: rgba(174, 49, 39, 0.07);
+    --bar: #7489a0;
+    --bar-material: #2e3e52;
+    --scrim: rgba(21, 32, 44, 0.45);
+    --shadow: 0 10px 30px rgba(21, 32, 44, 0.18);
+  }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #e6ebf1;
+  --panel: #f6f8fa;
+  --panel-2: #edf1f5;
+  --raise: #ffffff;
+  --rule: #cbd4de;
+  --rule-strong: #a9b7c6;
+  --field: #728296;
+  --ink: #15202c;
+  --ink-2: #435163;
+  --ink-3: #566477;
+  --accent: #1d5cc0;
+  --accent-wash: rgba(29, 92, 192, 0.1);
+  --focus: #1d5cc0;
+  --signal: #8a5700;
+  --signal-fill: #f2b54b;
+  --signal-ink: #1c1405;
+  --signal-wash: rgba(242, 181, 75, 0.2);
+  --pos: #1e6e43;
+  --pos-wash: rgba(30, 110, 67, 0.08);
+  --neg: #ae3127;
+  --neg-wash: rgba(174, 49, 39, 0.07);
+  --bar: #7489a0;
+  --bar-material: #2e3e52;
+  --scrim: rgba(21, 32, 44, 0.45);
+  --shadow: 0 10px 30px rgba(21, 32, 44, 0.18);
+}
+
+/* All motion off for people who ask for less. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --t-fast: 0ms;
+    --t-panel: 0ms;
+    --t-status: 0ms;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

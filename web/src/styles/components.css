@@ -1,0 +1,268 @@
+/* Shared components: labels, tables, states, the sign-in page. */
+
+/* ===== Status, cause and check labels: icon + word, colour only reinforces ===== */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 7px 1px 5px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pill svg {
+  width: 12px;
+  height: 12px;
+}
+.pill.tone-signal {
+  background: var(--signal-fill);
+  color: var(--signal-ink);
+}
+.pill.tone-pos {
+  color: var(--pos);
+  border-color: color-mix(in srgb, var(--pos) 40%, transparent);
+}
+.pill.tone-neg {
+  color: var(--neg);
+  border-color: color-mix(in srgb, var(--neg) 40%, transparent);
+}
+.pill.tone-neutral {
+  color: var(--ink);
+  border-color: var(--rule-strong);
+}
+.st {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.st.tone-pos {
+  color: var(--pos);
+}
+.st.tone-neg {
+  color: var(--neg);
+}
+.st.tone-neutral {
+  color: var(--ink-2);
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 5px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.tag.signal {
+  color: var(--signal);
+  border-color: color-mix(in srgb, var(--signal) 55%, transparent);
+  background: var(--signal-wash);
+}
+
+/* ===== Data table ===== */
+.table-wrap {
+  overflow-x: auto;
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.data-table caption {
+  caption-side: top;
+  text-align: left;
+  padding: 6px 0;
+  color: var(--ink-3);
+  font-size: 12.5px;
+}
+.data-table th,
+.data-table td {
+  padding: 0 8px;
+  height: 36px;
+  font-size: 13px;
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--rule);
+}
+.data-table th {
+  height: 32px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-2);
+  white-space: nowrap;
+  background: var(--panel-2);
+}
+.data-table .num {
+  text-align: right;
+  font-family: var(--font-fig);
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+.data-table th.num {
+  font-family: var(--font-ui);
+}
+.sort-btn {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+.sort-btn:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.data-table th.num .sort-btn {
+  justify-content: flex-end;
+}
+.sort-icon {
+  opacity: 0.35;
+}
+.sort-icon.sorted-asc {
+  opacity: 1;
+  transform: rotate(180deg);
+}
+.sort-icon.sorted-desc {
+  opacity: 1;
+}
+.data-table tr.activatable {
+  cursor: pointer;
+  transition: background-color var(--t-fast) var(--ease);
+}
+.data-table tr.activatable:hover {
+  background: var(--panel-2);
+}
+.data-table tr.selected {
+  background: var(--accent-wash);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.data-table tr:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+.empty-cell {
+  color: var(--ink-3);
+  text-align: center;
+  height: 64px;
+}
+
+/* ===== States ===== */
+.state-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+  color: var(--ink-2);
+}
+.state-line.error {
+  color: var(--neg);
+}
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--rule-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.placeholder {
+  max-width: 640px;
+  padding: 18px 20px;
+  background: var(--panel);
+  border: 1px dashed var(--rule-strong);
+  border-radius: 4px;
+  color: var(--ink-2);
+}
+.placeholder h1 {
+  font-size: 17px;
+  margin-bottom: 6px;
+  color: var(--ink);
+}
+.not-found {
+  margin: 10vh auto;
+}
+
+/* ===== Sign-in ===== */
+.signin-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px var(--gutter);
+}
+.signin-theme {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+}
+.signin-card {
+  width: min(380px, 100%);
+  padding: 26px 26px 24px;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+}
+.signin-brand {
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--ink-2);
+  margin-bottom: 14px;
+}
+.signin-card h1 {
+  font-size: 22px;
+}
+.signin-lede {
+  margin: 4px 0 18px;
+  font-size: 13.5px;
+}
+.field {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.field .input {
+  min-height: 36px;
+  font-size: 14px;
+}
+.signin-submit {
+  width: 100%;
+  min-height: 36px;
+  margin-top: 4px;
+}
+.form-error,
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 8px 10px;
+  margin-bottom: 14px;
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+.form-error {
+  color: var(--neg);
+  background: var(--neg-wash);
+  border: 1px solid color-mix(in srgb, var(--neg) 40%, transparent);
+}
+.notice {
+  color: var(--ink);
+  background: var(--signal-wash);
+  border: 1px solid color-mix(in srgb, var(--signal) 45%, transparent);
+}
+.form-error svg,
+.notice svg {
+  margin-top: 2px;
+}
