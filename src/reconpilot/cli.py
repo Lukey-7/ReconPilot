@@ -5,8 +5,12 @@
     reconpilot review   --run runs/2026-11-13 --user priya --case EX-20261113-001 --approve
     reconpilot signoff  --run runs/2026-11-13 --user tom --role approver
     reconpilot verify-audit --run runs/2026-11-13
-    reconpilot evaluate --days 20 --breaks 10
-    reconpilot demo
+    reconpilot evaluate --days 20 --breaks 10 --hard --ai
+    reconpilot demo --ai
+
+Add --ai to run, demo or evaluate for AI-assisted triage. The key comes from
+ANTHROPIC_API_KEY, OPENAI_API_KEY or GOOGLE_API_KEY; without one, or without
+the flag, everything runs on the rules alone.
 """
 
 from __future__ import annotations
@@ -19,8 +23,9 @@ import sys
 from datetime import date
 from pathlib import Path
 
+from reconpilot.ai import DEFAULT_MODELS, ResponseCache, assist_cases, make_client
 from reconpilot.audit import AuditLog
-from reconpilot.evaluate import run_evaluation, to_markdown
+from reconpilot.evaluate import comparison_markdown, run_evaluation, to_markdown
 from reconpilot.generator import GeneratorConfig, generate_day
 from reconpilot.matching import reconcile
 from reconpilot.models import PLANTABLE, Category
@@ -50,6 +55,18 @@ def cmd_generate(a) -> int:
     return 0
 
 
+def _ai_setup(a):
+    """Return (client, cache) for --ai, or (None, None). Warn when no key is set."""
+    if not getattr(a, "ai", False):
+        return None, None
+    client = make_client(a.ai_provider, a.ai_model, a.ai_effort, a.ai_timeout)
+    if client is None:
+        print("--ai given but no API key found; continuing with rule-based triage only.", file=sys.stderr)
+        return None, None
+    print(f"AI triage: {client.provider} / {client.model} (effort {client.effort})")
+    return client, ResponseCache(a.ai_cache)
+
+
 def _state_path(run: Path) -> Path:
     return run / "run.json"
 
@@ -76,6 +93,9 @@ def cmd_run(a) -> int:
     audit.append(a.user, a.role, "RUN_STARTED", {"data_dir": str(Path(a.data).resolve()), "as_of": day.as_of})
     recon = reconcile(day)
     cases = triage(day, recon)
+    if getattr(a, "ai", False):
+        client, cache = _ai_setup(a)
+        assist_cases(day, recon, cases, client, audit=audit, actor=a.user, role=a.role, cache=cache)
     nav = compute_nav(day)
     checks = run_checks(day, nav, recon)
     save_cases(cases, run / "cases.json")
@@ -90,7 +110,14 @@ def cmd_run(a) -> int:
 
     print(f"{day.as_of}: {len(recon.matches)} cash matches, {len(recon.breaks)} breaks, {len(cases)} cases")
     for c in cases:
-        print(f"  {c.case_id}  {c.security_id:<14} {c.category.value:<15} {c.confidence:.2f}")
+        line = f"  {c.case_id}  {c.security_id or '(none)':<14} {c.category.value:<15} {c.confidence:.2f}"
+        if c.ai_status == "ACCEPTED":
+            line += f"   AI: {c.ai_category.value} {c.ai_confidence:.2f}"
+            if c.ai_flag:
+                line += f"  [{c.ai_flag}]"
+        elif c.ai_status == "FALLBACK":
+            line += f"   AI: fell back to rules ({c.ai_fallback_reason[:60]})"
+        print(line)
     print(f"NAV per share {nav.nav_per_share:,.6f} ({nav.movement:+.2%})")
     for c in checks:
         print(f"  [{c.status}] {c.name}")
@@ -157,8 +184,16 @@ def cmd_verify(a) -> int:
 
 def cmd_evaluate(a) -> int:
     difficulty = "hard" if a.hard else "standard"
-    result = run_evaluation(days=a.days, breaks_per_day=a.breaks, seed=a.seed, difficulty=difficulty)
-    text = to_markdown(result, f"Evaluation ({difficulty} data, seed {a.seed})")
+    base = run_evaluation(days=a.days, breaks_per_day=a.breaks, seed=a.seed, difficulty=difficulty)
+    text = to_markdown(base, f"Rules only ({difficulty} data, seed {a.seed})")
+    client, cache = _ai_setup(a)
+    if client is not None:
+        audit = AuditLog(Path(a.ai_cache).parent / "evaluate_audit.jsonl")
+        ai = run_evaluation(days=a.days, breaks_per_day=a.breaks, seed=a.seed, difficulty=difficulty,
+                            ai_client=client, ai_cache=cache, audit=audit)
+        heading = f"## Rules versus AI ({difficulty} data, seed {a.seed})"
+        ai_text = to_markdown(ai, f"{ai.label} ({difficulty} data, seed {a.seed})")
+        text = "\n\n".join([heading, comparison_markdown([base, ai]), text, ai_text])
     print(text)
     if a.out:
         Path(a.out).write_text(text, encoding="utf-8")
@@ -168,8 +203,24 @@ def cmd_evaluate(a) -> int:
 def cmd_demo(a) -> int:
     root = Path(a.dir)
     as_of = "2026-11-13"
-    cmd_generate(argparse.Namespace(as_of=as_of, out=root / "data", seed=7, breaks=12, hard=False))
-    return cmd_run(argparse.Namespace(data=root / "data", out=root / "run", user="analyst1", role="analyst"))
+    cmd_generate(argparse.Namespace(as_of=as_of, out=root / "data", seed=7, breaks=12, hard=a.hard))
+    return cmd_run(argparse.Namespace(data=root / "data", out=root / "run", user="analyst1", role="analyst",
+                                      **{k: getattr(a, k) for k in _AI_ARGS}))
+
+
+_AI_ARGS = ("ai", "ai_provider", "ai_model", "ai_effort", "ai_timeout", "ai_cache")
+
+
+def _add_ai_args(p: argparse.ArgumentParser) -> None:
+    g = p.add_argument_group("AI-assisted triage")
+    g.add_argument("--ai", action="store_true", help="add an AI second opinion to every case")
+    g.add_argument("--ai-provider", choices=sorted(DEFAULT_MODELS),
+                   help="default: the first of anthropic, openai, google with a key set")
+    g.add_argument("--ai-model", help="model name; default depends on the provider")
+    g.add_argument("--ai-effort", default="medium", choices=["low", "medium", "high"],
+                   help="reasoning effort, where the provider supports it")
+    g.add_argument("--ai-timeout", type=float, default=120.0, help="seconds per call")
+    g.add_argument("--ai-cache", default=".reconpilot_cache/ai", help="folder for cached responses")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -189,6 +240,7 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--out", required=True)
     r.add_argument("--user", required=True)
     r.add_argument("--role", choices=ROLES, default="analyst")
+    _add_ai_args(r)
     r.set_defaults(func=cmd_run)
 
     v = sub.add_parser("review", help="approve, reject or reclassify cases")
@@ -220,10 +272,13 @@ def build_parser() -> argparse.ArgumentParser:
     e.add_argument("--seed", type=int, default=42)
     e.add_argument("--hard", action="store_true")
     e.add_argument("--out")
+    _add_ai_args(e)
     e.set_defaults(func=cmd_evaluate)
 
     d = sub.add_parser("demo", help="generate a sample day and run it end to end")
     d.add_argument("--dir", default="demo")
+    d.add_argument("--hard", action="store_true", help="generate the noisier data")
+    _add_ai_args(d)
     d.set_defaults(func=cmd_demo)
     return p
 
