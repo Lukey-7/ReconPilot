@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
@@ -276,6 +276,57 @@ def upload_files(
         audit.append(user.username, user.role, "VALIDATION_FAILED", outcome)
     db.commit()
     return {"status": day.status, **report.to_dict()}
+
+
+def next_business_day(fund: Fund, d: date) -> date:
+    """The first business day of the fund after ``d``."""
+    nxt = d + timedelta(days=1)
+    while not is_business_day(fund, nxt):
+        nxt += timedelta(days=1)
+    return nxt
+
+
+def days_payload(db: Session, fund: Fund) -> dict[str, Any]:
+    """The fund's loaded business days, newest first, and the day that can be loaded next.
+
+    ``next_day`` is the start date when nothing is loaded, the business day after
+    the latest day once that day is signed off, and ``None`` otherwise (days are
+    worked in order, spec 7.5).
+    """
+    rows = db.execute(
+        select(BusinessDay).where(BusinessDay.fund_id == fund.id).order_by(BusinessDay.as_of.desc())
+    ).scalars().all()
+    if not rows:
+        next_day: date | None = fund.start_date
+    elif rows[0].status == "signed_off":
+        next_day = next_business_day(fund, rows[0].as_of)
+    else:
+        next_day = None
+    days = []
+    for day in rows:
+        has_run = day.status in RUN_STATUSES
+        days.append({
+            "as_of": str(day.as_of),
+            "status": day.status,
+            "nav_per_share": day.nav_per_share if has_run else None,
+            "open_cases": (day.summary or {}).get("open_cases") if has_run else None,
+            "run_at": day.run_at.isoformat() if day.run_at else None,
+            "signed_off_by": _username(db, day.signed_off_by),
+            "signed_off_at": day.signed_off_at.isoformat() if day.signed_off_at else None,
+        })
+    return {
+        "fund": fund.code,
+        "start_date": str(fund.start_date),
+        "latest_day": str(rows[0].as_of) if rows else None,
+        "next_day": str(next_day) if next_day else None,
+        "days": days,
+    }
+
+
+@router.get("")
+def list_days(code: str, user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
+    """The fund's business days with their status, newest first (see ``days_payload``)."""
+    return days_payload(db, get_fund(db, code))
 
 
 @router.get("/{as_of}")

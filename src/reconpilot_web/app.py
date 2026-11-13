@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from fastapi import Depends, FastAPI, Request
-from fastapi.responses import JSONResponse
+from pathlib import Path
+
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse
 from starlette.responses import Response
 from sqlalchemy.orm import sessionmaker
 
-from reconpilot_web import auth, cases, days, db, funds, release
+from reconpilot_web import auth, cases, days, db, funds, overview, release
 from reconpilot_web.config import Settings
 from reconpilot_web.models import assert_instance_mode
 
@@ -27,8 +29,32 @@ def add_security_headers(request: Request, response: Response) -> Response:
     return response
 
 
-def create_app(settings: Settings) -> FastAPI:
-    """Build the app for ``settings``.
+def mount_web(app: FastAPI, dist: Path) -> None:
+    """Serve the built front end in ``dist``: its files, and ``index.html`` for any other page.
+
+    Registered after the API, so ``/api`` routes win; an unknown ``/api`` path is
+    still a JSON 404, and so is a missing file (a path whose last part has a dot).
+    Hashed assets are cached for good; ``index.html`` is revalidated every time.
+    """
+    root = dist.resolve()
+    index = root / "index.html"
+
+    @app.get("/{path:path}", include_in_schema=False)
+    def front_end(path: str) -> FileResponse:
+        if path == "api" or path.startswith("api/"):
+            raise HTTPException(404, "Not Found")
+        if path:
+            candidate = (root / path).resolve()
+            if root in candidate.parents and candidate.is_file():
+                cache = "public, max-age=31536000, immutable" if path.startswith("assets/") else "no-cache"
+                return FileResponse(candidate, headers={"Cache-Control": cache})
+            if "." in path.rsplit("/", 1)[-1]:
+                raise HTTPException(404, "Not Found")
+        return FileResponse(index, headers={"Cache-Control": "no-cache"})
+
+
+def create_app(settings: Settings, web_dist: Path | None = None) -> FastAPI:
+    """Build the app for ``settings``, serving the built front end in ``web_dist`` if given.
 
     Refuses (``RuntimeError``) a database written for the other instance mode, so
     a demo instance can never open real data or the other way round.
@@ -73,4 +99,7 @@ def create_app(settings: Settings) -> FastAPI:
     app.include_router(days.jobs_router)
     app.include_router(cases.router)
     app.include_router(release.router)
+    app.include_router(overview.router)
+    if web_dist is not None:
+        mount_web(app, web_dist)
     return app
