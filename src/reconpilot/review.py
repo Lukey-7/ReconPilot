@@ -1,10 +1,15 @@
-"""Analyst review of suggested causes, with role checks and four-eyes sign-off."""
+"""Analyst review of suggested causes, with role checks and four-eyes sign-off.
+
+Sign-off (NAV release) also requires that every material case has been
+approved or reclassified, and that escalated cases were decided by an approver.
+"""
 
 from __future__ import annotations
 
 from enum import Enum
 
 from reconpilot.audit import AuditLog
+from reconpilot.impact import blocking_cases, sort_by_impact
 from reconpilot.models import Case, Category
 
 
@@ -51,6 +56,7 @@ class ReviewSession:
         case.status = status
         case.final_category = final
         case.reviewed_by = self.user
+        case.reviewed_role = self.role.value
         case.review_note = note
         self.audit.append(
             self.user,
@@ -62,6 +68,8 @@ class ReviewSession:
                 "final": final.value if final else None,
                 "before": {k: (v.value if isinstance(v, Category) else v) for k, v in before.items()},
                 "note": note,
+                "material": case.material,
+                "escalated": case.escalated,
             },
         )
         return case
@@ -79,13 +87,34 @@ class ReviewSession:
         return self._decide(case_id, "RECLASSIFIED", Category(category), note)
 
     def pending(self) -> list[Case]:
-        return [c for c in self.cases.values() if c.status == "PENDING"]
+        """Cases awaiting a decision, largest NAV impact first."""
+        return sort_by_impact([c for c in self.cases.values() if c.status == "PENDING"])
+
+    def queue(self) -> list[Case]:
+        """All open cases, largest NAV impact first."""
+        return sort_by_impact([c for c in self.cases.values() if not c.cleared_on])
 
     def sign_off(self) -> dict:
         """Close the day. Needs an approver who reviewed none of the cases themselves."""
         self._require(_CAN_SIGN_OFF, "sign off the day")
         if self.pending():
             raise ReviewError(f"{len(self.pending())} case(s) still pending review")
+        blocked = blocking_cases(list(self.cases.values()))
+        if blocked:
+            self.audit.append(self.user, self.role.value, "SIGN_OFF_BLOCKED",
+                              {"reason": "material cases not approved", "cases": [c.case_id for c in blocked]})
+            raise ReviewError(
+                f"NAV release blocked: {len(blocked)} material case(s) not approved "
+                f"({', '.join(c.case_id for c in blocked)})"
+            )
+        unconfirmed = [c.case_id for c in self.cases.values()
+                       if c.escalated and not c.cleared_on and c.reviewed_role != Role.APPROVER.value]
+        if unconfirmed:
+            self.audit.append(self.user, self.role.value, "SIGN_OFF_BLOCKED",
+                              {"reason": "escalated cases need an approver decision", "cases": unconfirmed})
+            raise ReviewError(
+                f"{len(unconfirmed)} escalated case(s) need a decision by an approver: {', '.join(unconfirmed)}"
+            )
         own = [c.case_id for c in self.cases.values() if c.reviewed_by == self.user]
         if own:
             self.audit.append(self.user, self.role.value, "SIGN_OFF_BLOCKED", {"reason": "four-eyes", "cases": own})

@@ -137,6 +137,7 @@ def save_cases(cases: list[Case], path: str | Path) -> None:
         row["category"] = c.category.value
         row["final_category"] = c.final_category.value if c.final_category else None
         row["ai_category"] = c.ai_category.value if c.ai_category else None
+        row["resolved_category"] = c.resolved_category.value if c.resolved_category else None
         return row
 
     Path(path).write_text(json.dumps([enc(c) for c in cases], indent=2), encoding="utf-8")
@@ -148,7 +149,8 @@ def load_cases(path: str | Path) -> list[Case]:
     for r in rows:
         r["category"] = Category(r["category"])
         r["final_category"] = Category(r["final_category"]) if r["final_category"] else None
-        if r.get("ai_category"):
-            r["ai_category"] = Category(r["ai_category"])
+        for key in ("ai_category", "resolved_category"):
+            if r.get(key):
+                r[key] = Category(r[key])
         out.append(Case(**r))
     return out

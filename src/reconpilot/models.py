@@ -39,11 +39,15 @@ class Category(str, Enum):
 PLANTABLE: list[Category] = [c for c in Category if c is not Category.UNKNOWN]
 
 
+ASSET_CLASSES = ("EQUITY", "BOND")
+
+
 @dataclass(frozen=True)
 class Security:
     security_id: str
     name: str
     currency: str
+    asset_class: str = "EQUITY"
 
 
 @dataclass
@@ -108,6 +112,36 @@ class CashLine:
 
 
 @dataclass
+class BookCashEntry:
+    """A non-trade cash movement booked by the fund (income, adjustments)."""
+
+    reference: str
+    value_date: date
+    security_id: str
+    description: str
+    amount: float
+
+
+@dataclass
+class Accrual:
+    """An expense accrued in the book for one day (base currency, positive = liability)."""
+
+    accrual_date: date
+    kind: str  # MANAGEMENT_FEE or EXPENSES
+    amount: float
+
+
+@dataclass
+class CarriedItem:
+    """A book cash item left unmatched on an earlier day, matched again today."""
+
+    reference: str
+    security_id: str
+    amount: float
+    origin_date: date
+
+
+@dataclass
 class DayData:
     """Everything the pipeline needs for one fund on one business day."""
 
@@ -122,12 +156,25 @@ class DayData:
     custodian_opening_cash: float
     prior_nav_per_share: float
     shares_outstanding: float
-    accrued_expenses: float
+    accrued_expenses: float  # accrued liabilities brought forward from the prior day
+    book_cash: list[BookCashEntry] = field(default_factory=list)
+    accruals: list[Accrual] = field(default_factory=list)  # booked today
+    prior_prices: dict[str, float] = field(default_factory=dict)  # book prices on the prior day
+    management_fee_rate: float = 0.0  # a year, on NAV
+    daily_expense_budget: float = 0.0
+    # Open items from earlier days, matched again today (see ledger.py).
+    carried_book_items: list[CarriedItem] = field(default_factory=list)
+    carried_custodian_lines: list[CashLine] = field(default_factory=list)
 
     @property
     def book_closing_cash(self) -> float:
         settling = sum(t.cash_amount for t in self.book_trades if t.settle_date == self.as_of)
-        return round(self.book_opening_cash + settling, 2)
+        other = sum(e.amount for e in self.book_cash if e.value_date == self.as_of)
+        return round(self.book_opening_cash + settling + other, 2)
+
+    @property
+    def accrued_today(self) -> float:
+        return round(sum(a.amount for a in self.accruals if a.accrual_date == self.as_of), 2)
 
     @property
     def custodian_closing_cash(self) -> float:
@@ -175,6 +222,24 @@ class Case:
     ai_status: str = ""  # "", ACCEPTED or FALLBACK
     ai_flag: str = ""  # set when the model disagrees with the rules
     ai_fallback_reason: str = ""
+    # NAV impact (impact.py)
+    nav_impact: float = 0.0  # base currency, effect on NAV if the custodian's view is right
+    nav_impact_bp: float = 0.0
+    gross_exposure: float = 0.0
+    material: bool = False
+    # Lifecycle across days (ledger.py)
+    break_kinds: list[str] = field(default_factory=list)
+    first_seen: str = ""  # ISO date
+    age_days: int = 0  # business days open
+    age_bucket: str = "0-1"
+    escalated: bool = False
+    escalation_reason: str = ""
+    sla_days: int = 0
+    sla_breached: bool = False
+    cleared_on: str = ""  # ISO date, set when a later day's data matches
+    clear_reason: str = ""
+    resolved_category: Category | None = None
+    reviewed_role: str = ""
 
 
 @dataclass
@@ -184,3 +249,5 @@ class PlantedBreak:
     category: Category
     security_id: str
     detail: str
+    start: date | None = None  # multi-day runs: first day the break is visible
+    fix: date | None = None  # multi-day runs: day the data agrees again

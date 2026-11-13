@@ -27,6 +27,7 @@ from reconpilot.ai import DEFAULT_MODELS, ResponseCache, assist_cases, make_clie
 from reconpilot.audit import AuditLog
 from reconpilot.evaluate import comparison_markdown, run_evaluation, to_markdown
 from reconpilot.generator import GeneratorConfig, generate_day
+from reconpilot.impact import DEFAULT_MATERIALITY_BP, apply_impacts, release_check
 from reconpilot.matching import reconcile
 from reconpilot.models import PLANTABLE, Category
 from reconpilot.nav import compute_nav, run_checks
@@ -81,6 +82,7 @@ def _render(run: Path, state: dict) -> Path:
     nav = compute_nav(day)
     checks = run_checks(day, nav, recon)
     cases = load_cases(run / "cases.json")
+    checks.append(release_check(cases, state.get("materiality_bp", DEFAULT_MATERIALITY_BP)))
     return write_report(run / f"exceptions_{day.as_of}.xlsx", day, recon, cases, nav, checks,
                         state.get("signed_off_by", ""))
 
@@ -98,19 +100,25 @@ def cmd_run(a) -> int:
         assist_cases(day, recon, cases, client, audit=audit, actor=a.user, role=a.role, cache=cache)
     nav = compute_nav(day)
     checks = run_checks(day, nav, recon)
+    cases = apply_impacts(day, recon, cases, nav, a.materiality_bp)
+    checks.append(release_check(cases, a.materiality_bp))
     save_cases(cases, run / "cases.json")
     audit.append(a.user, a.role, "CASES_RAISED", {
         "matches": len(recon.matches), "breaks": len(recon.breaks), "cases": len(cases),
         "nav_per_share": nav.nav_per_share,
+        "material_cases": [c.case_id for c in cases if c.material],
         "checks": {c.name: c.status for c in checks},
     })
-    state = {"data_dir": str(Path(a.data).resolve()), "as_of": str(day.as_of)}
+    state = {"data_dir": str(Path(a.data).resolve()), "as_of": str(day.as_of), "materiality_bp": a.materiality_bp}
     _state_path(run).write_text(json.dumps(state, indent=2), encoding="utf-8")
     report = _render(run, state)
 
     print(f"{day.as_of}: {len(recon.matches)} cash matches, {len(recon.breaks)} breaks, {len(cases)} cases")
+    print("Review queue, largest NAV impact first:")
     for c in cases:
-        line = f"  {c.case_id}  {c.security_id or '(none)':<14} {c.category.value:<15} {c.confidence:.2f}"
+        flag = "M" if c.material else " "
+        line = (f" {flag} {c.case_id}  {c.security_id or '(none)':<14} {c.nav_impact:>14,.2f} "
+                f"{c.nav_impact_bp:>+7.2f}bp  {c.category.value:<15} {c.confidence:.2f}")
         if c.ai_status == "ACCEPTED":
             line += f"   AI: {c.ai_category.value} {c.ai_confidence:.2f}"
             if c.ai_flag:
@@ -205,6 +213,7 @@ def cmd_demo(a) -> int:
     as_of = "2026-11-13"
     cmd_generate(argparse.Namespace(as_of=as_of, out=root / "data", seed=7, breaks=12, hard=a.hard))
     return cmd_run(argparse.Namespace(data=root / "data", out=root / "run", user="analyst1", role="analyst",
+                                      materiality_bp=DEFAULT_MATERIALITY_BP,
                                       **{k: getattr(a, k) for k in _AI_ARGS}))
 
 
@@ -240,6 +249,8 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--out", required=True)
     r.add_argument("--user", required=True)
     r.add_argument("--role", choices=ROLES, default="analyst")
+    r.add_argument("--materiality-bp", type=float, default=DEFAULT_MATERIALITY_BP,
+                   help="cases at or above this NAV impact (basis points) are material")
     _add_ai_args(r)
     r.set_defaults(func=cmd_run)
 
