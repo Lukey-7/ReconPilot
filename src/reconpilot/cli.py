@@ -1,12 +1,18 @@
 """Command-line entry point.
 
     reconpilot generate --as-of 2026-11-13 --out data/2026-11-13
-    reconpilot run      --data data/2026-11-13 --out runs/2026-11-13 --user priya
-    reconpilot review   --run runs/2026-11-13 --user priya --case EX-20261113-001 --approve
-    reconpilot signoff  --run runs/2026-11-13 --user tom --role approver
-    reconpilot verify-audit --run runs/2026-11-13
+    reconpilot run      --data data/2026-11-13 --out runs/fund1 --user priya
+    reconpilot queue    --run runs/fund1
+    reconpilot review   --run runs/fund1 --user priya --case EX-20261113-001 --approve
+    reconpilot signoff  --run runs/fund1 --user tom --role approver
+    reconpilot verify-audit --run runs/fund1
     reconpilot evaluate --days 20 --breaks 10 --hard --ai
     reconpilot demo --ai
+
+A run directory holds one fund's history: run each business day into the same
+``--out`` folder and open cases carry over, age, escalate and clear
+automatically when later data matches. ``review`` and ``signoff`` act on the
+most recent day run.
 
 Add --ai to run, demo or evaluate for AI-assisted triage. The key comes from
 ANTHROPIC_API_KEY, OPENAI_API_KEY or GOOGLE_API_KEY; without one, or without
@@ -23,18 +29,27 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from reconpilot.ai import DEFAULT_MODELS, ResponseCache, assist_cases, make_client
+from reconpilot.ai import DEFAULT_MODELS, ResponseCache, make_client
 from reconpilot.audit import AuditLog
 from reconpilot.evaluate import comparison_markdown, run_evaluation, to_markdown
 from reconpilot.generator import GeneratorConfig, generate_day
-from reconpilot.impact import DEFAULT_MATERIALITY_BP, apply_impacts, release_check
+from reconpilot.impact import DEFAULT_MATERIALITY_BP, release_check, sort_by_impact
+from reconpilot.ledger import (
+    LifecycleSettings,
+    latest_before,
+    load_ledger,
+    load_open_items,
+    save_ledger,
+    save_open_items,
+    update_ledger_cases,
+)
 from reconpilot.matching import reconcile
-from reconpilot.models import PLANTABLE, Category
+from reconpilot.models import PLANTABLE, Category, DayData
 from reconpilot.nav import compute_nav, run_checks
+from reconpilot.pipeline import run_day
 from reconpilot.report import write_report
 from reconpilot.review import PermissionDenied, ReviewError, ReviewSession
 from reconpilot.storage import load_cases, read_day, save_cases, write_day
-from reconpilot.triage import triage
 
 ROLES = ["analyst", "approver", "viewer"]
 
@@ -68,57 +83,123 @@ def _ai_setup(a):
     return client, ResponseCache(a.ai_cache)
 
 
+# --------------------------------------------------------------------------- run directory state
+
+
 def _state_path(run: Path) -> Path:
     return run / "run.json"
 
 
 def _load_state(run: Path) -> dict:
-    return json.loads(_state_path(run).read_text(encoding="utf-8"))
+    state = json.loads(_state_path(run).read_text(encoding="utf-8"))
+    state.setdefault("days", {})
+    if not state["days"] and "data_dir" in state:  # run directories from before multi-day support
+        state["days"][state["as_of"]] = {"data_dir": state["data_dir"],
+                                         "signed_off_by": state.get("signed_off_by", "")}
+    return state
+
+
+def _save_state(run: Path, state: dict) -> None:
+    current = state["days"][state["as_of"]]
+    state["data_dir"] = current["data_dir"]  # kept for older tools reading run.json
+    state["signed_off_by"] = current.get("signed_off_by", "")
+    _state_path(run).write_text(json.dumps(state, indent=2), encoding="utf-8")
+
+
+def _settings(state: dict) -> LifecycleSettings:
+    return LifecycleSettings(**state.get("settings", {}))
+
+
+def _load_day(run: Path, data_dir: str | Path) -> DayData:
+    """Read a day's files and attach the open items carried from the previous run."""
+    day = read_day(data_dir)
+    prev = latest_before(run, day.as_of)
+    if prev is not None:
+        day.carried_book_items, day.carried_custodian_lines = load_open_items(run, prev)
+    return day
 
 
 def _render(run: Path, state: dict) -> Path:
-    day = read_day(state["data_dir"])
+    """Rebuild the report for the current day from saved data and saved cases."""
+    as_of = state["as_of"]
+    info = state["days"][as_of]
+    day = _load_day(run, info["data_dir"])
     recon = reconcile(day)
     nav = compute_nav(day)
     checks = run_checks(day, nav, recon)
     cases = load_cases(run / "cases.json")
-    checks.append(release_check(cases, state.get("materiality_bp", DEFAULT_MATERIALITY_BP)))
+    settings = _settings(state)
+    checks.append(release_check(cases, settings.materiality_bp))
+    ledger = load_ledger(run, as_of)
     return write_report(run / f"exceptions_{day.as_of}.xlsx", day, recon, cases, nav, checks,
-                        state.get("signed_off_by", ""))
+                        info.get("signed_off_by", ""), ledger=ledger)
 
 
 def cmd_run(a) -> int:
     run = Path(a.out)
     run.mkdir(parents=True, exist_ok=True)
     audit = AuditLog(run / "audit.jsonl")
-    day = read_day(a.data)
-    audit.append(a.user, a.role, "RUN_STARTED", {"data_dir": str(Path(a.data).resolve()), "as_of": day.as_of})
-    recon = reconcile(day)
-    cases = triage(day, recon)
-    if getattr(a, "ai", False):
-        client, cache = _ai_setup(a)
-        assist_cases(day, recon, cases, client, audit=audit, actor=a.user, role=a.role, cache=cache)
-    nav = compute_nav(day)
-    checks = run_checks(day, nav, recon)
-    cases = apply_impacts(day, recon, cases, nav, a.materiality_bp)
-    checks.append(release_check(cases, a.materiality_bp))
-    save_cases(cases, run / "cases.json")
-    audit.append(a.user, a.role, "CASES_RAISED", {
-        "matches": len(recon.matches), "breaks": len(recon.breaks), "cases": len(cases),
-        "nav_per_share": nav.nav_per_share,
-        "material_cases": [c.case_id for c in cases if c.material],
-        "checks": {c.name: c.status for c in checks},
+    state = _load_state(run) if _state_path(run).exists() else {"days": {}}
+    settings = LifecycleSettings(
+        materiality_bp=a.materiality_bp,
+        escalate_after_days=a.escalate_after,
+        sla_days_material=a.sla_material,
+        sla_days_other=a.sla_other,
+    )
+    state["settings"] = vars(settings)
+
+    day = _load_day(run, a.data)
+    prev = latest_before(run, day.as_of)
+    history = load_ledger(run, prev) if prev else []
+    prior_open = [c for c in history if not c.cleared_on]
+    already_cleared = [c for c in history if c.cleared_on]
+    audit.append(a.user, a.role, "RUN_STARTED", {
+        "data_dir": str(Path(a.data).resolve()), "as_of": day.as_of, "previous_day": prev,
+        "carried_cases": len(prior_open),
+        "carried_cash_items": len(day.carried_book_items) + len(day.carried_custodian_lines),
     })
-    state = {"data_dir": str(Path(a.data).resolve()), "as_of": str(day.as_of), "materiality_bp": a.materiality_bp}
-    _state_path(run).write_text(json.dumps(state, indent=2), encoding="utf-8")
+
+    client, cache = _ai_setup(a)
+    result = run_day(day, prior_open, settings, use_ai=getattr(a, "ai", False), ai_client=client,
+                     ai_cache=cache, audit=audit, actor=a.user, role=a.role)
+    cases = result.open_cases
+    save_cases(cases, run / "cases.json")
+    save_ledger(run, day.as_of, already_cleared + result.cleared + cases)
+    save_open_items(run, day.as_of, result.recon)
+    audit.append(a.user, a.role, "CASES_RAISED", {
+        "matches": len(result.recon.matches), "breaks": len(result.recon.breaks), "open_cases": len(cases),
+        "cleared_today": [c.case_id for c in result.cleared],
+        "nav_per_share": result.nav.nav_per_share,
+        "material_cases": [c.case_id for c in cases if c.material],
+        "checks": {c.name: c.status for c in result.checks},
+    })
+    state["as_of"] = str(day.as_of)
+    state["days"][str(day.as_of)] = {"data_dir": str(Path(a.data).resolve()), "signed_off_by": ""}
+    _save_state(run, state)
     report = _render(run, state)
 
-    print(f"{day.as_of}: {len(recon.matches)} cash matches, {len(recon.breaks)} breaks, {len(cases)} cases")
-    print("Review queue, largest NAV impact first:")
-    for c in cases:
-        flag = "M" if c.material else " "
-        line = (f" {flag} {c.case_id}  {c.security_id or '(none)':<14} {c.nav_impact:>14,.2f} "
-                f"{c.nav_impact_bp:>+7.2f}bp  {c.category.value:<15} {c.confidence:.2f}")
+    recon, nav = result.recon, result.nav
+    print(f"{day.as_of}: {len(recon.matches)} cash matches, {len(recon.breaks)} breaks, "
+          f"{len(cases)} open cases ({sum(1 for c in cases if c.first_seen == str(day.as_of))} new), "
+          f"{len(result.cleared)} cleared automatically")
+    for c in result.cleared:
+        print(f"  cleared {c.case_id}  {c.security_id or '(none)':<14} {c.resolved_category.value:<15} "
+              f"after {c.age_days} business day(s)")
+    _print_queue(cases)
+    print(f"NAV per share {nav.nav_per_share:,.6f} ({nav.movement:+.2%})")
+    for c in result.checks:
+        print(f"  [{c.status}] {c.name}")
+    print(f"Report: {report}")
+    return 0
+
+
+def _print_queue(cases) -> None:
+    print("Review queue, largest NAV impact first (M material, E escalated, S SLA breached):")
+    for c in sort_by_impact(cases):
+        flags = ("M" if c.material else " ") + ("E" if c.escalated else " ") + ("S" if c.sla_breached else " ")
+        line = (f" {flags} {c.case_id}  {c.security_id or '(none)':<14} {c.nav_impact:>14,.2f} "
+                f"{c.nav_impact_bp:>+7.2f}bp  age {c.age_days:>2}  {c.status:<12} "
+                f"{c.category.value:<15} {c.confidence:.2f}")
         if c.ai_status == "ACCEPTED":
             line += f"   AI: {c.ai_category.value} {c.ai_confidence:.2f}"
             if c.ai_flag:
@@ -126,15 +207,19 @@ def cmd_run(a) -> int:
         elif c.ai_status == "FALLBACK":
             line += f"   AI: fell back to rules ({c.ai_fallback_reason[:60]})"
         print(line)
-    print(f"NAV per share {nav.nav_per_share:,.6f} ({nav.movement:+.2%})")
-    for c in checks:
-        print(f"  [{c.status}] {c.name}")
-    print(f"Report: {report}")
+
+
+def cmd_queue(a) -> int:
+    run = Path(a.run)
+    state = _load_state(run)
+    print(f"Open cases for {state['as_of']}:")
+    _print_queue(load_cases(run / "cases.json"))
     return 0
 
 
 def cmd_review(a) -> int:
     run = Path(a.run)
+    state = _load_state(run)
     cases = load_cases(run / "cases.json")
     session = ReviewSession(cases, AuditLog(run / "audit.jsonl"), a.user, a.role)
     decisions = []
@@ -163,8 +248,10 @@ def cmd_review(a) -> int:
         print(f"Refused: {exc}", file=sys.stderr)
         return 1
     finally:
-        save_cases(list(session.cases.values()), run / "cases.json")
-        _render(run, _load_state(run))
+        changed = list(session.cases.values())
+        save_cases(changed, run / "cases.json")
+        update_ledger_cases(run, state["as_of"], changed)
+        _render(run, state)
     print(f"{len(session.pending())} case(s) still pending")
     return 0
 
@@ -178,8 +265,8 @@ def cmd_signoff(a) -> int:
     except (PermissionDenied, ReviewError) as exc:
         print(f"Refused: {exc}", file=sys.stderr)
         return 1
-    state["signed_off_by"] = a.user
-    _state_path(run).write_text(json.dumps(state, indent=2), encoding="utf-8")
+    state["days"][state["as_of"]]["signed_off_by"] = a.user
+    _save_state(run, state)
     print(f"Signed off by {a.user}. Report: {_render(run, state)}")
     return 0
 
@@ -212,12 +299,22 @@ def cmd_demo(a) -> int:
     root = Path(a.dir)
     as_of = "2026-11-13"
     cmd_generate(argparse.Namespace(as_of=as_of, out=root / "data", seed=7, breaks=12, hard=a.hard))
-    return cmd_run(argparse.Namespace(data=root / "data", out=root / "run", user="analyst1", role="analyst",
-                                      materiality_bp=DEFAULT_MATERIALITY_BP,
-                                      **{k: getattr(a, k) for k in _AI_ARGS}))
+    return cmd_run(_run_args(data=root / "data", out=root / "run", user="analyst1", role="analyst",
+                             **{k: getattr(a, k) for k in _AI_ARGS}))
 
 
 _AI_ARGS = ("ai", "ai_provider", "ai_model", "ai_effort", "ai_timeout", "ai_cache")
+
+
+def _run_args(**overrides) -> argparse.Namespace:
+    """Defaults for ``run`` when called from other commands."""
+    defaults = LifecycleSettings()
+    base = dict(materiality_bp=defaults.materiality_bp, escalate_after=defaults.escalate_after_days,
+                sla_material=defaults.sla_days_material, sla_other=defaults.sla_days_other,
+                ai=False, ai_provider=None, ai_model=None, ai_effort="medium", ai_timeout=120.0,
+                ai_cache=".reconpilot_cache/ai")
+    base.update(overrides)
+    return argparse.Namespace(**base)
 
 
 def _add_ai_args(p: argparse.ArgumentParser) -> None:
@@ -232,6 +329,19 @@ def _add_ai_args(p: argparse.ArgumentParser) -> None:
     g.add_argument("--ai-cache", default=".reconpilot_cache/ai", help="folder for cached responses")
 
 
+def _add_lifecycle_args(p: argparse.ArgumentParser) -> None:
+    d = LifecycleSettings()
+    g = p.add_argument_group("materiality, escalation and SLAs")
+    g.add_argument("--materiality-bp", type=float, default=d.materiality_bp,
+                   help="cases at or above this NAV impact (basis points) are material")
+    g.add_argument("--escalate-after", type=int, default=d.escalate_after_days,
+                   help="escalate cases open longer than this many business days")
+    g.add_argument("--sla-material", type=int, default=d.sla_days_material,
+                   help="business days to resolve a material case")
+    g.add_argument("--sla-other", type=int, default=d.sla_days_other,
+                   help="business days to resolve any other case")
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="reconpilot", description="Daily fund reconciliation and NAV checks.")
     sub = p.add_subparsers(dest="command", required=True)
@@ -244,15 +354,18 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--hard", action="store_true", help="noisier data that is harder to classify")
     g.set_defaults(func=cmd_generate)
 
-    r = sub.add_parser("run", help="reconcile a day, raise cases, check NAV and write the report")
+    r = sub.add_parser("run", help="reconcile a day, roll cases forward, check NAV and write the report")
     r.add_argument("--data", required=True)
-    r.add_argument("--out", required=True)
+    r.add_argument("--out", required=True, help="run directory; reuse it every day for one fund")
     r.add_argument("--user", required=True)
     r.add_argument("--role", choices=ROLES, default="analyst")
-    r.add_argument("--materiality-bp", type=float, default=DEFAULT_MATERIALITY_BP,
-                   help="cases at or above this NAV impact (basis points) are material")
+    _add_lifecycle_args(r)
     _add_ai_args(r)
     r.set_defaults(func=cmd_run)
+
+    q = sub.add_parser("queue", help="show open cases, largest NAV impact first")
+    q.add_argument("--run", required=True)
+    q.set_defaults(func=cmd_queue)
 
     v = sub.add_parser("review", help="approve, reject or reclassify cases")
     v.add_argument("--run", required=True)
@@ -267,7 +380,7 @@ def build_parser() -> argparse.ArgumentParser:
     v.add_argument("--decisions", help="CSV with case_id, decision, category, note")
     v.set_defaults(func=cmd_review)
 
-    s = sub.add_parser("signoff", help="close the day (approver, four-eyes)")
+    s = sub.add_parser("signoff", help="release the NAV for the day (approver, four-eyes)")
     s.add_argument("--run", required=True)
     s.add_argument("--user", required=True)
     s.add_argument("--role", choices=ROLES, default="approver")

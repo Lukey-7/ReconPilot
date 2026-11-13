@@ -55,6 +55,7 @@ def write_report(
     nav: NavResult,
     checks: list[Check],
     signed_off_by: str = "",
+    ledger: list[Case] | None = None,
 ) -> Path:
     wb = Workbook()
 
@@ -79,6 +80,10 @@ def write_report(
         ("  AI disagrees: needs review", sum(1 for c in cases if c.ai_flag)),
         ("  AI fell back to rules", sum(1 for c in cases if c.ai_status == "FALLBACK")),
         ("Material cases", sum(1 for c in cases if c.material)),
+        ("Escalated cases", sum(1 for c in cases if c.escalated)),
+        ("SLA breaches (open)", sum(1 for c in cases if c.sla_breached)),
+        ("Cleared automatically today", sum(1 for c in (ledger or []) if c.cleared_on == str(day.as_of))),
+        *[(f"  Open aged {b} days", sum(1 for c in cases if c.age_bucket == b)) for b in ("0-1", "2-5", ">5")],
         ("Net NAV impact of open cases", round(sum(c.nav_impact for c in cases if not c.cleared_on), 2)),
         ("Review status",", ".join(f"{k} {v}" for k, v in sorted(statuses.items())) or "none"),
         ("NAV", nav.nav),
@@ -101,20 +106,25 @@ def write_report(
     _table(
         wb.create_sheet("Exceptions"),
         ["Case", "Security", "Name", "NAV impact", "Impact (bp)", "Material", "Gross exposure",
+         "First seen", "Age (days)", "Age bucket", "Escalated", "Escalation reason", "SLA (days)", "SLA breached",
          "Suggested cause", "Confidence", "Status", "Final cause",
          "Reviewed by", "Review note", "Explanation", "Draft query", "Breaks",
          "AI cause", "AI confidence", "AI flag", "AI explanation", "AI investigation steps",
          "AI draft query", "AI model", "AI status"],
         [[c.case_id, c.security_id, names.get(c.security_id, ""), c.nav_impact, c.nav_impact_bp,
-          "YES" if c.material else "", c.gross_exposure, c.category.value, c.confidence, c.status,
+          "YES" if c.material else "", c.gross_exposure,
+          c.first_seen, c.age_days, c.age_bucket, "YES" if c.escalated else "", c.escalation_reason,
+          c.sla_days, "YES" if c.sla_breached else "",
+          c.category.value, c.confidence, c.status,
           c.final_category.value if c.final_category else "", c.reviewed_by, c.review_note, c.explanation,
           c.query_draft, ", ".join(c.break_ids),
           c.ai_category.value if c.ai_category else "", c.ai_confidence, c.ai_flag, c.ai_explanation,
           "\n".join(f"{i}. {s}" for i, s in enumerate(c.ai_steps, start=1)), c.ai_query, c.ai_model,
           c.ai_status + (f": {c.ai_fallback_reason}" if c.ai_fallback_reason else "")] for c in cases],
-        [18, 15, 22, 16, 11, 9, 16, 18, 11, 14, 16, 14, 24, 70, 70, 16, 18, 11, 24, 70, 60, 70, 18, 30],
+        [18, 15, 22, 16, 11, 9, 16, 12, 10, 10, 10, 30, 10, 12,
+         18, 11, 14, 16, 14, 24, 70, 70, 16, 18, 11, 24, 70, 60, 70, 18, 30],
         money_cols=(4, 7),
-        wrap_cols=(14, 15, 20, 21, 22, 24),
+        wrap_cols=(21, 22, 27, 28, 29, 31),
     )
     _table(
         wb.create_sheet("Breaks"),

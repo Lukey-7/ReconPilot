@@ -55,11 +55,19 @@ def test_cli_end_to_end(tmp_path, capsys):
     cases = load_cases(run / "cases.json")
     assert len(cases) == 12
 
+    escalated = [c for c in cases if c.escalated]
+    assert escalated and all(c.material for c in escalated)  # material cases escalate on day one
+
     decisions = tmp_path / "decisions.csv"
     rows = ["case_id,decision,category,note"] + [f"{c.case_id},approve,," for c in cases]
     decisions.write_text("\n".join(rows) + "\n")
     assert main(["review", "--run", str(run), "--user", "priya", "--decisions", str(decisions)]) == 0
-    assert main(["signoff", "--run", str(run), "--user", "priya", "--role", "approver"]) == 1  # four-eyes
+    # An analyst's approval is not enough for escalated cases.
+    assert main(["signoff", "--run", str(run), "--user", "tom", "--role", "approver"]) == 1
+    for c in escalated:
+        assert main(["review", "--run", str(run), "--user", "ann", "--role", "approver",
+                     "--case", c.case_id, "--approve"]) == 0
+    assert main(["signoff", "--run", str(run), "--user", "ann", "--role", "approver"]) == 1  # four-eyes
     assert main(["signoff", "--run", str(run), "--user", "tom", "--role", "approver"]) == 0
     assert main(["verify-audit", "--run", str(run)]) == 0
 

@@ -9,7 +9,8 @@ matched in passes, from strictest to loosest:
 4. MANY_TO_ONE several book trades netted by the custodian into one line
 5. anything still paired by reference has a real amount difference
 
-Whatever is left over on either side becomes a break.
+Whatever is left over on either side becomes a break, and is also returned as
+an open item so the next day can try to match it again (``ledger.py``).
 """
 
 from __future__ import annotations
@@ -17,14 +18,17 @@ from __future__ import annotations
 import itertools
 from dataclasses import dataclass, field
 
-from reconpilot.models import Break, BreakKind, CashLine, DayData
+from reconpilot.models import Break, BreakKind, CarriedItem, CashLine, DayData
 
 
 @dataclass
 class Tolerances:
     cash_abs: float = 1.00  # base currency
     cash_rel: float = 0.0001  # 1 basis point of the amount
-    price_rel: float = 0.0025  # 25 basis points
+    price_rel: float = 0.0025  # 25 basis points, used when an asset class has no entry below
+    price_rel_by_class: dict[str, float] = field(
+        default_factory=lambda: {"EQUITY": 0.0025, "BOND": 0.0010}
+    )
     quantity_abs: float = 0.0
     max_group: int = 4  # largest netted group tried for many-to-one
 
@@ -34,6 +38,7 @@ class BookCashItem:
     reference: str
     security_id: str
     amount: float
+    origin_date: str = ""  # ISO date the item first appeared
 
 
 @dataclass
@@ -54,6 +59,8 @@ class ReconResult:
     matches: list[CashMatch] = field(default_factory=list)
     breaks: list[Break] = field(default_factory=list)
     pending: list[CashLine] = field(default_factory=list)  # custodian lines value-dated later
+    open_book_items: list[BookCashItem] = field(default_factory=list)  # unmatched, carried forward
+    open_custodian_lines: list[CashLine] = field(default_factory=list)
 
     def breaks_for(self, security_id: str) -> list[Break]:
         return [b for b in self.breaks if b.security_id == security_id]
@@ -72,10 +79,12 @@ def reconcile(day: DayData, tol: Tolerances | None = None) -> ReconResult:
     new_break = _BreakFactory()
     result = ReconResult()
     result.breaks.extend(_reconcile_positions(day, tol, new_break))
-    matches, cash_breaks, pending = _match_cash(day, tol, new_break)
+    matches, cash_breaks, pending, open_book, open_cust = _match_cash(day, tol, new_break)
     result.matches = matches
     result.breaks.extend(cash_breaks)
     result.pending = pending
+    result.open_book_items = open_book
+    result.open_custodian_lines = open_cust
     return result
 
 
@@ -89,7 +98,9 @@ def _reconcile_positions(day: DayData, tol: Tolerances, new_break) -> list[Break
         if abs(book_qty - cust_qty) > tol.quantity_abs:
             breaks.append(new_break(BreakKind.QUANTITY, sid, book_qty, cust_qty))
         if book and cust and book.price > 0:
-            if abs(cust.price - book.price) / book.price > tol.price_rel:
+            sec = day.securities.get(sid)
+            limit = tol.price_rel_by_class.get(sec.asset_class if sec else "", tol.price_rel)
+            if abs(cust.price - book.price) / book.price > limit:
                 breaks.append(new_break(BreakKind.PRICE, sid, book.price, cust.price))
     return breaks
 
@@ -100,14 +111,26 @@ def _within(a: float, b: float, tol: Tolerances) -> bool:
 
 
 def _match_cash(day: DayData, tol: Tolerances, new_break):
-    book_open = {
-        t.trade_id: BookCashItem(t.trade_id, t.security_id, t.cash_amount)
+    today = str(day.as_of)
+    book_items = [
+        BookCashItem(c.reference, c.security_id, c.amount, str(c.origin_date)) for c in day.carried_book_items
+    ]
+    book_items += [
+        BookCashItem(t.trade_id, t.security_id, t.cash_amount, today)
         for t in day.book_trades
         if t.settle_date == day.as_of
-    }
-    settled = [line for line in day.custodian_cash if line.value_date == day.as_of]
+    ]
+    book_items += [
+        BookCashItem(e.reference, e.security_id, e.amount, today)
+        for e in day.book_cash
+        if e.value_date == day.as_of
+    ]
+    book_open = {i.reference: i for i in book_items}
+    settled = list(day.carried_custodian_lines)
+    settled += [line for line in day.custodian_cash if line.value_date == day.as_of]
     pending = [line for line in day.custodian_cash if line.value_date > day.as_of]
-    cust_open = {line.entry_id: line for line in settled}
+    # Keyed by value date too, so carried lines cannot collide with today's entry ids.
+    cust_open = {_key(line): line for line in settled}
     matches: list[CashMatch] = []
     breaks: list[Break] = []
 
@@ -116,7 +139,7 @@ def _match_cash(day: DayData, tol: Tolerances, new_break):
         matches.append(CashMatch(kind, [i.reference for i in items], line.entry_id, total, line.amount))
         for i in items:
             del book_open[i.reference]
-        del cust_open[line.entry_id]
+        del cust_open[_key(line)]
 
     # Passes 1 and 2: by reference.
     for kind, same in (
@@ -154,15 +177,19 @@ def _match_cash(day: DayData, tol: Tolerances, new_break):
         if found:
             close("MANY_TO_ONE", found, line)
 
-    # Pass 5: same reference, amount genuinely different.
+    # Pass 5: same reference, amount genuinely different. Both sides stay open.
+    carried_book: list[BookCashItem] = []
+    carried_cust: list[CashLine] = []
     for line in list(cust_open.values()):
         item = book_open.get(line.reference) if line.reference else None
         if item:
             breaks.append(
                 new_break(BreakKind.CASH_AMOUNT, line.security_id, item.amount, line.amount, line.reference)
             )
+            carried_book.append(item)
+            carried_cust.append(line)
             del book_open[item.reference]
-            del cust_open[line.entry_id]
+            del cust_open[_key(line)]
 
     for item in book_open.values():
         breaks.append(
@@ -175,4 +202,21 @@ def _match_cash(day: DayData, tol: Tolerances, new_break):
                 line.reference or line.entry_id, line.description,
             )
         )
-    return matches, breaks, pending
+    carried_book += list(book_open.values())
+    carried_cust += list(cust_open.values())
+    return matches, breaks, pending, carried_book, carried_cust
+
+
+def _key(line: CashLine) -> str:
+    return f"{line.value_date}:{line.entry_id}"
+
+
+def carry_forward(result: ReconResult) -> tuple[list[CarriedItem], list[CashLine]]:
+    """Open items from today's matching, in the form the next day's DayData expects."""
+    from datetime import date
+
+    book = [
+        CarriedItem(i.reference, i.security_id, i.amount, date.fromisoformat(i.origin_date))
+        for i in result.open_book_items
+    ]
+    return book, list(result.open_custodian_lines)
