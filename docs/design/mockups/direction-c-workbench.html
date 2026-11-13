@@ -1,0 +1,1946 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<script>try{var s=localStorage.getItem('rp-wb-scheme');if(s==='light'||s==='dark')document.querySelector('meta[name="color-scheme"]').content=s;}catch(e){}</script>
+<title>ReconPilot Workbench (direction C mockup)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&display=swap">
+<style>
+/* ------------------------------------------------------------------
+   Direction C: Workbench. Neutral greys, one cobalt accent, three panes
+   that stay put. Focus is the design feature: the pane you are in, the
+   row under the cursor and the key that acts on it are always visible.
+   ------------------------------------------------------------------ */
+:root {
+  color-scheme: light dark;
+  &:has(> head > meta[name="color-scheme"][content="dark"]) { color-scheme: dark; }
+  &:has(> head > meta[name="color-scheme"][content="light"]) { color-scheme: light; }
+
+  --canvas:      light-dark(#E6E8EC, #121519);
+  --surface:     light-dark(#FFFFFF, #1A1D22);
+  --surface-2:   light-dark(#F4F5F7, #21252B);
+  --surface-3:   light-dark(#ECEEF1, #292E35);
+  --line:        light-dark(#D7DBE1, #323840);
+  --line-strong: light-dark(#B6BCC6, #4A525D);
+  --field-line:  light-dark(#7E8693, #6E7682); /* form-field and switch boundaries: at least 3:1 on surface and surface-2 */
+  --ink:         light-dark(#15181D, #E8EAEE);
+  --ink-2:       light-dark(#424A58, #BAC0CA);
+  --ink-3:       light-dark(#586071, #9CA3AF);
+  --cobalt:      light-dark(#1A44BD, #95AEFF);
+  --on-cobalt:   light-dark(#FFFFFF, #0D1631);
+  --cobalt-wash: light-dark(#E8EDFB, #222B46);
+  --cobalt-line: light-dark(#A7B8EA, #3E4F82);
+  --fail:        light-dark(#AF2A20, #FF9E96);
+  --fail-wash:   light-dark(#FBECEA, #3A2325);
+  --warn:        light-dark(#7A5100, #E9BA60);
+  --warn-wash:   light-dark(#FAF2E1, #352D1C);
+  --pass:        light-dark(#2A673A, #88CB97);
+  --pass-wash:   light-dark(#E9F3EC, #1E3226);
+  --focus:       var(--cobalt);
+
+  --font: "Archivo", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+  --fs-xs: 11.5px; --fs-s: 12.5px; --fs-m: 13.5px; --fs-l: 15px; --fs-xl: 19px; --fs-xxl: 30px;
+  --r-s: 3px; --r-m: 6px;
+  --ease: cubic-bezier(.2,.7,.2,1);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { font-family: var(--font); font-size: var(--fs-m); line-height: 1.45; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--canvas); color: var(--ink);
+  display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto;
+  min-height: 100vh; height: 100dvh;
+  font-variant-numeric: tabular-nums;
+}
+.demo-banner { grid-row: 1; } .top { grid-row: 2; } main { grid-row: 3; } .statusline { grid-row: 4; }
+h1, h2, h3, h4 { margin: 0; font-weight: 650; line-height: 1.2; }
+p, dl { margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+::placeholder { color: var(--ink-3); opacity: 1; }
+button { cursor: pointer; }
+[hidden] { display: none !important; }
+.vh { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.num { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mono { font-family: var(--mono); font-size: .92em; }
+.sub { display: block; color: var(--ink-3); font-size: var(--fs-s); }
+.muted { color: var(--ink-3); }
+svg.i { width: 14px; height: 14px; flex: none; vertical-align: -2px; }
+
+/* Focus: one language everywhere. A crisp cobalt ring with a surface-coloured gap. */
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: var(--r-s); }
+:focus:not(:focus-visible) { outline: none; }
+[tabindex="-1"]:focus { outline: none; }
+
+kbd {
+  display: inline-block; min-width: 1.6em; padding: 0 .35em; border: 1px solid var(--line-strong);
+  border-bottom-width: 2px; border-radius: var(--r-s); background: var(--surface);
+  font: 600 10.5px/1.45 var(--font); font-stretch: 90%; color: var(--ink-2); text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.hint { display: inline-flex; gap: 2px; margin-inline-start: .5em; }
+
+/* ---------- Demo banner ---------- */
+.demo-banner {
+  display: flex; align-items: center; gap: 12px; padding: 6px 16px;
+  background:
+    repeating-linear-gradient(-45deg, transparent 0 9px, color-mix(in srgb, var(--cobalt) 10%, transparent) 9px 11px),
+    var(--cobalt-wash);
+  border-bottom: 1px solid var(--cobalt-line); color: var(--ink); font-size: var(--fs-s);
+}
+.demo-banner strong { font-stretch: 115%; font-weight: 750; color: var(--cobalt); letter-spacing: .02em; }
+
+/* ---------- Header ---------- */
+.top {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 8px 16px; background: var(--surface); border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; align-items: baseline; gap: 12px; min-width: 0; }
+.wordmark { font-size: 16px; font-weight: 760; font-stretch: 125%; letter-spacing: -.01em; }
+.fundline { color: var(--ink-2); font-size: var(--fs-s); white-space: nowrap; }
+.demo-tag { display: inline-block; margin-inline-start: 6px; padding: 0 6px; border: 1px solid var(--cobalt); border-radius: var(--r-s); color: var(--cobalt); font-weight: 700; font-size: 10.5px; font-stretch: 115%; }
+.screens-nav ul { display: flex; gap: 2px; list-style: none; margin: 0; padding: 0; }
+.screens-nav a {
+  display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: var(--r-s);
+  color: var(--ink-2); text-decoration: none; font-weight: 560; position: relative;
+}
+.screens-nav a:hover { background: var(--surface-2); color: var(--ink); }
+.screens-nav a[aria-current="page"] { color: var(--ink); background: var(--surface-3); }
+.screens-nav a[aria-current="page"]::after {
+  content: ""; position: absolute; inset-inline: 10px; bottom: -9px; height: 2px; background: var(--cobalt);
+}
+.screens-nav kbd { font-size: 10px; }
+.top-tools { display: flex; align-items: center; gap: 8px; margin-inline-start: auto; flex-wrap: wrap; }
+.palette-btn {
+  display: inline-flex; align-items: center; gap: 10px; min-width: 230px; padding: 5px 8px 5px 10px;
+  border: 1px solid var(--field-line); border-radius: var(--r-m); background: var(--surface-2); color: var(--ink-3);
+}
+.palette-btn:hover { border-color: var(--cobalt-line); color: var(--ink-2); }
+.palette-btn .grow { flex: 1; text-align: start; }
+.who { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-s); color: var(--ink-2); }
+.who select {
+  padding: 4px 26px 4px 8px; border: 1px solid var(--field-line); border-radius: var(--r-m);
+  background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23707888' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 9px center;
+  appearance: none; font-weight: 600; color: var(--ink);
+}
+.role-chip { padding: 1px 7px; border-radius: 99px; background: var(--surface-3); color: var(--ink-2); font-weight: 600; font-size: var(--fs-xs); }
+.role-chip[data-role="approver"] { background: var(--cobalt-wash); color: var(--cobalt); }
+.tool {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 4px 9px;
+  border: 1px solid var(--line); border-radius: var(--r-m); background: var(--surface); color: var(--ink-2); font-size: var(--fs-s);
+}
+.tool:hover { background: var(--surface-2); color: var(--ink); }
+.tool[aria-pressed="true"] { border-color: var(--cobalt-line); background: var(--cobalt-wash); color: var(--cobalt); }
+.switch { width: 24px; height: 14px; border-radius: 99px; background: var(--field-line); position: relative; flex: none; transition: background .15s; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--surface); transition: transform .15s var(--ease); }
+.tool[aria-pressed="true"] .switch { background: var(--cobalt); }
+.tool[aria-pressed="true"] .switch::after { transform: translateX(10px); }
+/* theme icon follows the rendered scheme (no JS needed to stay current) */
+.theme-dark-only { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not(:has(meta[name="color-scheme"][content="light"])) .theme-dark-only { display: inline; }
+  :root:not(:has(meta[name="color-scheme"][content="light"])) .theme-light-only { display: none; }
+}
+:root:has(meta[name="color-scheme"][content="dark"]) .theme-dark-only { display: inline; }
+:root:has(meta[name="color-scheme"][content="dark"]) .theme-light-only { display: none; }
+
+/* ---------- Main + screens ---------- */
+main { min-height: 0; overflow: hidden; }
+.screen { height: 100%; min-height: 0; padding: 12px 16px; overflow: auto; animation: screen-in .16s var(--ease); }
+@keyframes screen-in { from { opacity: 0; } to { opacity: 1; } }
+.screen-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 10px; flex-wrap: wrap; }
+.screen-head h1 { font-size: var(--fs-xl); font-stretch: 108%; letter-spacing: -.005em; }
+.screen-head p { color: var(--ink-3); font-size: var(--fs-s); }
+
+/* Pane: the unit of the workbench */
+.pane {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-m);
+  min-width: 0; position: relative; display: flex; flex-direction: column;
+  transition: border-color .15s, box-shadow .15s;
+}
+.pane::before { /* focus rail */
+  content: ""; position: absolute; inset: -1px -1px auto -1px; height: 2px; border-radius: var(--r-m) var(--r-m) 0 0;
+  background: var(--cobalt); transform: scaleX(0); transform-origin: left; transition: transform .18s var(--ease);
+}
+.pane:focus-within { border-color: var(--cobalt-line); }
+.pane:focus-within::before { transform: scaleX(1); }
+.pane-head {
+  display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line);
+  background: var(--surface-2); border-radius: var(--r-m) var(--r-m) 0 0; min-height: 38px;
+}
+.pane-head h2 { font-size: var(--fs-m); font-stretch: 110%; }
+.pane-head .meta { color: var(--ink-3); font-size: var(--fs-s); }
+.pane-head .end { margin-inline-start: auto; display: flex; align-items: center; gap: 8px; }
+.pane-key { /* the 1/2/3 key lights up in the pane you are in */
+  display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: var(--r-s);
+  border: 1px solid var(--line-strong); color: var(--ink-3); font-size: 10.5px; font-weight: 700;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.pane:focus-within .pane-key { background: var(--cobalt); border-color: var(--cobalt); color: var(--on-cobalt); }
+.pane-body { padding: 10px 12px; min-height: 0; }
+.scroll { overflow: auto; overscroll-behavior: contain; }
+
+/* Status glyph + word: never colour alone */
+.st { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; white-space: nowrap; }
+.st-PENDING { color: var(--cobalt); }
+.st-APPROVED, .st-PASS, .st-READY, .st-RELEASED { color: var(--pass); }
+.st-REJECTED, .st-FAIL, .st-BLOCKED { color: var(--fail); }
+.st-RECLASSIFIED { color: var(--ink-2); }
+.st-WARN { color: var(--warn); }
+
+.flags { white-space: nowrap; }
+.flag {
+  display: inline-grid; place-items: center; min-width: 17px; height: 17px; padding: 0 3px; margin-inline-end: 2px;
+  border-radius: var(--r-s); font-size: 10.5px; font-weight: 750; font-stretch: 100%; line-height: 1;
+  border: 1px solid var(--line-strong); color: var(--ink-2); background: var(--surface);
+}
+.flag[data-f="M"] { border-color: var(--ink-2); color: var(--ink); }
+.flag[data-f="E"] { background: var(--ink-2); border-color: var(--ink-2); color: var(--surface); }
+.flag[data-f="S"] { background: var(--fail); border-color: var(--fail); color: var(--surface); }
+.flag[data-f="AI"] { border-color: var(--cobalt); color: var(--cobalt); border-style: dashed; }
+
+.linkbtn {
+  border: 0; background: none; padding: 0; color: var(--cobalt); font-weight: 600; text-decoration: underline;
+  text-decoration-color: var(--cobalt-line); text-underline-offset: 2px;
+}
+.linkbtn:hover { text-decoration-color: currentColor; }
+.idbtn { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+table { border-collapse: collapse; width: 100%; }
+caption { text-align: start; }
+th, td { padding: 5px 8px; vertical-align: top; }
+thead th {
+  position: sticky; top: 0; z-index: 1; background: var(--surface-2); color: var(--ink-3);
+  font-weight: 600; font-size: var(--fs-xs); text-align: start; border-bottom: 1px solid var(--line); white-space: nowrap;
+}
+thead th.num { text-align: end; }
+tbody tr + tr > * { border-top: 1px solid var(--line); }
+.dense { font-stretch: 92%; }
+
+/* ---------- Overview ---------- */
+.ov { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 10px; }
+.ov > .span-12 { grid-column: span 12; }
+.ov > .span-7 { grid-column: span 7; }
+.ov > .span-5 { grid-column: span 5; }
+.ov > .span-3 { grid-column: span 3; }
+.navstrip { display: grid; grid-template-columns: 1.4fr 1.6fr 1fr 1fr 1fr 1fr; }
+.navstrip > div { padding: 12px 14px; border-inline-start: 1px solid var(--line); }
+.navstrip > div:first-child { border-inline-start: 0; }
+.navstrip dt { color: var(--ink-3); font-size: var(--fs-s); }
+.navstrip dd { margin: 2px 0 0; }
+.big { font-size: var(--fs-xxl); font-weight: 480; font-stretch: 92%; letter-spacing: -.015em; line-height: 1.1; }
+.mid { font-size: 18px; font-weight: 520; font-stretch: 95%; }
+.ccy { font-size: var(--fs-s); color: var(--ink-3); margin-inline-start: 4px; font-weight: 500; }
+.move { display: block; margin-top: 3px; font-size: var(--fs-s); color: var(--ink-2); }
+
+.band {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: start; padding: 12px 14px;
+  border: 1px solid var(--line); border-inline-start: 4px solid var(--fail); border-radius: var(--r-m);
+  background: var(--fail-wash);
+  transition: background-color .45s ease, border-color .45s ease;
+}
+.band[data-state="READY"] { background: var(--pass-wash); border-inline-start-color: var(--pass); }
+.band[data-state="RELEASED"] { background: var(--surface); border-inline-start-color: var(--pass); }
+.band-glyph { width: 26px; height: 26px; }
+.band-glyph svg { width: 26px; height: 26px; }
+.band h2 { font-size: var(--fs-l); font-stretch: 108%; }
+.band .lines { margin: 4px 0 0; padding: 0; list-style: none; display: grid; gap: 3px; color: var(--ink-2); }
+.band .lines li { display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+.band .actions { display: flex; gap: 8px; align-items: center; }
+.draw path.tick { stroke-dasharray: 16; stroke-dashoffset: 0; }
+.band.just-ready .draw path.tick { animation: draw .5s .1s var(--ease) both; }
+.band.just-ready { animation: settle .6s var(--ease); }
+@keyframes draw { from { stroke-dashoffset: 16; } to { stroke-dashoffset: 0; } }
+@keyframes settle { from { box-shadow: 0 0 0 4px color-mix(in srgb, var(--pass) 25%, transparent); } to { box-shadow: 0 0 0 0 transparent; } }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 5px 12px;
+  border: 1px solid var(--line-strong); border-radius: var(--r-m); background: var(--surface); color: var(--ink); font-weight: 600;
+  transition: background .12s, border-color .12s;
+}
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--cobalt); border-color: var(--cobalt); color: var(--on-cobalt); }
+.btn.primary:hover { background: color-mix(in srgb, var(--cobalt) 88%, var(--ink)); }
+.btn.primary kbd { background: transparent; color: inherit; border-color: color-mix(in srgb, var(--on-cobalt) 55%, transparent); }
+.btn.danger { color: var(--fail); border-color: color-mix(in srgb, var(--fail) 45%, var(--line)); }
+.btn[aria-disabled="true"] { background: var(--surface-2); border-color: var(--line); color: var(--ink-3); cursor: not-allowed; }
+.btn.armed { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--fail); }
+
+.impact-table td.barcell { width: 38%; min-width: 140px; position: relative; padding-inline: 0; }
+.scale { position: relative; height: 16px; margin-top: 2px; }
+.scale::before { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; border-left: 1px solid var(--line-strong); }
+.scale .thr { position: absolute; top: -4px; bottom: -4px; border-left: 1px dashed var(--ink-3); }
+.scale .bar { position: absolute; top: 3px; height: 10px; background: var(--ink-2); border-radius: 1px; }
+.scale .bar.pos { left: 50%; }
+.scale .bar.neg { right: 50%; }
+.scale .bar.mat { background: var(--cobalt); }
+.axis { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--ink-3); font-weight: 500; }
+
+.checks { list-style: none; margin: 0; padding: 0; }
+.checks li { display: grid; grid-template-columns: 92px 1fr; gap: 2px 10px; padding: 7px 12px; border-top: 1px solid var(--line); }
+.checks li:first-child { border-top: 0; }
+.checks .name { font-weight: 600; }
+.checks .chk-detail { grid-column: 2; color: var(--ink-2); font-size: var(--fs-s); }
+
+.ageing td, .ageing th { padding-block: 7px; }
+.meter { height: 8px; background: var(--surface-3); border-radius: 2px; overflow: hidden; min-width: 60px; }
+.meter > span { display: block; height: 100%; background: var(--ink-2); }
+.watch th { font-weight: 500; color: var(--ink-2); text-align: start; }
+.watch td.num { font-weight: 650; font-size: var(--fs-l); width: 3ch; }
+
+.trend { display: grid; grid-template-columns: repeat(5, 1fr); align-items: end; gap: 8px; height: 112px; padding: 4px 12px 0; }
+.trend .col { display: flex; flex-direction: column; align-items: center; justify-content: end; height: 100%; gap: 3px; }
+.trend .v { font-weight: 650; font-size: var(--fs-s); }
+.trend .b { width: 100%; max-width: 34px; background: var(--ink-2); border-radius: 2px 2px 0 0; }
+.trend .col:last-child .b { background: var(--cobalt); }
+.trend-axis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 4px 12px 8px; border-top: 1px solid var(--line-strong); font-size: var(--fs-xs); color: var(--ink-3); text-align: center; }
+.trend-axis span b { display: block; font-weight: 500; color: var(--ink-2); }
+
+/* ---------- Cases (three panes) ---------- */
+.cases-screen { padding: 10px 12px; overflow: hidden; display: flex; flex-direction: column; }
+.cases {
+  flex: 1; min-height: 0; display: grid; gap: 10px;
+  grid-template-columns: minmax(420px, 35fr) minmax(0, 65fr);
+}
+.detail { min-height: 0; display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr) minmax(300px, 350px); }
+.detail > .pane, .cases > .pane { min-height: 0; }
+
+.qtools { display: flex; flex-direction: column; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.search { display: flex; align-items: center; gap: 6px; padding: 0 8px; border: 1px solid var(--field-line); border-radius: var(--r-m); background: var(--surface); }
+.search:focus-within { outline: 2px solid var(--focus); outline-offset: 1px; }
+.search input { flex: 1; min-width: 0; border: 0; background: none; padding: 5px 0; outline: none; }
+.seg { display: flex; flex-wrap: wrap; gap: 4px; }
+.seg button {
+  padding: 2px 8px; border: 1px solid var(--line); border-radius: 99px; background: var(--surface); color: var(--ink-2); font-size: var(--fs-s);
+}
+.seg button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+.seg .n { font-weight: 700; margin-inline-start: 3px; }
+
+.queue-wrap { flex: 1; min-height: 0; }
+.queue { font-stretch: 92%; }
+.queue th[aria-sort] { color: var(--ink); }
+.queue th:has(> button) { padding: 0; }
+.queue th > button {
+  display: flex; width: 100%; min-height: 28px; align-items: center; gap: 4px; padding: 5px 8px; border: 0; background: none;
+  color: inherit; font: inherit; font-weight: 600; text-align: inherit; justify-content: flex-start;
+}
+.queue th.num > button { justify-content: flex-end; }
+.queue th > button:focus-visible { outline-offset: -2px; }
+.sort-ic { width: 8px; height: 10px; opacity: .35; }
+th[aria-sort] .sort-ic { opacity: 1; }
+th[aria-sort="ascending"] .sort-ic { transform: scaleY(-1); }
+.queue tbody tr { cursor: pointer; }
+.queue tbody tr:hover > * { background: var(--surface-2); }
+.queue tbody th { font-weight: 600; text-align: start; }
+.queue th, .queue td { padding: 5px 6px; }
+.queue td.flags { width: 1%; }
+.rowbtn { white-space: nowrap; border: 0; background: none; padding: 0; font: inherit; font-weight: 650; color: var(--ink); text-align: start; }
+.rowbtn:focus-visible { outline: none; }
+/* the open case */
+.queue tr.is-open > * { background: var(--cobalt-wash); }
+.queue tr.is-open > :first-child { box-shadow: inset 3px 0 0 var(--cobalt); }
+/* the keyboard cursor: drawn on the whole row */
+.queue tr:has(.rowbtn:focus-visible) > * { box-shadow: inset 0 2px 0 var(--focus), inset 0 -2px 0 var(--focus); }
+.queue tr:has(.rowbtn:focus-visible) > :first-child { box-shadow: inset 2px 0 0 var(--focus), inset 0 2px 0 var(--focus), inset 0 -2px 0 var(--focus); }
+.queue tr:has(.rowbtn:focus-visible) > :last-child { box-shadow: inset -2px 0 0 var(--focus), inset 0 2px 0 var(--focus), inset 0 -2px 0 var(--focus); }
+.queue.stagger tbody tr { animation: row-in 90ms var(--ease) both; animation-delay: calc(var(--i, 0) * 8ms); }
+@keyframes row-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+.queue tr.flash > * { animation: flash 1.2s var(--ease); }
+@keyframes flash { from { background: color-mix(in srgb, var(--cobalt) 18%, var(--surface)); } }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 7px 10px; border-top: 1px solid var(--line); font-size: var(--fs-xs); color: var(--ink-3); }
+.legend span { display: inline-flex; align-items: center; gap: 4px; }
+.empty-row td { padding: 18px 10px; color: var(--ink-3); text-align: center; }
+
+.case-pane .pane-body { flex: 1; overflow: auto; overscroll-behavior: contain; padding: 0; }
+.case-body { padding: 12px 14px 4px; display: grid; gap: 16px; }
+.case-body.swap { animation: swap .17s var(--ease); }
+@keyframes swap { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.case-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.case-title h2 { font-size: var(--fs-xl); font-stretch: 104%; }
+.case-title .sec { color: var(--ink-2); }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.tag { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px; border-radius: 99px; border: 1px solid var(--line-strong); font-size: var(--fs-s); color: var(--ink-2); }
+.tag.t-S { border-color: var(--fail); color: var(--fail); }
+.tag.t-E { border-color: var(--ink-2); color: var(--ink); }
+.facts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: var(--r-m); }
+.facts > div { padding: 7px 10px; border-inline-start: 1px solid var(--line); }
+.facts > div:first-child { border-inline-start: 0; }
+.facts dt { font-size: var(--fs-xs); color: var(--ink-3); }
+.facts dd { margin: 1px 0 0; font-weight: 620; }
+.section-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; margin-bottom: 6px; }
+.section-h h3 { font-size: var(--fs-m); font-stretch: 108%; white-space: nowrap; }
+.section-h .meta { font-size: var(--fs-s); color: var(--ink-3); }
+.disagree {
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px; margin-bottom: 8px;
+  border: 1px dashed var(--cobalt); border-radius: var(--r-m); color: var(--cobalt); font-weight: 650; background: var(--cobalt-wash);
+}
+.agree { font-size: var(--fs-s); color: var(--ink-3); }
+.opinions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.opinion { border: 1px solid var(--line); border-radius: var(--r-m); padding: 10px 12px; background: var(--surface); }
+.opinion.ai { border-color: var(--cobalt-line); }
+.opinion .who-says { font-size: var(--fs-xs); color: var(--ink-3); display: flex; justify-content: space-between; gap: 8px; }
+.opinion .cause { font-size: var(--fs-l); font-weight: 650; margin-top: 2px; }
+.conf { display: flex; align-items: center; gap: 8px; margin: 4px 0 8px; font-size: var(--fs-s); color: var(--ink-2); }
+.conf .meter { flex: 1; height: 5px; }
+.opinion.ai .conf .meter > span { background: var(--cobalt); }
+.opinion p { color: var(--ink-2); font-size: var(--fs-s); line-height: 1.5; max-width: 72ch; }
+.steps { margin: 0; padding-inline-start: 1.4em; display: grid; gap: 4px; color: var(--ink-2); max-width: 78ch; }
+.steps li::marker { color: var(--ink-3); font-weight: 650; }
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); }
+.tabs [role="tab"] { border: 0; background: none; padding: 5px 10px; color: var(--ink-3); font-weight: 600; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs [role="tab"][aria-selected="true"] { color: var(--ink); border-bottom-color: var(--cobalt); }
+.query { position: relative; }
+.query pre {
+  margin: 0; padding: 10px 12px; padding-inline-end: 96px; background: var(--surface-2); border: 1px solid var(--line); border-top: 0;
+  border-radius: 0 0 var(--r-m) var(--r-m); white-space: pre-wrap; font: var(--fs-s)/1.55 var(--font); color: var(--ink); max-width: 100%;
+}
+.copy { position: absolute; top: 8px; right: 8px; display: flex; align-items: center; gap: 6px; }
+.copy-button { min-width: 24px; min-height: 24px; }
+.copy-button[data-copied] { border-color: var(--pass); color: var(--pass); }
+.tip { font-size: var(--fs-xs); color: var(--pass); opacity: 0; transition: opacity .15s; }
+.tip:not(:empty) { opacity: 1; }
+
+.decision {
+  position: sticky; bottom: 0; z-index: 2; background: var(--surface); border-top: 1px solid var(--line-strong);
+  padding: 10px 14px 12px; display: grid; gap: 8px; box-shadow: 0 -6px 12px -10px color-mix(in srgb, var(--ink) 40%, transparent);
+}
+.decision .state-line { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: var(--fs-s); color: var(--ink-2); }
+.decision .advice { font-size: var(--fs-s); color: var(--ink-2); }
+.decision .advice.esc { color: var(--ink); }
+.decision-row { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.note label { display: block; font-size: var(--fs-xs); color: var(--ink-3); margin-bottom: 2px; }
+.note textarea {
+  width: 100%; min-height: 36px; height: 36px; resize: vertical; padding: 6px 8px; border: 1px solid var(--field-line);
+  border-radius: var(--r-m); background: var(--surface); line-height: 1.35;
+}
+.note textarea[aria-invalid="true"] { border-color: var(--fail); }
+.err { color: var(--fail); font-size: var(--fs-s); font-weight: 600; display: flex; gap: 6px; align-items: center; }
+.actions-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.reclass { display: inline-flex; align-items: center; gap: 0; }
+.reclass select {
+  min-height: 32px; padding: 4px 8px; border: 1px solid var(--field-line); border-inline-end: 0;
+  border-radius: var(--r-m) 0 0 var(--r-m); background: var(--surface); max-width: 170px;
+}
+.reclass .btn { border-radius: 0 var(--r-m) var(--r-m) 0; }
+.readonly { display: flex; gap: 8px; align-items: center; color: var(--ink-2); font-size: var(--fs-s); }
+
+.ev-pane .pane-body { flex: 1; overflow: auto; overscroll-behavior: contain; display: grid; gap: 16px; align-content: start; }
+.ev-table { font-stretch: 92%; }
+.ev-table th[scope="row"] { font-weight: 600; text-align: start; color: var(--ink-2); }
+.ev-table th, .ev-table td { padding: 5px 5px; }
+.ev-table { font-stretch: 88%; }
+.ev-table td.diff-nz { font-weight: 700; color: var(--ink); }
+.agree-cell { color: var(--ink-3); }
+.history { list-style: none; margin: 0; padding: 0; position: relative; }
+.history li { display: grid; grid-template-columns: 54px 1fr; gap: 0 10px; padding: 6px 0; border-top: 1px solid var(--line); }
+.history li:first-child { border-top: 0; }
+.history .seq { color: var(--ink-3); font-size: var(--fs-xs); text-align: end; padding-top: 1px; }
+.history .act { font-weight: 620; }
+.history .by { font-size: var(--fs-s); color: var(--ink-3); }
+.history .nt { font-size: var(--fs-s); color: var(--ink-2); grid-column: 2; }
+.history li.new { animation: flash 1.4s var(--ease); }
+.impactbox { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: var(--r-m); }
+.impactbox > div { padding: 6px 9px; border-inline-start: 1px solid var(--line); }
+.impactbox > div:first-child { border-inline-start: 0; }
+.impactbox dt { font-size: var(--fs-xs); color: var(--ink-3); }
+.impactbox dd { margin: 0; font-weight: 640; }
+
+/* ---------- Sign-off ---------- */
+.so { display: grid; grid-template-columns: minmax(340px, 5fr) minmax(0, 7fr); gap: 10px; align-items: start; }
+.so .stack { display: grid; gap: 10px; }
+.cond { list-style: none; margin: 0; padding: 0; }
+.cond li { display: grid; grid-template-columns: 20px 1fr; gap: 2px 10px; padding: 10px 12px; border-top: 1px solid var(--line); }
+.cond li:first-child { border-top: 0; }
+.cond .c-title { font-weight: 640; }
+.cond .c-state { font-size: var(--fs-xs); font-weight: 700; }
+.cond .c-detail { grid-column: 2; color: var(--ink-2); font-size: var(--fs-s); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.cond svg.i { width: 16px; height: 16px; margin-top: 1px; }
+.cond li[data-ok="true"] svg { color: var(--pass); }
+.cond li[data-ok="false"] svg { color: var(--fail); }
+.cond li[data-ok="na"] svg { color: var(--ink-3); }
+.signbox { padding: 12px; display: grid; gap: 10px; }
+.signbox > .btn { justify-self: start; }
+.signbox .why { font-size: var(--fs-s); color: var(--ink-2); }
+.signbox .why strong { color: var(--ink); }
+.navmini { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.navmini > div { padding: 10px 12px; border-inline-start: 1px solid var(--line); }
+.navmini > div:first-child { border-inline-start: 0; }
+.navmini dt { font-size: var(--fs-xs); color: var(--ink-3); }
+.navmini dd { margin: 2px 0 0; font-weight: 600; font-size: var(--fs-l); }
+.decided td, .decided th { padding-block: 6px; }
+.decided tbody th { font-weight: 600; text-align: start; }
+.decided .note-cell { color: var(--ink-2); font-size: var(--fs-s); max-width: 34ch; }
+.decided tr.pending-row > * { background: color-mix(in srgb, var(--cobalt-wash) 60%, transparent); }
+
+/* ---------- Footer status line ---------- */
+.statusline {
+  display: flex; align-items: center; gap: 16px; padding: 5px 16px; border-top: 1px solid var(--line);
+  background: var(--surface); font-size: var(--fs-xs); color: var(--ink-3); min-height: 30px; flex-wrap: wrap;
+}
+.statusline .keys { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
+.statusline .keys span { display: inline-flex; align-items: center; gap: 4px; }
+.statusline .ctx { color: var(--ink-2); font-weight: 600; }
+.statusline .chain { margin-inline-start: auto; display: inline-flex; gap: 6px; align-items: center; }
+.chord { color: var(--cobalt); font-weight: 700; }
+
+/* ---------- Dialogs ---------- */
+dialog {
+  border: 1px solid var(--line-strong); border-radius: 8px; padding: 0; background: var(--surface); color: var(--ink);
+  box-shadow: 0 24px 60px -20px color-mix(in srgb, #000 45%, transparent);
+  max-width: min(640px, calc(100vw - 32px));
+}
+dialog:modal { overscroll-behavior: contain; }
+dialog::backdrop { background: color-mix(in srgb, var(--canvas) 55%, rgb(10 14 22 / .35)); overflow: hidden; overscroll-behavior: contain; }
+dialog[open] { animation: dlg-in .16s var(--ease); }
+@keyframes dlg-in { from { opacity: 0; transform: translateY(-6px) scale(.99); } }
+.dlg-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.dlg-head h2 { font-size: var(--fs-l); font-stretch: 108%; }
+.dlg-head .btn { margin-inline-start: auto; }
+.dlg-body { padding: 12px 14px; max-height: 70vh; overflow: auto; }
+.keys-table th { font-weight: 500; text-align: start; color: var(--ink-2); }
+.keys-table td { white-space: nowrap; }
+.keys-table tbody tr.group > th { padding-top: 12px; color: var(--ink); font-weight: 650; border-top: 0; }
+.palette { width: min(600px, calc(100vw - 32px)); margin-top: 12vh; }
+.pal-input { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.pal-input:focus-within { box-shadow: inset 0 -2px 0 var(--focus); }
+.pal-input input { flex: 1; border: 0; background: none; font-size: var(--fs-l); outline: none; padding: 4px 0; }
+.pal-list { list-style: none; margin: 0; padding: 6px; max-height: 50vh; overflow: auto; }
+.pal-list li { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: var(--r-s); cursor: pointer; }
+.pal-list li .grp { font-size: var(--fs-xs); color: var(--ink-3); min-width: 64px; }
+.pal-list li .lbl { flex: 1; }
+.pal-list li .lbl small { color: var(--ink-3); margin-inline-start: 6px; }
+.pal-list li[aria-selected="true"] { background: var(--cobalt-wash); box-shadow: inset 2px 0 0 var(--cobalt); }
+.pal-foot { padding: 7px 14px; border-top: 1px solid var(--line); font-size: var(--fs-xs); color: var(--ink-3); display: flex; gap: 14px; }
+.confirm-figs { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; margin: 10px 0; }
+.confirm-figs dt { color: var(--ink-3); }
+.confirm-figs dd { margin: 0; font-weight: 640; }
+.dlg-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--line); }
+
+.toasts { position: fixed; right: 16px; bottom: 40px; display: grid; gap: 6px; z-index: 10; max-width: min(420px, calc(100vw - 32px)); }
+.toast {
+  padding: 8px 12px; border-radius: var(--r-m); background: var(--ink); color: var(--surface); font-size: var(--fs-s);
+  box-shadow: 0 8px 24px -12px rgb(0 0 0 / .5); animation: toast-in .18s var(--ease);
+}
+@keyframes toast-in { from { opacity: 0; transform: translateY(6px); } }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1380px) {
+  .detail { grid-template-columns: minmax(0, 1fr); overflow: auto; overscroll-behavior: contain; align-content: start; }
+  .detail > .pane { min-height: auto; }
+  .case-pane .pane-body, .ev-pane .pane-body { overflow: visible; }
+  .ov > .span-3 { grid-column: span 6; }
+}
+@media (max-width: 1100px) {
+  .ov > .span-7, .ov > .span-5 { grid-column: span 12; }
+  .navstrip { grid-template-columns: repeat(3, 1fr); }
+  .navstrip > div:nth-child(4) { border-inline-start: 0; }
+  .navstrip > div:nth-child(n+4) { border-top: 1px solid var(--line); }
+  .so { grid-template-columns: 1fr; }
+  .palette-btn { min-width: 0; }
+  .palette-btn .grow { display: none; }
+}
+@media (max-width: 860px) {
+  body { height: auto; }
+  main { overflow: visible; }
+  .screen, .cases-screen { height: auto; overflow: visible; }
+  .cases { grid-template-columns: 1fr; }
+  .detail { overflow: visible; }
+  .queue-wrap { max-height: 60vh; }
+  .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .facts > div:nth-child(odd) { border-inline-start: 0; }
+  .facts > div:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .opinions { grid-template-columns: 1fr; }
+  .ov > .span-3 { grid-column: span 12; }
+  .navstrip { grid-template-columns: 1fr 1fr; }
+  .navstrip > div { border-inline-start: 0 !important; border-top: 1px solid var(--line); }
+  .statusline .keys { display: none; }
+  .hint, .screens-nav kbd { display: none; }
+  .decision-row { grid-template-columns: 1fr; }
+  .band { grid-template-columns: auto 1fr; }
+  .band .actions { grid-column: 1 / -1; }
+}
+@media (max-width: 520px) {
+  .top { gap: 8px; }
+  .navstrip { grid-template-columns: 1fr; }
+  .queue td.flags .flag { display: flex; width: max-content; margin-bottom: 2px; }
+  .queue th, .queue td { padding-inline: 4px; }
+  .big { font-size: 26px; }
+  .fundline { white-space: normal; }
+  .navmini { grid-template-columns: 1fr; }
+  .navmini > div { border-inline-start: 0; border-top: 1px solid var(--line); }
+  .impactbox { grid-template-columns: 1fr; }
+  .impactbox > div { border-inline-start: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+@media (forced-colors: active) {
+  .pane::before, .scale .bar, .meter > span, .trend .b { background: CanvasText; forced-color-adjust: none; }
+  .queue tr:has(.rowbtn:focus-visible) { outline: 2px solid Highlight; }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-pass" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M4.8 8.3l2.1 2.1 4.3-4.6" fill="none" stroke="var(--surface)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 16 16"><path d="M8 1.2l7 12.6H1z" fill="currentColor"/><path d="M8 5.6v4" stroke="var(--surface)" stroke-width="1.7" stroke-linecap="round"/><circle cx="8" cy="11.9" r="1" fill="var(--surface)"/></symbol>
+  <symbol id="i-fail" viewBox="0 0 16 16"><path d="M5.1 1h5.8L15 5.1v5.8L10.9 15H5.1L1 10.9V5.1z" fill="currentColor"/><path d="M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8" stroke="var(--surface)" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-pending" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 4.8V8l2.2 1.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-rejected" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.7 5.7l4.6 4.6M10.3 5.7l-4.6 4.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-reclass" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5 6.6h5.6M9 4.8l1.8 1.8L9 8.4M11 9.4H5.4M7 7.6L5.2 9.4 7 11.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="7.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5.3 7V5a2.7 2.7 0 015.4 0v2" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 16 16"><rect x="5" y="5" width="9" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M11 3.5V3a1.5 1.5 0 00-1.5-1.5h-6A1.5 1.5 0 002 3v6a1.5 1.5 0 001.5 1.5H4" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
+  <symbol id="i-tick" viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-6.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10.4 10.4L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 16 16"><circle cx="8" cy="8" r="3" fill="currentColor"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6L13 13M3 13l1.4-1.4M11.6 4.4L13 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 16 16"><path d="M13.5 10.2A6 6 0 015.8 2.5a6 6 0 107.7 7.7z" fill="currentColor"/></symbol>
+  <symbol id="i-sort" viewBox="0 0 8 10"><path d="M4 9.5L.8 5.5h6.4z" fill="currentColor"/><path d="M4 .5v5" stroke="currentColor" stroke-width="1.2"/></symbol>
+  <symbol id="i-link" viewBox="0 0 16 16"><path d="M6.5 9.5l3-3M7 4.5l1.2-1.2a2.8 2.8 0 014 4L11 8.5M9 11.5l-1.2 1.2a2.8 2.8 0 01-4-4L5 7.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+</svg>
+
+<div class="demo-banner" id="demo-banner" role="region" aria-label="Demo mode" hidden>
+  <strong>Demo mode</strong>
+  <span>Synthetic data from a generated fund, safe to share. Nothing here is real, and nothing you do leaves this page.</span>
+</div>
+
+<header class="top">
+  <div class="brand">
+    <span class="wordmark">ReconPilot</span>
+    <span class="fundline" id="fundline"></span>
+  </div>
+  <nav class="screens-nav" aria-label="Screens">
+    <ul>
+      <li><a href="#overview" data-screen="overview">Morning overview <span class="hint" aria-hidden="true"><kbd>G</kbd><kbd>O</kbd></span></a></li>
+      <li><a href="#cases" data-screen="cases">Cases <span class="hint" aria-hidden="true"><kbd>G</kbd><kbd>Q</kbd></span></a></li>
+      <li><a href="#signoff" data-screen="signoff">Sign-off <span class="hint" aria-hidden="true"><kbd>G</kbd><kbd>S</kbd></span></a></li>
+    </ul>
+  </nav>
+  <div class="top-tools">
+    <button type="button" class="palette-btn" id="open-palette" aria-keyshortcuts="Control+K Meta+K" aria-haspopup="dialog">
+      <svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+      <span class="grow">Find a case or run a command</span>
+      <span class="hint" aria-hidden="true"><kbd>Ctrl</kbd><kbd>K</kbd></span>
+    </button>
+    <span class="who"><label for="user-select">Signed in as</label>
+      <select id="user-select"></select>
+      <span class="role-chip" id="role-chip"></span>
+    </span>
+    <button type="button" class="tool" id="demo-toggle" aria-pressed="false"><span class="switch" aria-hidden="true"></span>Demo banner</button>
+    <button type="button" class="tool" id="theme-toggle">
+      <svg class="i theme-light-only" aria-hidden="true"><use href="#i-sun"/></svg>
+      <svg class="i theme-dark-only" aria-hidden="true"><use href="#i-moon"/></svg>
+      <span class="theme-light-only">Light</span><span class="theme-dark-only">Dark</span>
+      <span class="vh theme-light-only">: switch to dark theme</span><span class="vh theme-dark-only">: switch to light theme</span>
+    </button>
+    <button type="button" class="tool" id="open-help" aria-keyshortcuts="Shift+?" aria-haspopup="dialog">Shortcuts <kbd aria-hidden="true">?</kbd></button>
+  </div>
+</header>
+
+<main id="main">
+  <!-- ===================== 1. Morning overview ===================== -->
+  <section class="screen" id="screen-overview" aria-labelledby="h-overview" hidden>
+    <div class="screen-head">
+      <h1 id="h-overview" tabindex="-1">Morning overview</h1>
+      <p id="run-line"></p>
+    </div>
+    <div class="ov">
+      <section class="pane span-12" aria-labelledby="h-nav">
+        <h2 id="h-nav" class="vh">Net asset value</h2>
+        <dl class="navstrip" id="navstrip"></dl>
+      </section>
+      <section class="span-12" aria-labelledby="h-band-ov">
+        <div class="band" id="band-ov"></div>
+      </section>
+      <section class="pane span-7" aria-labelledby="h-impact">
+        <div class="pane-head"><h2 id="h-impact">Open breaks by NAV impact</h2><span class="meta" id="impact-meta"></span>
+          <span class="end meta">If the custodian is right. Dashed line: 1 bp materiality</span></div>
+        <div class="scroll"><table class="impact-table dense" id="impact-table"></table></div>
+      </section>
+      <section class="pane span-5" aria-labelledby="h-checks">
+        <div class="pane-head"><h2 id="h-checks">Release checks</h2><span class="meta" id="checks-meta"></span></div>
+        <ul class="checks" id="checks"></ul>
+      </section>
+      <section class="pane span-3" aria-labelledby="h-ageing">
+        <div class="pane-head"><h2 id="h-ageing">Ageing</h2><span class="meta">business days open</span></div>
+        <table class="ageing dense" id="ageing"></table>
+      </section>
+      <section class="pane span-3" aria-labelledby="h-watch">
+        <div class="pane-head"><h2 id="h-watch">Needs attention</h2></div>
+        <table class="watch dense" id="watch"></table>
+      </section>
+      <section class="pane span-3" aria-labelledby="h-cleared">
+        <div class="pane-head"><h2 id="h-cleared">Cleared automatically today</h2></div>
+        <div class="pane-body" id="cleared"></div>
+      </section>
+      <section class="pane span-3" aria-labelledby="h-trend">
+        <div class="pane-head"><h2 id="h-trend">Open cases this week</h2></div>
+        <div id="trend"></div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ===================== 2. Cases: queue / case / evidence ===================== -->
+  <section class="screen cases-screen" id="screen-cases" aria-labelledby="h-cases" hidden>
+    <h1 id="h-cases" class="vh" tabindex="-1">Cases</h1>
+    <div class="cases">
+      <section class="pane queue-pane" aria-labelledby="h-queue" id="pane-queue">
+        <div class="pane-head">
+          <span class="pane-key" aria-hidden="true">1</span>
+          <h2 id="h-queue">Queue</h2><span class="meta" id="queue-meta"></span>
+        </div>
+        <div class="qtools">
+          <div class="search">
+            <svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+            <label for="q" class="vh">Filter cases by id, security or cause</label>
+            <input id="q" type="search" placeholder="Filter by id, security or cause" autocomplete="off" aria-keyshortcuts="/">
+            <kbd aria-hidden="true">/</kbd>
+          </div>
+          <div class="seg" role="group" aria-label="Show" id="seg"></div>
+        </div>
+        <div class="queue-wrap scroll" role="region" aria-labelledby="queue-caption" tabindex="0">
+          <table class="queue stagger" id="queue">
+            <caption id="queue-caption" class="vh">Open cases, largest absolute NAV impact first</caption>
+            <thead><tr>
+              <th scope="col">Flags</th>
+              <th scope="col" data-key="case"><button type="button" commandfor="queue" command="--sort">Case <svg class="sort-ic" aria-hidden="true"><use href="#i-sort"/></svg></button></th>
+              <th scope="col" class="num" data-key="impact" aria-sort="descending"><button type="button" commandfor="queue" command="--sort">NAV impact <svg class="sort-ic" aria-hidden="true"><use href="#i-sort"/></svg></button></th>
+              <th scope="col" class="num" data-key="age"><button type="button" commandfor="queue" command="--sort">Age <svg class="sort-ic" aria-hidden="true"><use href="#i-sort"/></svg></button></th>
+              <th scope="col">Status, cause</th>
+            </tr></thead>
+            <tbody id="queue-body"></tbody>
+          </table>
+          <p class="vh" role="status" id="sort-status"></p>
+        </div>
+        <div class="legend" aria-label="Flag legend">
+          <span><span class="flag" data-f="M" aria-hidden="true">M</span>material</span>
+          <span><span class="flag" data-f="E" aria-hidden="true">E</span>escalated</span>
+          <span><span class="flag" data-f="S" aria-hidden="true">S</span>SLA breached</span>
+          <span><span class="flag" data-f="AI" aria-hidden="true">AI</span>AI disagrees</span>
+        </div>
+      </section>
+
+      <div class="detail" id="detail">
+        <section class="pane case-pane" aria-labelledby="h-case" id="pane-case">
+          <div class="pane-head">
+            <span class="pane-key" aria-hidden="true">2</span>
+            <span class="meta" id="case-pos"></span>
+          </div>
+          <div class="pane-body" id="case-scroll">
+            <div class="case-body" id="case-body"></div>
+            <section class="decision" id="decision" aria-labelledby="h-decision"></section>
+          </div>
+        </section>
+        <section class="pane ev-pane" aria-labelledby="h-ev" id="pane-ev">
+          <div class="pane-head">
+            <span class="pane-key" aria-hidden="true">3</span>
+            <h2 id="h-ev" tabindex="-1">Evidence</h2>
+            <span class="meta">book against custodian</span>
+          </div>
+          <div class="pane-body" id="evidence"></div>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 3. Sign-off ===================== -->
+  <section class="screen" id="screen-signoff" aria-labelledby="h-signoff" hidden>
+    <div class="screen-head">
+      <h1 id="h-signoff" tabindex="-1">NAV sign-off</h1>
+      <p id="signoff-sub"></p>
+    </div>
+    <div class="band" id="band-so" style="margin-bottom:10px"></div>
+    <div class="so">
+      <div class="stack">
+        <section class="pane" aria-labelledby="h-navrel">
+          <div class="pane-head"><h2 id="h-navrel">NAV to release</h2><span class="meta" id="navrel-meta"></span></div>
+          <dl class="navmini" id="navmini"></dl>
+        </section>
+        <section class="pane" aria-labelledby="h-cond">
+          <div class="pane-head"><h2 id="h-cond">Release conditions</h2><span class="meta">checked by the server, in this order</span></div>
+          <ul class="cond" id="cond"></ul>
+        </section>
+        <section class="pane" aria-labelledby="h-sign">
+          <div class="pane-head"><h2 id="h-sign">Sign off</h2></div>
+          <div class="signbox" id="signbox"></div>
+        </section>
+      </div>
+      <section class="pane" aria-labelledby="h-decided">
+        <div class="pane-head"><h2 id="h-decided">Who decided what</h2><span class="meta" id="decided-meta"></span></div>
+        <div class="scroll"><table class="decided dense" id="decided"></table></div>
+      </section>
+    </div>
+  </section>
+</main>
+
+<footer class="statusline" id="statusline">
+  <span class="ctx" id="ctx"></span>
+  <span class="keys" id="keys"></span>
+  <span class="chord" id="chord" aria-hidden="true"></span>
+  <span class="chain" id="chain"></span>
+</footer>
+
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+<p class="vh" role="status" id="announcer"></p>
+
+<!-- Shortcut help -->
+<dialog id="help" aria-labelledby="h-help" closedby="any">
+  <div class="dlg-head"><h2 id="h-help">Keyboard shortcuts</h2>
+    <form method="dialog"><button class="btn" value="close" autofocus>Close <kbd aria-hidden="true">Esc</kbd></button></form></div>
+  <div class="dlg-body">
+    <table class="keys-table dense">
+      <caption class="vh">Keyboard shortcuts</caption>
+      <tbody>
+        <tr class="group"><th scope="rowgroup" colspan="2">Anywhere</th></tr>
+        <tr><th scope="row">Morning overview</th><td><kbd>G</kbd> then <kbd>O</kbd></td></tr>
+        <tr><th scope="row">Cases</th><td><kbd>G</kbd> then <kbd>Q</kbd></td></tr>
+        <tr><th scope="row">Sign-off</th><td><kbd>G</kbd> then <kbd>S</kbd></td></tr>
+        <tr><th scope="row">Find a case or run a command</th><td><kbd>Ctrl</kbd> <kbd>K</kbd></td></tr>
+        <tr><th scope="row">Filter the queue</th><td><kbd>/</kbd></td></tr>
+        <tr><th scope="row">This list</th><td><kbd>?</kbd></td></tr>
+        <tr><th scope="row">Close a dialog, leave a field</th><td><kbd>Esc</kbd></td></tr>
+        <tr class="group"><th scope="rowgroup" colspan="2">Cases</th></tr>
+        <tr><th scope="row">Move in the queue</th><td><kbd>J</kbd> <kbd>K</kbd> or <kbd>↓</kbd> <kbd>↑</kbd></td></tr>
+        <tr><th scope="row">Open the case under the cursor</th><td><kbd>Enter</kbd></td></tr>
+        <tr><th scope="row">Go to queue, case, evidence</th><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td></tr>
+        <tr><th scope="row">Approve the open case</th><td><kbd>A</kbd></td></tr>
+        <tr><th scope="row">Reject (moves you to the note)</th><td><kbd>R</kbd></td></tr>
+        <tr><th scope="row">Reclassify (moves you to the cause)</th><td><kbd>C</kbd></td></tr>
+        <tr><th scope="row">Submit from the note</th><td><kbd>Ctrl</kbd> <kbd>Enter</kbd></td></tr>
+        <tr><th scope="row">Copy the draft custodian query</th><td><kbd>Y</kbd></td></tr>
+      </tbody>
+    </table>
+    <p class="muted" style="margin-top:10px;font-size:var(--fs-s)">Letter shortcuts are off while you type in a field. A, R and C act on the open case; on a queue row that is not open, the first press opens it. Viewers can move around but have nothing to act on.</p>
+  </div>
+</dialog>
+
+<!-- Command palette -->
+<dialog id="palette" class="palette" aria-labelledby="h-palette" closedby="any">
+  <h2 id="h-palette" class="vh">Find a case or run a command</h2>
+  <div class="pal-input">
+    <svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+    <input id="pal-q" type="text" role="combobox" aria-expanded="true" aria-controls="pal-list" aria-autocomplete="list"
+           aria-label="Case id, security or command" placeholder="Case id, security or command" autocomplete="off" spellcheck="false" autofocus>
+  </div>
+  <ul id="pal-list" class="pal-list" role="listbox" aria-label="Results"></ul>
+  <div class="pal-foot" aria-hidden="true"><span><kbd>↑</kbd> <kbd>↓</kbd> choose</span><span><kbd>Enter</kbd> run</span><span><kbd>Esc</kbd> close</span></div>
+</dialog>
+
+<!-- Sign-off confirmation -->
+<dialog id="confirm" aria-labelledby="h-confirm" aria-describedby="confirm-desc">
+  <div class="dlg-head"><h2 id="h-confirm">Sign off and release the NAV?</h2></div>
+  <div class="dlg-body">
+    <p id="confirm-desc">This writes your sign-off to the audit log. It cannot be undone from this screen.</p>
+    <dl class="confirm-figs" id="confirm-figs"></dl>
+  </div>
+  <form method="dialog" class="dlg-actions">
+    <button class="btn" value="" autofocus>Cancel</button>
+    <button class="btn primary" value="sign">Sign off NAV</button>
+  </form>
+</dialog>
+
+<script>
+"use strict";
+const D = {"_note":"Synthetic data produced by a real ReconPilot run (hard mode, seed 11, gpt-6-luna). Not real data.","fund":{"name":"Demo Fund I (synthetic)","base_currency":"USD","as_of":"2026-11-13"},"nav":{"nav":516769365.82,"nav_per_share":51.676937,"prior_nav_per_share":51.747102,"movement":-0.001356,"gross_assets":464708183.27,"cash":52145753.32,"liabilities":84570.77},"checks":[{"name":"Stale prices","status":"WARN","detail":"2 held position(s) priced before 2026-11-12: US0000254305, US0000296699"},{"name":"Missing prices","status":"PASS","detail":"Every held position has a price."},{"name":"Day-on-day price moves","status":"PASS","detail":"No held position moved beyond its limit (bond 2%, equity 10%)."},{"name":"Accruals","status":"PASS","detail":"Fee and expense accruals booked as expected: 12,132.97 for 1 day(s)."},{"name":"NAV movement","status":"PASS","detail":"NAV per share moved -0.14% against a threshold of 2.00% (51.747102 to 51.676937)."},{"name":"Cash tie-out","status":"WARN","detail":"Custodian closing cash 52,163,389.34 vs book 52,145,753.32: gap 17,636.02, of which 17,636.02 is explained by open cash breaks and matched rounding, leaving 0.00 unexplained."},{"name":"NAV release","status":"PASS","detail":"No material case awaiting approval (1 material case(s) approved; threshold 1 bp of NAV)."}],"run":{"cash_matches":29,"breaks":18,"match_kinds":{"EXACT":18,"TOLERANCE":2,"ATTRIBUTE":1,"MANY_TO_ONE":8}},"open_cases":[{"case_id":"EX-20261109-002","security_id":"US0000019941","security_name":"Silverton Systems","asset_class":"EQUITY","category":"PRICE_MISMATCH","confidence":0.85,"explanation":"Quantities agree on Silverton Systems (US0000019941), but the custodian prices it at 184.7537 USD against 181.2367 in the book (+1.94%), which moves the market value by 91,090.30 USD.","query_draft":"Subject: Price check on US0000019941\n\nHello,\n\nYour statement prices Silverton Systems (US0000019941) at 184.7537 USD on 2026-11-13; our pricing source gives 181.2367. Could you confirm your price source and the time of the price?\n\nKind regards,\nFund Operations","status":"APPROVED","final_category":"PRICE_MISMATCH","reviewed_by":"ann","reviewed_role":"approver","review_note":"Checked against custodian statement; chasing correction.","ai_category":"PRICE_MISMATCH","ai_confidence":0.95,"ai_explanation":"The book and custodian quantities both show 25900.0 shares of Silverton Systems, but the book price is 181.2367 while the custodian price is 184.7537, a difference of 3.517. The evidence shows no book trades or custodian cash activity, and the derived price difference is 1.9406%, supporting a price mismatch rather than a quantity or settlement issue.","ai_steps":["Verify the book price of 181.2367 against the fund's approved pricing source for 2026-11-13.","Check the custodian's price source and valuation timestamp for 184.7537.","Confirm whether any market-data correction or corporate action affects this security."],"ai_query":"Subject: Price confirmation request — Silverton Systems (US0000019941)\n\nHello,\n\nCould you please confirm the source and valuation timestamp for your 2026-11-13 price of 184.7537 for Silverton Systems? Our records show 181.2367, with both sides reporting a quantity of 25900.0. Please also let us know whether there was a price correction or corporate action affecting the valuation.\n\nThank you.","ai_model":"gpt-6-luna","ai_status":"ACCEPTED","ai_flag":"","ai_fallback_reason":"","nav_impact":91090.3,"nav_impact_bp":1.7627,"gross_exposure":91090.3,"material":true,"escalated":true,"escalation_reason":"material (+1.79 bp of NAV)","age_days":4,"age_bucket":"2-5","first_seen":"2026-11-09","sla_days":2,"sla_breached":true,"cleared_on":"","clear_reason":"","resolved_category":null,"break_kinds":["PRICE"],"breaks":[{"break_id":"B0002","kind":"PRICE","book_value":181.2367,"custodian_value":184.7537,"difference":3.517,"reference":"","note":""}],"book_position":{"quantity":25900,"price":181.2367,"price_date":"2026-11-13"},"custodian_holding":{"quantity":25900,"price":184.7537},"history":[{"seq":2,"ts":"2026-11-13T06:45:42+00:00","actor":"priya","role":"analyst","action":"AI_CALL","note":null,"ai_model":"gpt-6-luna"},{"seq":5,"ts":"2026-11-13T06:45:42+00:00","actor":"priya","role":"analyst","action":"CASE_ESCALATED","note":["material (+1.79 bp of NAV)"],"ai_model":null},{"seq":6,"ts":"2026-11-13T06:45:42+00:00","actor":"ann","role":"approver","action":"CASE_APPROVED","note":"Checked against custodian statement; chasing correction.","ai_model":null},{"seq":52,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"SLA_BREACHED","note":null,"ai_model":null}]},{"case_id":"EX-20261110-001","security_id":"JP0000637983","security_name":"Thornbury Materials","asset_class":"EQUITY","category":"PRICE_MISMATCH","confidence":0.85,"explanation":"Quantities agree on Thornbury Materials (JP0000637983), but the custodian prices it at 39,721.2241 JPY against 40,324.1208 in the book (-1.50%), which moves the market value by -33,004.49 USD.","query_draft":"Subject: Price check on JP0000637983\n\nHello,\n\nYour statement prices Thornbury Materials (JP0000637983) at 39,721.2241 JPY on 2026-11-13; our pricing source gives 40,324.1208. Could you confirm your price source and the time of the price?\n\nKind regards,\nFund Operations","status":"APPROVED","final_category":"PRICE_MISMATCH","reviewed_by":"priya","reviewed_role":"analyst","review_note":"Matches suggested cause.","ai_category":"PRICE_MISMATCH","ai_confidence":0.94,"ai_explanation":"The book and custodian quantities both show 8200.0, but the book price is 40324.1208 and the custodian price is 39721.2241. The price difference is -602.8967 (-1.4951%), with no trade or cash activity in the evidence to suggest a missing or unsettled trade.","ai_steps":["Confirm both prices are for the same valuation date and security identifier, JP0000637983.","Check the book and custodian pricing sources and any price overrides.","Review the custodian's JPY price and valuation feed for the security."],"ai_query":"Subject: Price discrepancy for Thornbury Materials (JP0000637983)\n\nHello,\n\nCould you please confirm the valuation price and pricing source for Thornbury Materials (JP0000637983) as of 2026-11-13? Our book shows 40324.1208, while your holding shows 39721.2241; both records show a quantity of 8200.0. Please let us know whether your price is correct or if a pricing update is required.\n\nThank you.","ai_model":"gpt-6-luna","ai_status":"ACCEPTED","ai_flag":"","ai_fallback_reason":"","nav_impact":-33004.49,"nav_impact_bp":-0.6387,"gross_exposure":33004.49,"material":false,"escalated":false,"escalation_reason":"","age_days":3,"age_bucket":"2-5","first_seen":"2026-11-10","sla_days":5,"sla_breached":false,"cleared_on":"","clear_reason":"","resolved_category":null,"break_kinds":["PRICE"],"breaks":[{"break_id":"B0001","kind":"PRICE","book_value":40324.1208,"custodian_value":39721.2241,"difference":-602.8967,"reference":"","note":""}],"book_position":{"quantity":8200,"price":40324.1208,"price_date":"2026-11-13"},"custodian_holding":{"quantity":8200,"price":39721.2241},"history":[{"seq":10,"ts":"2026-11-13T06:45:49+00:00","actor":"priya","role":"analyst","action":"AI_CALL","note":null,"ai_model":"gpt-6-luna"},{"seq":18,"ts":"2026-11-13T06:45:49+00:00","actor":"priya","role":"analyst","action":"CASE_APPROVED","note":"Matches suggested cause.","ai_model":null}]},{"case_id":"EX-20261111-010","security_id":"US0000369966","security_name":"Ember Industries","asset_class":"EQUITY","category":"DIVIDEND","confidence":0.6,"explanation":"The custodian credited 21,697.49 against Ember Industries (US0000369966) with no matching entry in the book. Spread over the 12,300 units held, that is 1.7640 USD per share, which looks like an income payment, although the narrative does not say so. The dividend has probably not been accrued.","query_draft":"Subject: Income received on US0000369966\n\nHello,\n\nWe see a credit of 21,697.49 on 2026-11-13 against Ember Industries (US0000369966). Could you confirm the event type, the rate per share, the ex-date and any withholding tax applied?\n\nKind regards,\nFund Operations","status":"APPROVED","final_category":"DIVIDEND","reviewed_by":"priya","reviewed_role":"analyst","review_note":"Matches suggested cause.","ai_category":"DIVIDEND","ai_confidence":0.88,"ai_explanation":"The custodian reports a positive cash receipt of 21697.49 with the narrative \"MISC RECEIPT US0000369966,\" but there is no matching book entry or related trade. Book and custodian holdings both show 12300.0 units at 147.8581, with no position difference; the derived amount per unit held is 1.764. This most likely represents dividend income that has not been accrued in the fund's books.","ai_steps":["Check the issuer's dividend announcement and payment details for US0000369966.","Match reference DV351204 and the 21697.49 receipt to the custodian's income advice.","Confirm the fund's entitlement and accounting treatment, then book or accrue the income if appropriate."],"ai_query":"Subject: Details requested for receipt DV351204\n\nHello,\n\nCould you please confirm the nature and payment details of the 21697.49 receipt dated for this reconciliation, shown as \"MISC RECEIPT US0000369966\" under reference DV351204? Please advise whether it is a dividend and provide the relevant payment or income advice.\n\nThank you.","ai_model":"gpt-6-luna","ai_status":"ACCEPTED","ai_flag":"","ai_fallback_reason":"","nav_impact":21697.49,"nav_impact_bp":0.4199,"gross_exposure":21697.49,"material":false,"escalated":false,"escalation_reason":"","age_days":2,"age_bucket":"2-5","first_seen":"2026-11-11","sla_days":5,"sla_breached":false,"cleared_on":"","clear_reason":"","resolved_category":null,"break_kinds":["CASH_MISSING_IN_BOOK"],"breaks":[{"break_id":"B0014","kind":"CASH_MISSING_IN_BOOK","book_value":null,"custodian_value":21697.49,"difference":21697.49,"reference":"DV351204","note":"MISC RECEIPT US0000369966"}],"book_position":{"quantity":12300,"price":147.8581,"price_date":"2026-11-13"},"custodian_holding":{"quantity":12300,"price":147.8581},"history":[{"seq":31,"ts":"2026-11-13T06:46:03+00:00","actor":"priya","role":"analyst","action":"AI_CALL","note":null,"ai_model":"gpt-6-luna"},{"seq":35,"ts":"2026-11-13T06:46:03+00:00","actor":"priya","role":"analyst","action":"CASE_APPROVED","note":"Matches suggested cause.","ai_model":null}]},{"case_id":"EX-20261113-013","security_id":"","security_name":"","asset_class":"","category":"UNKNOWN","confidence":0.3,"explanation":"Breaks on an unidentified security (CASH_MISSING_IN_BOOK) do not fit a known pattern. Needs manual investigation.","query_draft":"Subject: Reconciliation difference on cash\n\nHello,\n\nWe have an unexplained difference on an unidentified security for 2026-11-13. Could you send the supporting detail for the entries involved?\n\nKind regards,\nFund Operations","status":"PENDING","final_category":null,"reviewed_by":"","reviewed_role":"","review_note":"","ai_category":"DIVIDEND","ai_confidence":0.82,"ai_explanation":"The custodian credited USD 21,419.12 with the vague narrative “MISC RECEIPT” and reference DV477027, but provided no security identifier. There is no book position or related book trade in the evidence, which supports unaccrued income rather than a trade or position break.","ai_steps":["Ask the custodian to identify the source and security for reference DV477027.","Check dividend and corporate-action notices for the relevant payment date.","Review fund income accruals for an unbooked amount of USD 21,419.12."],"ai_query":"Subject: Details requested for MISC RECEIPT — DV477027\n\nHello,\n\nCould you please provide the security, income type, and payment details for the USD 21,419.12 credit with reference DV477027, posted as “MISC RECEIPT”? We are reconciling this entry against our books.\n\nThank you.","ai_model":"gpt-6-luna","ai_status":"ACCEPTED","ai_flag":"AI disagrees: needs review","ai_fallback_reason":"","nav_impact":21419.12,"nav_impact_bp":0.4145,"gross_exposure":21419.12,"material":false,"escalated":false,"escalation_reason":"","age_days":0,"age_bucket":"0-1","first_seen":"2026-11-13","sla_days":5,"sla_breached":false,"cleared_on":"","clear_reason":"","resolved_category":null,"break_kinds":["CASH_MISSING_IN_BOOK"],"breaks":[{"break_id":"B0017","kind":"CASH_MISSING_IN_BOOK","book_value":null,"custodian_value":21419.12,"difference":21419.12,"reference":"DV477027","note":"MISC RECEIPT"}],"book_position":null,"custodian_holding":null,"history":[{"seq":69,"ts":"2026-11-13T06:46:28+00:00","actor":"priya","role":"analyst","action":"AI_CALL","note":null,"ai_model":"gpt-6-luna"}]},{"case_id":"EX-20261112-006","security_id":"US0000600300","security_name":"Juniper Foods","asset_class":"EQUITY","category":"PRICE_MISMATCH","confidence":0.85,"explanation":"Quantities agree on Juniper Foods (US0000600300), but the custodian prices it at 83.7857 USD against 84.8454 in the book (-1.25%), which moves the market value by -12,292.52 USD.","query_draft":"Subject: Price check on US0000600300\n\nHello,\n\nYour statement prices Juniper Foods (US0000600300) at 83.7857 USD on 2026-11-13; our pricing source gives 84.8454. Could you confirm your price source and the time of the price?\n\nKind regards,\nFund Operations","status":"APPROVED","final_category":"PRICE_MISMATCH","reviewed_by":"priya","reviewed_role":"analyst","review_note":"Matches suggested cause.","ai_category":"PRICE_MISMATCH","ai_confidence":0.95,"ai_explanation":"The book and custodian quantities both show 11600.0 Juniper Foods shares, but the book price is 84.8454 and the custodian price is 83.7857. The price difference is -1.0597 (-1.249%), supporting a price mismatch rather than a quantity or trade break.","ai_steps":["Compare the book and custodian price sources and valuation timestamps for 2026-11-13.","Verify the custodian price for security US0000600300 against the applicable market close.","Check for any price corrections or valuation overrides affecting either feed."],"ai_query":"Subject: Price discrepancy for Juniper Foods on 2026-11-13\n\nHello,\n\nCould you please confirm the price and valuation timestamp reported for Juniper Foods (US0000600300) on 2026-11-13? Our books show 84.8454, while your holding record shows 83.7857; both records show quantity 11600.0. Please also advise whether a price correction or override applies. Thank you.","ai_model":"gpt-6-luna","ai_status":"ACCEPTED","ai_flag":"","ai_fallback_reason":"","nav_impact":-12292.52,"nav_impact_bp":-0.2379,"gross_exposure":12292.52,"material":false,"escalated":false,"escalation_reason":"","age_days":1,"age_bucket":"0-1","first_seen":"2026-11-12","sla_days":5,"sla_breached":false,"cleared_on":"","clear_reason":"","resolved_category":null,"break_kinds":["PRICE"],"breaks":[{"break_id":"B0006","kind":"PRICE","book_value":84.8454,"custodian_value":83.7857,"difference":-1.0597,"reference":"","note":""}],"book_position":{"quantity":11600,"price":84.8454,"price_date":"2026-11-13"},"custodian_holding":{"quantity":11600,"price":83.7857},"history":[{"seq":43,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"AI_CALL","note":null,"ai_model":"gpt-6-luna"},{"seq":53,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"CASE_APPROVED","note":"Matches suggested cause.","ai_model":null}]},{"case_id":"EX-20261113-012","security_id":"JP0000179307","security_name":"Harbour Foods","asset_class":"EQUITY","category":"DIVIDEND","confidence":0.6,"explanation":"The custodian credited 2,460.76 against Harbour Foods (JP0000179307) with no matching entry in the book. Spread over the 8,800 units held, that is 41.8861 JPY per share, which looks like an income payment, although the narrative does not say so. The dividend has probably not been accrued.","query_draft":"Subject: Income received on JP0000179307\n\nHello,\n\nWe see a credit of 2,460.76 on 2026-11-13 against Harbour Foods (JP0000179307). Could you confirm the event type, the rate per share, the ex-date and any withholding tax applied?\n\nKind regards,\nFund Operations","status":"PENDING","final_category":null,"reviewed_by":"","reviewed_role":"","review_note":"","ai_category":"DIVIDEND","ai_confidence":0.82,"ai_explanation":"The custodian settled a positive cash credit of 2,460.76 with the narrative “MISC RECEIPT JP0000179307,” while the books have no matching entry and book_trades is empty. The book and custodian holdings both show 8,800 units at 14,624.008, and the derived amount is 41.8861 per unit in local currency, supporting income rather than a trade or position break. The narrative is vague, so the dividend interpretation should be confirmed.","ai_steps":["Check Harbour Foods corporate-action notices and expected dividend entitlement for the security.","Review the fund's income accruals and confirm whether the payment was omitted.","Reconcile the 2,460.76 credit and 41.8861 per unit against the custodian's payment details, including any withholding."],"ai_query":"Subject: Please identify cash credit DV129164 for Harbour Foods\n\nHello,\n\nCould you please confirm the nature of the 2,460.76 cash credit dated 2026-11-13, reference DV129164, with narrative “MISC RECEIPT JP0000179307”? Please advise whether this is a dividend or other income payment and provide the entitlement, payment, and any withholding details.\n\nThank you.","ai_model":"gpt-6-luna","ai_status":"ACCEPTED","ai_flag":"","ai_fallback_reason":"","nav_impact":2460.76,"nav_impact_bp":0.0476,"gross_exposure":2460.76,"material":false,"escalated":false,"escalation_reason":"","age_days":0,"age_bucket":"0-1","first_seen":"2026-11-13","sla_days":5,"sla_breached":false,"cleared_on":"","clear_reason":"","resolved_category":null,"break_kinds":["CASH_MISSING_IN_BOOK"],"breaks":[{"break_id":"B0016","kind":"CASH_MISSING_IN_BOOK","book_value":null,"custodian_value":2460.76,"difference":2460.76,"reference":"DV129164","note":"MISC RECEIPT JP0000179307"}],"book_position":{"quantity":8800,"price":14624.008,"price_date":"2026-11-13"},"custodian_holding":{"quantity":8800,"price":14624.008},"history":[{"seq":68,"ts":"2026-11-13T06:46:28+00:00","actor":"priya","role":"analyst","action":"AI_CALL","note":null,"ai_model":"gpt-6-luna"}]},{"case_id":"EX-20261112-010","security_id":"DE0000590859","security_name":"Quarry Networks","asset_class":"EQUITY","category":"FX_DIFFERENCE","confidence":0.8,"explanation":"Carried from 2026-11-12: Trade T2611120001 in Quarry Networks (DE0000590859) settled for -315,325.41 against -314,017.67 expected, a difference of -1,307.74. Quantity and price agree, and the gap is +0.42% of the gross amount. Backing out the rate gives about 1.088176 USD per EUR against 1.083661 in the book, so the custodian appears to have converted at a different rate.","query_draft":"Subject: FX rate applied to T2611120001\n\nHello,\n\nTrade T2611120001 in Quarry Networks (DE0000590859) settled for -315,325.41; we expected -314,017.67 using a EUR/USD rate of 1.083661. Could you confirm the rate you applied, its source and the time it was struck?\n\nKind regards,\nFund Operations","status":"APPROVED","final_category":"FX_DIFFERENCE","reviewed_by":"priya","reviewed_role":"analyst","review_note":"Matches suggested cause.","ai_category":"UNKNOWN","ai_confidence":0.86,"ai_explanation":"The book and custodian holdings agree at quantity 27200.0 and price 262.1528, but the cash break is -1307.74 (book value -314017.67; custodian value -315325.41). Although the security is denominated in EUR, the evidence contains no trade records, settlement details, or FX rates to establish an FX difference; the UNKNOWN suggestion is therefore supported.","ai_steps":["Request transaction and settlement details for reference T2611120001 from the custodian.","Identify the currency, underlying amount, and applied exchange rate for both sides of the cash entry.","Check the fund ledger and trade support for a corresponding entry or adjustment."],"ai_query":"Subject: Details requested for cash break T2611120001\n\nHello,\n\nCould you please provide the transaction and settlement details for reference T2611120001, including the currency, underlying amount, and any exchange rate applied? We are investigating a cash difference of -1307.74 and would appreciate any supporting documentation.\n\nThank you.","ai_model":"gpt-6-luna","ai_status":"ACCEPTED","ai_flag":"","ai_fallback_reason":"","nav_impact":-1307.74,"nav_impact_bp":-0.0253,"gross_exposure":1307.74,"material":false,"escalated":false,"escalation_reason":"","age_days":1,"age_bucket":"0-1","first_seen":"2026-11-12","sla_days":5,"sla_breached":false,"cleared_on":"","clear_reason":"","resolved_category":null,"break_kinds":["CASH_AMOUNT"],"breaks":[{"break_id":"B0012","kind":"CASH_AMOUNT","book_value":-314017.67,"custodian_value":-315325.41,"difference":-1307.74,"reference":"T2611120001","note":""}],"book_position":{"quantity":27200,"price":262.1528,"price_date":"2026-11-13"},"custodian_holding":{"quantity":27200,"price":262.1528},"history":[{"seq":47,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"AI_CALL","note":null,"ai_model":"gpt-6-luna"},{"seq":55,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"CASE_APPROVED","note":"Matches suggested cause.","ai_model":null}]},{"case_id":"EX-20261111-004","security_id":"US0000436123","security_name":"Cobalt Materials","asset_class":"EQUITY","category":"MISSING_TRADE","confidence":0.9,"explanation":"The custodian holds 1,500 more units of Cobalt Materials (US0000436123) than the book and has settled cash entry CUS082826 for -559,104.41. That amount is consistent with 1,500 units at about 373.59 USD, so a trade appears to be missing from the book.","query_draft":"Subject: Unrecognised settlement on US0000436123\n\nHello,\n\nYour statement for 2026-11-13 shows 27,800 units of Cobalt Materials (US0000436123) against 26,300 in our records, together with cash entry CUS082826 for -559,104.41. We hold no matching instruction. Could you send the trade details (trade date, broker and instructing party) so we can confirm whether it belongs to the fund?\n\nKind regards,\nFund Operations","status":"APPROVED","final_category":"MISSING_TRADE","reviewed_by":"priya","reviewed_role":"analyst","review_note":"Matches suggested cause.","ai_category":"MISSING_TRADE","ai_confidence":0.94,"ai_explanation":"The custodian holds 27,800 units versus 26,300 in the book, a quantity gap of 1,500. The custodian cash line says “BUY 1500 US0000436123” and records -559,104.41, while book_trades is empty; together these indicate a purchase recorded by the custodian but missing from the book.","ai_steps":["Check the fund's trade blotter and broker confirmation for a 1,500-unit purchase of US0000436123.","Verify the trade date, settlement date, execution price, and cash amount against custodian reference CUS082826.","Confirm whether the trade was omitted from the book or booked under another security or account."],"ai_query":"Subject: Details requested for CUS082826 — Cobalt Materials\n\nHello,\n\nCould you please provide the trade and settlement details for reference CUS082826, described as “BUY 1500 US0000436123” with a cash amount of -559,104.41? Please confirm the trade date, settlement date, execution price, and any fees or other cash adjustments.\n\nThank you.","ai_model":"gpt-6-luna","ai_status":"ACCEPTED","ai_flag":"","ai_fallback_reason":"","nav_impact":1274.59,"nav_impact_bp":0.0247,"gross_exposure":1119483.41,"material":false,"escalated":false,"escalation_reason":"","age_days":2,"age_bucket":"2-5","first_seen":"2026-11-11","sla_days":5,"sla_breached":false,"cleared_on":"","clear_reason":"","resolved_category":null,"break_kinds":["CASH_MISSING_IN_BOOK","QUANTITY"],"breaks":[{"break_id":"B0003","kind":"QUANTITY","book_value":26300,"custodian_value":27800,"difference":1500,"reference":"","note":""},{"break_id":"B0015","kind":"CASH_MISSING_IN_BOOK","book_value":null,"custodian_value":-559104.41,"difference":-559104.41,"reference":"CUS082826","note":"BUY 1500 US0000436123"}],"book_position":{"quantity":26300,"price":373.586,"price_date":"2026-11-13"},"custodian_holding":{"quantity":27800,"price":373.586},"history":[{"seq":25,"ts":"2026-11-13T06:46:03+00:00","actor":"priya","role":"analyst","action":"AI_CALL","note":null,"ai_model":"gpt-6-luna"},{"seq":36,"ts":"2026-11-13T06:46:03+00:00","actor":"priya","role":"analyst","action":"CASE_APPROVED","note":"Matches suggested cause.","ai_model":null}]},{"case_id":"EX-20261113-007","security_id":"US0000653085","security_name":"Ember Foods","asset_class":"EQUITY","category":"MISSING_TRADE","confidence":0.7,"explanation":"The book expects trade T2611130001 in Ember Foods (US0000653085) to have settled today, but the custodian has neither the position change (4,800 units) nor the cash, and shows nothing pending. The custodian may not have received the instruction.","query_draft":"Subject: Missing settlement for T2611130001\n\nHello,\n\nWe expected trade T2611130001 in Ember Foods (US0000653085) to settle on 2026-11-13, but it does not appear on your holdings or cash statements, settled or pending. Could you confirm whether you have received the instruction?\n\nKind regards,\nFund Operations","status":"PENDING","final_category":null,"reviewed_by":"","reviewed_role":"","review_note":"","ai_category":"TIMING","ai_confidence":0.84,"ai_explanation":"The fund booked BUY trade T2611130001 for 4,800 units, with a settle date of 2026-11-13, but the custodian shows neither the position change nor the settlement cash and reports nothing pending. The 4,800-unit quantity gap and missing cash of -439995.89 are therefore most consistent with a settlement that is late, failed, or not yet reported, rather than a trade missing from the fund's books.","ai_steps":["Check the custodian's settlement status and transaction reporting for trade T2611130001.","Verify the trade instruction and settlement details were transmitted and accepted.","Review subsequent custodian activity for the 4,800-unit position movement and related cash settlement."],"ai_query":"Subject: Settlement status request — T2611130001\n\nHello,\n\nCould you please confirm the settlement status of BUY trade T2611130001 for 4,800 units of Ember Foods, due to settle on 2026-11-13? We do not see the position movement or related cash settlement, and there is no pending item reported. Please advise whether the trade was received, and share any failure reason or expected settlement date.\n\nThank you.","ai_model":"gpt-6-luna","ai_status":"ACCEPTED","ai_flag":"AI disagrees: needs review","ai_fallback_reason":"","nav_impact":-522.67,"nav_impact_bp":-0.0101,"gross_exposure":880514.45,"material":false,"escalated":false,"escalation_reason":"","age_days":0,"age_bucket":"0-1","first_seen":"2026-11-13","sla_days":5,"sla_breached":false,"cleared_on":"","clear_reason":"","resolved_category":null,"break_kinds":["CASH_MISSING_AT_CUSTODIAN","QUANTITY"],"breaks":[{"break_id":"B0009","kind":"QUANTITY","book_value":32600,"custodian_value":27800,"difference":-4800,"reference":"","note":""},{"break_id":"B0013","kind":"CASH_MISSING_AT_CUSTODIAN","book_value":-439995.89,"custodian_value":null,"difference":439995.89,"reference":"T2611130001","note":""}],"book_position":{"quantity":32600,"price":91.7747,"price_date":"2026-11-13"},"custodian_holding":{"quantity":27800,"price":91.7747},"history":[{"seq":63,"ts":"2026-11-13T06:46:28+00:00","actor":"priya","role":"analyst","action":"AI_CALL","note":null,"ai_model":"gpt-6-luna"}]},{"case_id":"EX-20261113-008","security_id":"US0000806880","security_name":"Kestrel 4.125% 2035","asset_class":"BOND","category":"MISSING_TRADE","confidence":0.9,"explanation":"The custodian holds -2,700 more units of Kestrel 4.125% 2035 (US0000806880) than the book and has settled cash entry CUS067309 for 92,482.74. That amount is consistent with 2,700 units at about 34.38 USD, so a trade appears to be missing from the book.","query_draft":"Subject: Unrecognised settlement on US0000806880\n\nHello,\n\nYour statement for 2026-11-13 shows 79,500 units of Kestrel 4.125% 2035 (US0000806880) against 82,200 in our records, together with cash entry CUS067309 for 92,482.74. We hold no matching instruction. Could you send the trade details (trade date, broker and instructing party) so we can confirm whether it belongs to the fund?\n\nKind regards,\nFund Operations","status":"PENDING","final_category":null,"reviewed_by":"","reviewed_role":"","review_note":"","ai_category":"MISSING_TRADE","ai_confidence":0.97,"ai_explanation":"The custodian holds 79,500 units versus 82,200 in the book, a quantity difference of -2,700. The custodian also reports settled cash of 92,482.74 with the narrative “SELL 2700 US0000806880,” while the book has no trades recorded, indicating a sale settled by the custodian but not booked by the fund.","ai_steps":["Request the trade confirmation and settlement details for reference CUS067309.","Check the fund's trade blotter and order records for a sale of 2,700 units of US0000806880.","Confirm whether the sale was authorized and should be recorded in the fund's books."],"ai_query":"Subject: Trade details requested for CUS067309\n\nHello,\n\nCould you please provide the trade confirmation and settlement details for reference CUS067309, reported as “SELL 2700 US0000806880” with settled cash of 92,482.74? We are reconciling this against our holdings and would appreciate confirmation of the trade date, settlement date, and execution details.\n\nThank you.","ai_model":"gpt-6-luna","ai_status":"ACCEPTED","ai_flag":"","ai_fallback_reason":"","nav_impact":-345.42,"nav_impact_bp":-0.0067,"gross_exposure":185310.9,"material":false,"escalated":false,"escalation_reason":"","age_days":0,"age_bucket":"0-1","first_seen":"2026-11-13","sla_days":5,"sla_breached":false,"cleared_on":"","clear_reason":"","resolved_category":null,"break_kinds":["CASH_MISSING_IN_BOOK","QUANTITY"],"breaks":[{"break_id":"B0010","kind":"QUANTITY","book_value":82200,"custodian_value":79500,"difference":-2700,"reference":"","note":""},{"break_id":"B0018","kind":"CASH_MISSING_IN_BOOK","book_value":null,"custodian_value":92482.74,"difference":92482.74,"reference":"CUS067309","note":"SELL 2700 US0000806880"}],"book_position":{"quantity":82200,"price":34.3808,"price_date":"2026-11-13"},"custodian_holding":{"quantity":79500,"price":34.3808},"history":[{"seq":64,"ts":"2026-11-13T06:46:28+00:00","actor":"priya","role":"analyst","action":"AI_CALL","note":null,"ai_model":"gpt-6-luna"}]},{"case_id":"EX-20261109-004","security_id":"JP0000182558","security_name":"Granite Capital","asset_class":"EQUITY","category":"UNKNOWN","confidence":0.3,"explanation":"Breaks on Granite Capital (JP0000182558) (CASH_AMOUNT) do not fit a known pattern. Needs manual investigation.","query_draft":"Subject: Reconciliation difference on JP0000182558\n\nHello,\n\nWe have an unexplained difference on Granite Capital (JP0000182558) for 2026-11-13. Could you send the supporting detail for the entries involved?\n\nKind regards,\nFund Operations","status":"RECLASSIFIED","final_category":"FX_DIFFERENCE","reviewed_by":"priya","reviewed_role":"analyst","review_note":"Agree with AI reading: trade/settle dates point to late settlement.","ai_category":"UNKNOWN","ai_confidence":0.88,"ai_explanation":"The only break is a CASH_AMOUNT difference: book value -30478.62 versus custodian value -30486.04, a difference of -7.42. Book and custodian holdings match at quantity 25500.0 and price 9248.9163, and there are no book trades or cash lines with a narrative to establish a missing trade, timing issue, or FX-rate difference.","ai_steps":["Obtain the transaction and settlement details for reference T2611090002.","Confirm the original JPY amount and the USD conversion rate applied by each side.","Check the fund ledger for fees, rounding, or other adjustments related to this cash amount."],"ai_query":"Subject: Request for details on cash amount break T2611090002\n\nHello,\n\nCould you please provide the transaction and settlement details for reference T2611090002, including the original JPY amount, USD amount, FX rate applied, and any fees or adjustments? Our records show -30478.62 while your records show -30486.04, a difference of -7.42.\n\nThank you.","ai_model":"gpt-6-luna","ai_status":"ACCEPTED","ai_flag":"","ai_fallback_reason":"","nav_impact":-7.42,"nav_impact_bp":-0.0001,"gross_exposure":7.42,"material":false,"escalated":false,"escalation_reason":"","age_days":4,"age_bucket":"2-5","first_seen":"2026-11-09","sla_days":5,"sla_breached":false,"cleared_on":"","clear_reason":"","resolved_category":null,"break_kinds":["CASH_AMOUNT"],"breaks":[{"break_id":"B0011","kind":"CASH_AMOUNT","book_value":-30478.62,"custodian_value":-30486.04,"difference":-7.42,"reference":"T2611090002","note":""}],"book_position":{"quantity":25500,"price":9248.9163,"price_date":"2026-11-13"},"custodian_holding":{"quantity":25500,"price":9248.9163},"history":[{"seq":4,"ts":"2026-11-13T06:45:42+00:00","actor":"priya","role":"analyst","action":"AI_CALL","note":null,"ai_model":"gpt-6-luna"},{"seq":8,"ts":"2026-11-13T06:45:42+00:00","actor":"priya","role":"analyst","action":"CASE_RECLASSIFIED","note":"Agree with AI reading: trade/settle dates point to late settlement.","ai_model":null}]},{"case_id":"EX-20261111-005","security_id":"US0000622352","security_name":"Dunmore Materials","asset_class":"EQUITY","category":"STOCK_SPLIT","confidence":0.95,"explanation":"The custodian holds 141,900 units of Dunmore Materials (US0000622352) against 47,300 in the book, and prices them at 105.4510 against 316.3531. Quantity and price have moved by the same factor in opposite directions and the market value barely changes (14,963,501.63 vs 14,963,496.90 USD), which points to a 3-for-1 split the custodian has processed and the book has not.","query_draft":"Subject: Corporate action confirmation for US0000622352\n\nHello,\n\nYour statement for 2026-11-13 reflects what looks like a 3-for-1 split on Dunmore Materials (US0000622352). Could you confirm the event, the ratio, the ex-date and the source of the announcement so we can update our records?\n\nKind regards,\nFund Operations","status":"APPROVED","final_category":"STOCK_SPLIT","reviewed_by":"priya","reviewed_role":"analyst","review_note":"Matches suggested cause.","ai_category":"STOCK_SPLIT","ai_confidence":0.95,"ai_explanation":"The custodian reports 141,900 units at 105.451, while the book reports 47,300 units at 316.3531. The quantity ratio is 3.0 and the book-to-custodian price ratio is 3.000001, consistent with a 3-for-1 split processed by the custodian but not the fund.","ai_steps":["Check corporate-action notices for Dunmore Materials (US0000622352).","Confirm the split ratio and effective date with the custodian.","Review the fund's position and price records for the split adjustment."],"ai_query":"Subject: Confirmation of Dunmore Materials stock split\n\nHello,\n\nCould you please confirm whether a 3-for-1 split was processed for Dunmore Materials (US0000622352), including its effective date and the resulting position and price adjustments? Our records show 47,300 units at 316.3531, compared with your 141,900 units at 105.451.\n\nThank you.","ai_model":"gpt-6-luna","ai_status":"ACCEPTED","ai_flag":"","ai_fallback_reason":"","nav_impact":-4.73,"nav_impact_bp":-0.0001,"gross_exposure":39902672.59,"material":false,"escalated":false,"escalation_reason":"","age_days":2,"age_bucket":"2-5","first_seen":"2026-11-11","sla_days":5,"sla_breached":false,"cleared_on":"","clear_reason":"","resolved_category":null,"break_kinds":["PRICE","QUANTITY"],"breaks":[{"break_id":"B0007","kind":"QUANTITY","book_value":47300,"custodian_value":141900,"difference":94600,"reference":"","note":""},{"break_id":"B0008","kind":"PRICE","book_value":316.3531,"custodian_value":105.451,"difference":-210.9021,"reference":"","note":""}],"book_position":{"quantity":47300,"price":316.3531,"price_date":"2026-11-13"},"custodian_holding":{"quantity":141900,"price":105.451},"history":[{"seq":26,"ts":"2026-11-13T06:46:03+00:00","actor":"priya","role":"analyst","action":"AI_CALL","note":null,"ai_model":"gpt-6-luna"},{"seq":37,"ts":"2026-11-13T06:46:03+00:00","actor":"priya","role":"analyst","action":"CASE_APPROVED","note":"Matches suggested cause.","ai_model":null}]},{"case_id":"EX-20261112-005","security_id":"US0000440684","security_name":"Juniper Logistics","asset_class":"EQUITY","category":"STOCK_SPLIT","confidence":0.95,"explanation":"The custodian holds 101,100 units of Juniper Logistics (US0000440684) against 33,700 in the book, and prices them at 12.6724 against 38.0172. Quantity and price have moved by the same factor in opposite directions and the market value barely changes (1,281,179.64 vs 1,281,179.64 USD), which points to a 3-for-1 split the custodian has processed and the book has not.","query_draft":"Subject: Corporate action confirmation for US0000440684\n\nHello,\n\nYour statement for 2026-11-13 reflects what looks like a 3-for-1 split on Juniper Logistics (US0000440684). Could you confirm the event, the ratio, the ex-date and the source of the announcement so we can update our records?\n\nKind regards,\nFund Operations","status":"APPROVED","final_category":"STOCK_SPLIT","reviewed_by":"priya","reviewed_role":"analyst","review_note":"Matches suggested cause.","ai_category":"STOCK_SPLIT","ai_confidence":0.98,"ai_explanation":"The book shows 33,700 units at 38.0172, while the custodian shows 101,100 units at 12.6724. The derived quantity ratio is 3.0 and the book-to-custodian price ratio is 3.0, indicating a likely 3-for-1 split processed by the custodian but not reflected in the book.","ai_steps":["Check the issuer or custodian corporate-action notice for a 3-for-1 split and its effective date.","Confirm the custodian's position and price reflect that action.","Review the fund's position and price records for the split booking."],"ai_query":"Subject: Juniper Logistics position and price reconciliation — EX-20261113-004\n\nHello,\n\nCould you please confirm whether a 3-for-1 stock split was processed for Juniper Logistics (US0000440684), including its effective date and the resulting position and price? Our records show 33,700 units at 38.0172, while your records show 101,100 units at 12.6724.\n\nThank you.","ai_model":"gpt-6-luna","ai_status":"ACCEPTED","ai_flag":"","ai_fallback_reason":"","nav_impact":0,"nav_impact_bp":0,"gross_exposure":3416479.04,"material":false,"escalated":false,"escalation_reason":"","age_days":1,"age_bucket":"0-1","first_seen":"2026-11-12","sla_days":5,"sla_breached":false,"cleared_on":"","clear_reason":"","resolved_category":null,"break_kinds":["PRICE","QUANTITY"],"breaks":[{"break_id":"B0004","kind":"QUANTITY","book_value":33700,"custodian_value":101100,"difference":67400,"reference":"","note":""},{"break_id":"B0005","kind":"PRICE","book_value":38.0172,"custodian_value":12.6724,"difference":-25.3448,"reference":"","note":""}],"book_position":{"quantity":33700,"price":38.0172,"price_date":"2026-11-13"},"custodian_holding":{"quantity":101100,"price":12.6724},"history":[{"seq":42,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"AI_CALL","note":null,"ai_model":"gpt-6-luna"},{"seq":56,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"CASE_APPROVED","note":"Matches suggested cause.","ai_model":null}]}],"cleared_today":[{"case_id":"EX-20261112-003","security_id":"US0000166426","security_name":"Ember Systems","asset_class":"EQUITY","category":"TIMING","confidence":0.9,"explanation":"Trade T2611120002 in Ember Systems (US0000166426) was due to settle on 2026-11-12 but the custodian shows it as pending with value date 2026-11-13. The position difference of -1,900 units matches the trade exactly.","query_draft":"Subject: Late settlement of T2611120002\n\nHello,\n\nTrade T2611120002 in Ember Systems (US0000166426) was due to settle on 2026-11-12 and is showing as pending on your statement. Could you confirm the reason for the delay (failed delivery, missing instruction or counterparty issue) and the expected settlement date?\n\nKind regards,\nFund Operations","status":"APPROVED","final_category":"TIMING","reviewed_by":"priya","reviewed_role":"analyst","review_note":"Matches suggested cause.","ai_category":"TIMING","ai_confidence":0.99,"ai_explanation":"The fund booked SELL trade T2611120002 for 1,900 units, due to settle on 2026-11-12, but the custodian reports the related cash of 640701.49 as \"PENDING SETTLEMENT\" with value date 2026-11-13. The custodian holding is 47800.0 versus the book position of 45900.0, a 1,900-unit difference matching the unsettled sale.","ai_steps":["Confirm the trade's settlement status and expected value date with the custodian.","Check for any settlement fail notice or revised settlement instruction.","Reconcile the position and cash after the pending settlement is processed."],"ai_query":"Subject: Settlement status for trade T2611120002\n\nHello,\n\nCould you please confirm the settlement status and expected value date for SELL trade T2611120002? Our records show it was due to settle on 2026-11-12, while your records show 640701.49 as pending with value date 2026-11-13. Please advise whether settlement is delayed or if any action is required.\n\nThank you.","ai_model":"gpt-6-luna","ai_status":"ACCEPTED","ai_flag":"","ai_fallback_reason":"","nav_impact":2030.51,"nav_impact_bp":0.0392,"gross_exposure":1283433.49,"material":false,"escalated":false,"escalation_reason":"","age_days":1,"age_bucket":"0-1","first_seen":"2026-11-12","sla_days":5,"sla_breached":false,"cleared_on":"2026-11-13","clear_reason":"Custodian settled the booked trade on 2026-11-13: resolved as a late settlement.","resolved_category":"TIMING","break_kinds":["CASH_MISSING_AT_CUSTODIAN","QUANTITY"],"breaks":[{"break_id":"B0003","kind":"QUANTITY","book_value":26300,"custodian_value":27800,"difference":1500,"reference":"","note":""},{"break_id":"B0013","kind":"CASH_MISSING_AT_CUSTODIAN","book_value":-439995.89,"custodian_value":null,"difference":439995.89,"reference":"T2611130001","note":""}],"book_position":{"quantity":45900,"price":335.8124,"price_date":"2026-11-13"},"custodian_holding":{"quantity":45900,"price":335.8124},"history":[{"seq":40,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"AI_CALL","note":null,"ai_model":"gpt-6-luna"},{"seq":54,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"CASE_APPROVED","note":"Matches suggested cause.","ai_model":null},{"seq":70,"ts":"2026-11-13T06:46:28+00:00","actor":"priya","role":"analyst","action":"CASE_AUTO_CLEARED","note":"Custodian settled the booked trade on 2026-11-13: resolved as a late settlement.","ai_model":null}]},{"case_id":"EX-20261110-007","security_id":"DE0000320702","security_name":"Ironvale Pharma","asset_class":"EQUITY","category":"FX_DIFFERENCE","confidence":0.8,"explanation":"Carried from 2026-11-10: Carried from 2026-11-10: Trade T2611100003 in Ironvale Pharma (DE0000320702) settled for -267,637.46 against -268,007.78 expected, a difference of 370.32. Quantity and price agree, and the gap is -0.14% of the gross amount. Backing out the rate gives about 1.081189 USD per EUR against 1.082686 in the book, so the custodian appears to have converted at a different rate.","query_draft":"Subject: FX rate applied to T2611100003\n\nHello,\n\nTrade T2611100003 in Ironvale Pharma (DE0000320702) settled for -267,637.46; we expected -268,007.78 using a EUR/USD rate of 1.082686. Could you confirm the rate you applied, its source and the time it was struck?\n\nKind regards,\nFund Operations","status":"APPROVED","final_category":"FX_DIFFERENCE","reviewed_by":"priya","reviewed_role":"analyst","review_note":"Matches suggested cause.","ai_category":"FX_DIFFERENCE","ai_confidence":0.68,"ai_explanation":"The book and custodian holdings agree at quantity 50800.0 and price 191.2241, while the cash break for reference T2611100003 is -268007.78 in the books versus -267637.46 at the custodian, a difference of 370.32. Because the security is denominated in EUR and the base currency is USD, this is most consistent with a different FX conversion on settlement; the evidence does not include the applied rates to confirm that.","ai_steps":["Request the custodian's settlement details and FX rate for reference T2611100003.","Compare the custodian's rate and converted USD amount with the fund's trade or settlement records.","Check the original confirmation and cash ledger for any fees or other adjustments."],"ai_query":"Subject: FX and settlement details for reference T2611100003\n\nHello,\n\nCould you please provide the settlement breakdown, including the EUR amount, applied FX rate, and USD amount, for reference T2611100003? Our books show -268007.78, while your reported amount is -267637.46, a difference of 370.32. Please also confirm whether any fees or adjustments were applied.\n\nThank you.","ai_model":"gpt-6-luna","ai_status":"ACCEPTED","ai_flag":"AI disagrees: needs review","ai_fallback_reason":"","nav_impact":370.32,"nav_impact_bp":0.0072,"gross_exposure":370.32,"material":false,"escalated":false,"escalation_reason":"","age_days":3,"age_bucket":"2-5","first_seen":"2026-11-10","sla_days":5,"sla_breached":false,"cleared_on":"2026-11-13","clear_reason":"No break on 2026-11-13: book and custodian agree again.","resolved_category":"FX_DIFFERENCE","break_kinds":["CASH_AMOUNT"],"breaks":[{"break_id":"B0011","kind":"CASH_AMOUNT","book_value":-30478.62,"custodian_value":-30486.04,"difference":-7.42,"reference":"T2611090002","note":""}],"book_position":{"quantity":50800,"price":192.797,"price_date":"2026-11-13"},"custodian_holding":{"quantity":50800,"price":192.797},"history":[{"seq":16,"ts":"2026-11-13T06:45:49+00:00","actor":"priya","role":"analyst","action":"AI_CALL","note":null,"ai_model":"gpt-6-luna"},{"seq":20,"ts":"2026-11-13T06:45:49+00:00","actor":"priya","role":"analyst","action":"CASE_APPROVED","note":"Matches suggested cause.","ai_model":null},{"seq":71,"ts":"2026-11-13T06:46:28+00:00","actor":"priya","role":"analyst","action":"CASE_AUTO_CLEARED","note":"No break on 2026-11-13: book and custodian agree again.","ai_model":null}]}],"mi":{"trend":[{"as_of":"2026-11-09","open_cases":3,"new_cases":4,"cleared_cases":0,"material_open":1,"escalated_open":1,"sla_breaches_open":0,"aged_over_5":0,"open_nav_impact":92331.11,"avg_days_to_resolve":1},{"as_of":"2026-11-10","open_cases":6,"new_cases":4,"cleared_cases":1,"material_open":1,"escalated_open":1,"sla_breaches_open":0,"aged_over_5":0,"open_nav_impact":56874.95,"avg_days_to_resolve":1.5},{"as_of":"2026-11-11","open_cases":7,"new_cases":4,"cleared_cases":1,"material_open":1,"escalated_open":1,"sla_breaches_open":0,"aged_over_5":0,"open_nav_impact":77980.9,"avg_days_to_resolve":1.6},{"as_of":"2026-11-12","open_cases":9,"new_cases":4,"cleared_cases":3,"material_open":1,"escalated_open":1,"sla_breaches_open":1,"aged_over_5":0,"open_nav_impact":64983.1,"avg_days_to_resolve":1.71},{"as_of":"2026-11-13","open_cases":13,"new_cases":4,"cleared_cases":2,"material_open":1,"escalated_open":1,"sla_breaches_open":1,"aged_over_5":0,"open_nav_impact":90457.27,"avg_days_to_resolve":1.71}],"avg_days_to_resolve":1.71},"audit_tail":[{"seq":42,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"AI_CALL","hash":"48697cd022ce4f2e1944581ffd253e4b10b9f3d0e245c845090aed377fe15923","prev_hash":"986362ae1834fa4b83d6fd9479129439765df21020ae16091a824070ae28dee3","case_id":"EX-20261112-005"},{"seq":43,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"AI_CALL","hash":"27d4f8b99bb63976dbd4895a16285073df9930fc86b967978f825e336af97af5","prev_hash":"48697cd022ce4f2e1944581ffd253e4b10b9f3d0e245c845090aed377fe15923","case_id":"EX-20261112-006"},{"seq":44,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"AI_CALL","hash":"8f2ead4b8d11495846398fb08869ca213f02f0906ca37f3a3df3ade7aecddc71","prev_hash":"27d4f8b99bb63976dbd4895a16285073df9930fc86b967978f825e336af97af5","case_id":"EX-20261112-007"},{"seq":45,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"AI_CALL","hash":"9c175d1e981ef09f81a1c078d213512c34b9592ff2e30e22af25b89fa1d10719","prev_hash":"8f2ead4b8d11495846398fb08869ca213f02f0906ca37f3a3df3ade7aecddc71","case_id":"EX-20261112-008"},{"seq":46,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"AI_CALL","hash":"5dc2a67332ffd51dbb6fd0e885086dd2ba23000de080386a384e5acaccff188b","prev_hash":"9c175d1e981ef09f81a1c078d213512c34b9592ff2e30e22af25b89fa1d10719","case_id":"EX-20261112-009"},{"seq":47,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"AI_CALL","hash":"174b59f261264d35291af5492958af796478cb0e2a42e0993da7d3d50bee2d62","prev_hash":"5dc2a67332ffd51dbb6fd0e885086dd2ba23000de080386a384e5acaccff188b","case_id":"EX-20261112-010"},{"seq":48,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"AI_CALL","hash":"53867d08a15b3b9038127d56550feb5aab737dad47e71321f2bb37aa1c0e2c5c","prev_hash":"174b59f261264d35291af5492958af796478cb0e2a42e0993da7d3d50bee2d62","case_id":"EX-20261112-011"},{"seq":49,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"CASE_AUTO_CLEARED","hash":"ba347f268887e4606552810d33a63a5efa2329ebf6c2e3b0d5f53ba7711bd5a6","prev_hash":"53867d08a15b3b9038127d56550feb5aab737dad47e71321f2bb37aa1c0e2c5c","case_id":"EX-20261111-007"},{"seq":50,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"CASE_AUTO_CLEARED","hash":"f3790271a2ceebe82ec9951277bbeb24712123591e6fa9718d64148e03317871","prev_hash":"ba347f268887e4606552810d33a63a5efa2329ebf6c2e3b0d5f53ba7711bd5a6","case_id":"EX-20261110-004"},{"seq":51,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"CASE_AUTO_CLEARED","hash":"bfff09a2163723ebfddaa2023c7ec702c09f1d24dc6e6394ae272b5f5d6eb799","prev_hash":"f3790271a2ceebe82ec9951277bbeb24712123591e6fa9718d64148e03317871","case_id":"EX-20261110-003"},{"seq":52,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"SLA_BREACHED","hash":"eff169ffdfd6179fe9ecbb6d91fbe6adee9d3e4b8fa648d4c868aa385eb13fb0","prev_hash":"bfff09a2163723ebfddaa2023c7ec702c09f1d24dc6e6394ae272b5f5d6eb799","case_id":"EX-20261109-002"},{"seq":53,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"CASE_APPROVED","hash":"10ded7706246f1768b375d97847bdee0b66ff6993172f0e9d5517bfeaaf62b85","prev_hash":"eff169ffdfd6179fe9ecbb6d91fbe6adee9d3e4b8fa648d4c868aa385eb13fb0","case_id":"EX-20261112-006"},{"seq":54,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"CASE_APPROVED","hash":"a8fb6229c973f84077df1ad587ac966027fdd5595b603d2be567e11bc6192a18","prev_hash":"10ded7706246f1768b375d97847bdee0b66ff6993172f0e9d5517bfeaaf62b85","case_id":"EX-20261112-003"},{"seq":55,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"CASE_APPROVED","hash":"fbdd1f79e5a3668d610a2458ed588b4a34ce4024794958b943ced3823aed4084","prev_hash":"a8fb6229c973f84077df1ad587ac966027fdd5595b603d2be567e11bc6192a18","case_id":"EX-20261112-010"},{"seq":56,"ts":"2026-11-13T06:46:17+00:00","actor":"priya","role":"analyst","action":"CASE_APPROVED","hash":"2020ecbda24e488815641d305feb42b594cfc85257917a7eb280b58d7dbbae81","prev_hash":"fbdd1f79e5a3668d610a2458ed588b4a34ce4024794958b943ced3823aed4084","case_id":"EX-20261112-005"},{"seq":57,"ts":"2026-11-13T06:46:28+00:00","actor":"priya","role":"analyst","action":"AI_CALL","hash":"4bbe3f1dd4ea61574c49ab18dbd8ea5b88e38af448f16d3759b542df39ff81bc","prev_hash":"2020ecbda24e488815641d305feb42b594cfc85257917a7eb280b58d7dbbae81","case_id":"EX-20261113-001"},{"seq":58,"ts":"2026-11-13T06:46:28+00:00","actor":"priya","role":"analyst","action":"AI_CALL","hash":"32a3116dbeddd02feb5f231cac376351b290cf5e367157273d43ef87c1963215","prev_hash":"4bbe3f1dd4ea61574c49ab18dbd8ea5b88e38af448f16d3759b542df39ff81bc","case_id":"EX-20261113-002"},{"seq":59,"ts":"2026-11-13T06:46:28+00:00","actor":"priya","role":"analyst","action":"AI_CALL","hash":"ff46f1581c4eedfd3edf1b42e79d7819518b1cfc9366a7e4e8a39f067d837ed6","prev_hash":"32a3116dbeddd02feb5f231cac376351b290cf5e367157273d43ef87c1963215","case_id":"EX-20261113-003"},{"seq":60,"ts":"2026-11-13T06:46:28+00:00","actor":"priya","role":"analyst","action":"AI_CALL","hash":"023f759f3dc14c18cafc2df0a4db81932e4b897ee755ec7ae2744566c0f7377a","prev_hash":"ff46f1581c4eedfd3edf1b42e79d7819518b1cfc9366a7e4e8a39f067d837ed6","case_id":"EX-20261113-004"},{"seq":61,"ts":"2026-11-13T06:46:28+00:00","actor":"priya","role":"analyst","action":"AI_CALL","hash":"b8a99fa9cea6c9a1fabd4c00740e1cea49dde6d62f1831012e6c9347631e18e5","prev_hash":"023f759f3dc14c18cafc2df0a4db81932e4b897ee755ec7ae2744566c0f7377a","case_id":"EX-20261113-005"},{"seq":62,"ts":"2026-11-13T06:46:28+00:00","actor":"priya","role":"analyst","action":"AI_CALL","hash":"77725d61280aaf91c2f11191dab16e0e0bb60d75f9481f417edb3970d93237a3","prev_hash":"b8a99fa9cea6c9a1fabd4c00740e1cea49dde6d62f1831012e6c9347631e18e5","case_id":"EX-20261113-006"},{"seq":63,"ts":"2026-11-13T06:46:28+00:00","actor":"priya","role":"analyst","action":"AI_CALL","hash":"8dc42ae8c17d8702446dd586cff5c2d5725dbfc6ad2f0771c915654ad8cfc024","prev_hash":"77725d61280aaf91c2f11191dab16e0e0bb60d75f9481f417edb3970d93237a3","case_id":"EX-20261113-007"},{"seq":64,"ts":"2026-11-13T06:46:28+00:00","actor":"priya","role":"analyst","action":"AI_CALL","hash":"d8427c3e916ef45b4df7a3b79f50452f227ea2a5e89cb528809e1d06a21843fd","prev_hash":"8dc42ae8c17d8702446dd586cff5c2d5725dbfc6ad2f0771c915654ad8cfc024","case_id":"EX-20261113-008"},{"seq":65,"ts":"2026-11-13T06:46:28+00:00","actor":"priya","role":"analyst","action":"AI_CALL","hash":"244d5809271f2f0ad44148a406da5fdf4ef51510a8022e8a0199dbfe3fd776a9","prev_hash":"d8427c3e916ef45b4df7a3b79f50452f227ea2a5e89cb528809e1d06a21843fd","case_id":"EX-20261113-009"},{"seq":66,"ts":"2026-11-13T06:46:28+00:00","actor":"priya","role":"analyst","action":"AI_CALL","hash":"cde3a343115f61c355294994b2529f8a61783f1c8c9de85c176376ba15663d85","prev_hash":"244d5809271f2f0ad44148a406da5fdf4ef51510a8022e8a0199dbfe3fd776a9","case_id":"EX-20261113-010"},{"seq":67,"ts":"2026-11-13T06:46:28+00:00","actor":"priya","role":"analyst","action":"AI_CALL","hash":"a47168304818152c3f3ec90ca83ad93daace3c98d8b7a9afa4c7cdde13a9e064","prev_hash":"cde3a343115f61c355294994b2529f8a61783f1c8c9de85c176376ba15663d85","case_id":"EX-20261113-011"},{"seq":68,"ts":"2026-11-13T06:46:28+00:00","actor":"priya","role":"analyst","action":"AI_CALL","hash":"027225c8d4b67bcfe2614ad418344696393fd07d966d9d295a5a07e250de35e1","prev_hash":"a47168304818152c3f3ec90ca83ad93daace3c98d8b7a9afa4c7cdde13a9e064","case_id":"EX-20261113-012"},{"seq":69,"ts":"2026-11-13T06:46:28+00:00","actor":"priya","role":"analyst","action":"AI_CALL","hash":"a5b297ef52cd5bc7573e42792739aafa46696fb97025d688e0b8470593c5b2f4","prev_hash":"027225c8d4b67bcfe2614ad418344696393fd07d966d9d295a5a07e250de35e1","case_id":"EX-20261113-013"},{"seq":70,"ts":"2026-11-13T06:46:28+00:00","actor":"priya","role":"analyst","action":"CASE_AUTO_CLEARED","hash":"289452c515c62a340d1ec1c0540414058e0ea0e3b0a81b9398ae1dad2a984364","prev_hash":"a5b297ef52cd5bc7573e42792739aafa46696fb97025d688e0b8470593c5b2f4","case_id":"EX-20261112-003"},{"seq":71,"ts":"2026-11-13T06:46:28+00:00","actor":"priya","role":"analyst","action":"CASE_AUTO_CLEARED","hash":"ff935e6282d002aa2a1103540bca49d184e5d966ebc2271c8f883c50b4595d0c","prev_hash":"289452c515c62a340d1ec1c0540414058e0ea0e3b0a81b9398ae1dad2a984364","case_id":"EX-20261110-007"}],"audit_total_entries":71,"users":[{"name":"priya","role":"analyst"},{"name":"ann","role":"approver"},{"name":"tom","role":"approver"},{"name":"mei","role":"viewer"}]};
+
+/* ---------------- vocabulary ---------------- */
+const CAUSE = {
+  MISSING_TRADE: 'Missing trade', TIMING: 'Late settlement', PRICE_MISMATCH: 'Price mismatch',
+  DIVIDEND: 'Dividend', FX_DIFFERENCE: 'FX rate difference', STOCK_SPLIT: 'Stock split', UNKNOWN: 'Unexplained',
+};
+const CAUSE_ORDER = ['MISSING_TRADE', 'TIMING', 'PRICE_MISMATCH', 'DIVIDEND', 'FX_DIFFERENCE', 'STOCK_SPLIT', 'UNKNOWN'];
+const KIND = {
+  PRICE: 'Price', QUANTITY: 'Quantity', CASH_MISSING_IN_BOOK: 'Cash not in book',
+  CASH_MISSING_AT_CUSTODIAN: 'Cash not at custodian', CASH_AMOUNT: 'Cash amount',
+};
+const STATUS = { PENDING: 'Awaiting decision', APPROVED: 'Approved', REJECTED: 'Rejected', RECLASSIFIED: 'Reclassified' };
+const STATUS_SHORT = { PENDING: 'Awaiting', APPROVED: 'Approved', REJECTED: 'Rejected', RECLASSIFIED: 'Reclassified' };
+const STATUS_ICON = { PENDING: 'i-pending', APPROVED: 'i-pass', REJECTED: 'i-rejected', RECLASSIFIED: 'i-reclass' };
+const CHECK_ICON = { PASS: 'i-pass', WARN: 'i-warn', FAIL: 'i-fail' };
+const CHECK_WORD = { PASS: 'Pass', WARN: 'Warning', FAIL: 'Fail' };
+const ACTION = {
+  AI_CALL: 'AI second opinion', CASE_ESCALATED: 'Escalated', CASE_APPROVED: 'Approved', CASE_REJECTED: 'Rejected',
+  CASE_RECLASSIFIED: 'Reclassified', SLA_BREACHED: 'SLA breached', CASE_AUTO_CLEARED: 'Cleared automatically',
+  DAY_SIGNED_OFF: 'NAV signed off', SIGN_OFF_BLOCKED: 'Sign-off blocked', PERMISSION_DENIED: 'Permission denied',
+};
+
+/* ---------------- helpers ---------------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const fmtCache = new Map();
+function nf(min, max, sign) {
+  const k = `${min}|${max}|${sign}`;
+  if (!fmtCache.has(k)) fmtCache.set(k, new Intl.NumberFormat('en-GB', { minimumFractionDigits: min, maximumFractionDigits: max, signDisplay: sign ? 'exceptZero' : 'auto' }));
+  return fmtCache.get(k);
+}
+const minus = (s) => s.replace(/-/g, '−');
+const money = (v, sign = false) => (v == null ? '—' : minus(nf(2, 2, sign).format(v)));
+const bp = (v) => minus(nf(2, 2, true).format(v)) + ' bp';
+const qty = (v, sign = false) => (v == null ? '—' : minus(nf(0, 0, sign).format(v)));
+const price = (v, sign = false) => (v == null ? '—' : minus(nf(4, 4, sign).format(v)));
+const ratio = (v) => nf(2, 2, false).format(v);
+const icon = (id, cls = 'i') => `<svg class="${cls}" aria-hidden="true"><use href="#${id}"/></svg>`;
+const dayLabel = (iso, opts = { weekday: 'short', day: 'numeric', month: 'short' }) =>
+  new Date(iso + 'T00:00:00Z').toLocaleDateString('en-GB', { ...opts, timeZone: 'UTC' });
+const timeLabel = (ts) => ts.slice(11, 19) + ' UTC';
+const roleOf = (name) => (D.users.find((u) => u.name === name) || {}).role || '';
+function statusBadge(status, short = false) {
+  return `<span class="st st-${status}">${icon(STATUS_ICON[status])}${(short ? STATUS_SHORT : STATUS)[status]}</span>`;
+}
+function caseBtn(id, extra = '') {
+  return `<button type="button" class="linkbtn idbtn" data-open="${esc(id)}"${extra}>${esc(id)}</button>`;
+}
+function secName(c) { return c.security_id ? `${c.security_name} (${c.security_id})` : 'No security id from custodian'; }
+function secShort(c) { return c.security_id ? c.security_name : 'No security id'; }
+
+/* the cause a person would read off the case right now (mirrors ledger.current_category) */
+function currentCause(c) {
+  if (c.resolved_category) return c.resolved_category;
+  if (c.final_category) return c.final_category;
+  if (c.ai_status === 'ACCEPTED' && c.ai_category) return c.ai_category;
+  return c.category;
+}
+const byImpact = (a, b) => Math.abs(b.nav_impact) - Math.abs(a.nav_impact);
+
+/* ---------------- state ---------------- */
+let S;
+const prefs = { demo: false };
+function freshState(user = 'priya') {
+  const clone = (x) => JSON.parse(JSON.stringify(x));
+  return {
+    cases: clone(D.open_cases), cleared: clone(D.cleared_today), audit: clone(D.audit_tail),
+    auditCount: D.audit_total_entries, user, openId: null, filter: 'all', query: '',
+    signedOff: null, wasReady: null, firstQueue: true, armed: null,
+  };
+}
+const user = () => D.users.find((u) => u.name === S.user);
+const role = () => user().role;
+const canDecide = () => role() === 'analyst' || role() === 'approver';
+const caseById = (id) => S.cases.find((c) => c.case_id === id);
+
+function appendAudit(action, payload) {
+  const prev = S.audit[S.audit.length - 1];
+  const entry = {
+    seq: S.auditCount + 1, ts: new Date().toISOString().replace(/\.\d+Z$/, '+00:00'),
+    actor: S.user, role: role(), action, case_id: payload.case_id || '', prev_hash: prev.hash, hash: '', payload,
+  };
+  S.auditCount += 1;
+  S.audit.push(entry);
+  if (window.crypto && crypto.subtle) {
+    const body = new TextEncoder().encode(entry.prev_hash + JSON.stringify({ seq: entry.seq, ts: entry.ts, actor: entry.actor, role: entry.role, action, payload }));
+    crypto.subtle.digest('SHA-256', body).then((buf) => {
+      entry.hash = [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+      renderChain();
+    }).catch(() => {});
+  }
+  return entry;
+}
+
+/* release conditions, in the order the server checks them (review.sign_off) */
+function release(forUser = S.user) {
+  const open = S.cases.filter((c) => !c.cleared_on);
+  const pending = open.filter((c) => c.status === 'PENDING').sort(byImpact);
+  const material = open.filter((c) => c.material);
+  const matBlocked = material.filter((c) => !['APPROVED', 'RECLASSIFIED'].includes(c.status));
+  const escalated = open.filter((c) => c.escalated);
+  const escUnconfirmed = escalated.filter((c) => c.reviewed_role !== 'approver');
+  const own = (u) => [...S.cases, ...S.cleared].filter((c) => c.reviewed_by === u).map((c) => c.case_id);
+  const ready = !pending.length && !matBlocked.length && !escUnconfirmed.length;
+  const signers = D.users.filter((u) => u.role === 'approver' && own(u.name).length === 0).map((u) => u.name);
+  return { open, pending, material, matBlocked, escalated, escUnconfirmed, own: own(forUser), ready, signers };
+}
+
+/* ---------------- header ---------------- */
+function renderHeader() {
+  $('#fundline').innerHTML = `${esc(D.fund.name)}, ${esc(D.fund.base_currency)}, ${esc(dayLabel(D.fund.as_of, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }))}` +
+    (prefs.demo ? '<span class="demo-tag">DEMO</span>' : '');
+  const sel = $('#user-select');
+  if (!sel.options.length) {
+    sel.innerHTML = D.users.map((u) => `<option value="${esc(u.name)}">${esc(u.name)} (${esc(u.role)})</option>`).join('');
+  }
+  sel.value = S.user;
+  const chip = $('#role-chip');
+  chip.textContent = role() === 'viewer' ? 'read-only' : role();
+  chip.dataset.role = role();
+  $('#demo-banner').hidden = !prefs.demo;
+  $('#demo-toggle').setAttribute('aria-pressed', String(prefs.demo));
+}
+
+/* ---------------- overview ---------------- */
+let navTweened = false;
+function renderOverview() {
+  const n = D.nav;
+  const r = release();
+  const trendToday = D.mi.trend[D.mi.trend.length - 1];
+  $('#run-line').textContent = `Today's run: ${D.run.cash_matches} cash matches, ${D.run.breaks} breaks, ${r.open.length} open cases (${trendToday.new_cases} new), ${S.cleared.length} cleared automatically.`;
+  const change = n.nav_per_share - n.prior_nav_per_share;
+  $('#navstrip').innerHTML = `
+    <div><dt>Net asset value</dt><dd><span class="big">${money(n.nav)}</span><span class="ccy">${esc(D.fund.base_currency)}</span></dd></div>
+    <div><dt>NAV per share</dt><dd><span class="big" aria-hidden="true" id="nps">${nf(6, 6).format(navTweened ? n.nav_per_share : n.prior_nav_per_share)}</span>
+      <span class="vh">${nf(6, 6).format(n.nav_per_share)}</span>
+      <span class="move">${minus(nf(6, 6, true).format(change))} (${minus(nf(2, 2, true).format(n.movement * 100))}%) from ${nf(6, 6).format(n.prior_nav_per_share)}</span></dd></div>
+    <div><dt>Gross assets</dt><dd class="mid">${money(n.gross_assets)}</dd></div>
+    <div><dt>Cash</dt><dd class="mid">${money(n.cash)}</dd></div>
+    <div><dt>Liabilities</dt><dd class="mid">${money(n.liabilities)}</dd></div>
+    <div><dt>Open NAV impact</dt><dd class="mid">${money(r.open.reduce((s, c) => s + c.nav_impact, 0), true)}<span class="move">${r.open.length} open cases, net</span></dd></div>`;
+  if (!navTweened) { navTweened = true; tweenNav(); }
+
+  renderBand($('#band-ov'), 'ov');
+
+  // impact ranking
+  const rows = [...r.open].sort(byImpact);
+  const SCALE = 2; // bp either side
+  const thr = 50 / SCALE; // 1 bp in % of the half-width
+  $('#impact-meta').textContent = `${rows.length} cases`;
+  $('#impact-table').innerHTML = `
+    <caption class="vh">Open cases ranked by absolute NAV impact in basis points</caption>
+    <thead><tr><th scope="col">Case</th><th scope="col">Cause</th><th scope="col">Status</th>
+      <th scope="col"><span class="axis" aria-hidden="true"><span>−2 bp</span><span>0</span><span>+2 bp</span></span><span class="vh">Impact bar</span></th>
+      <th scope="col" class="num">bp</th><th scope="col" class="num">USD</th></tr></thead>
+    <tbody>${rows.map((c) => {
+      const w = Math.min(Math.abs(c.nav_impact_bp) / SCALE, 1) * 50;
+      const side = c.nav_impact_bp < 0 ? 'neg' : 'pos';
+      return `<tr>
+        <th scope="row" style="font-weight:600;text-align:start">${caseBtn(c.case_id)}<span class="sub">${esc(secShort(c))}</span></th>
+        <td>${esc(CAUSE[currentCause(c)])}${c.material ? '<span class="sub">Material</span>' : ''}</td>
+        <td>${statusBadge(c.status, true)}</td>
+        <td class="barcell" aria-hidden="true"><div class="scale">
+          <span class="thr" style="left:${50 - thr}%"></span><span class="thr" style="left:${50 + thr}%"></span>
+          <span class="bar ${side}${c.material ? ' mat' : ''}" style="width:${w ? Math.max(w, 0.6) : 0}%"></span></div></td>
+        <td class="num">${bp(c.nav_impact_bp)}</td>
+        <td class="num">${money(c.nav_impact, true)}</td></tr>`;
+    }).join('')}</tbody>`;
+
+  // checks
+  const counts = D.checks.reduce((m, c) => ((m[c.status] = (m[c.status] || 0) + 1), m), {});
+  $('#checks-meta').textContent = ['PASS', 'WARN', 'FAIL'].filter((k) => counts[k]).map((k) => `${counts[k]} ${CHECK_WORD[k].toLowerCase()}${counts[k] > 1 && k !== 'PASS' ? 's' : ''}`).join(', ');
+  $('#checks').innerHTML = D.checks.map((c) => `
+    <li><span class="st st-${c.status}">${icon(CHECK_ICON[c.status])}${CHECK_WORD[c.status]}</span>
+      <span class="name">${esc(c.name)}</span><span class="chk-detail">${esc(c.detail)}</span></li>`).join('');
+
+  // ageing
+  const buckets = [['0-1', '0–1 days'], ['2-5', '2–5 days'], ['>5', 'Over 5 days']];
+  const maxB = Math.max(1, ...buckets.map(([k]) => r.open.filter((c) => c.age_bucket === k).length));
+  $('#ageing').innerHTML = `<caption class="vh">Open cases by age</caption>
+    <thead><tr><th scope="col">Age</th><th scope="col" class="num">Cases</th><th scope="col"><span class="vh">Share</span></th><th scope="col" class="num">Net USD</th></tr></thead>
+    <tbody>${buckets.map(([k, label]) => {
+      const cs = r.open.filter((c) => c.age_bucket === k);
+      return `<tr><th scope="row" style="font-weight:500;text-align:start">${label}</th><td class="num"><strong>${cs.length}</strong></td>
+        <td style="width:40%"><div class="meter" aria-hidden="true"><span style="width:${(cs.length / maxB) * 100}%"></span></div></td>
+        <td class="num">${cs.length ? money(cs.reduce((s, c) => s + c.nav_impact, 0), true) : '<span class="muted">none</span>'}</td></tr>`;
+    }).join('')}</tbody>`;
+
+  // watch list
+  const sla = r.open.filter((c) => c.sla_breached);
+  const disagree = r.open.filter((c) => c.ai_flag && c.status === 'PENDING');
+  const list = (cs) => cs.length ? cs.map((c) => caseBtn(c.case_id)).join(' ') : '<span class="muted">none</span>';
+  $('#watch').innerHTML = `<caption class="vh">Cases that need attention</caption><tbody>
+    <tr><th scope="row">Awaiting decision</th><td class="num">${r.pending.length}</td><td>${r.pending.length > 2 ? `<button type="button" class="linkbtn" data-filter="pending">Show in queue</button>` : list(r.pending)}</td></tr>
+    <tr><th scope="row">SLA breaches</th><td class="num">${sla.length}</td><td>${list(sla)}${sla.map((c) => `<span class="sub">${c.age_days} days open against ${c.sla_days}</span>`).join('')}</td></tr>
+    <tr><th scope="row">Escalated</th><td class="num">${r.escalated.length}</td><td>${list(r.escalated)}${r.escalated.map((c) => `<span class="sub">${esc(c.escalation_reason)}</span>`).join('')}</td></tr>
+    <tr><th scope="row">Material</th><td class="num">${r.material.length}</td><td>${list(r.material)}</td></tr>
+    <tr><th scope="row">AI disagrees, undecided</th><td class="num">${disagree.length}</td><td>${list(disagree)}</td></tr>
+  </tbody>`;
+
+  // cleared
+  $('#cleared').innerHTML = S.cleared.length ? `<ul style="list-style:none;margin:0;padding:0;display:grid;gap:10px">${S.cleared.map((c) => `
+    <li><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><strong class="idbtn">${esc(c.case_id)}</strong><span class="st st-APPROVED">${icon('i-pass')}Cleared</span></div>
+      <span class="sub">${esc(c.security_name)}: ${esc(CAUSE[c.resolved_category])}, after ${c.age_days} business day${c.age_days === 1 ? '' : 's'}</span>
+      <span class="sub">${esc(c.clear_reason)}</span></li>`).join('')}</ul>` : '<p class="muted">Nothing cleared today.</p>';
+
+  // trend
+  const t = D.mi.trend;
+  const maxT = Math.max(...t.map((d) => d.open_cases));
+  $('#trend').innerHTML = `
+    <table class="vh"><caption>Open cases at each day's run</caption><thead><tr><th scope="col">Day</th><th scope="col">Open</th><th scope="col">New</th><th scope="col">Cleared</th></tr></thead>
+      <tbody>${t.map((d) => `<tr><th scope="row">${esc(dayLabel(d.as_of))}</th><td>${d.open_cases}</td><td>${d.new_cases}</td><td>${d.cleared_cases}</td></tr>`).join('')}</tbody></table>
+    <div class="trend" aria-hidden="true">${t.map((d) => `<div class="col"><span class="v">${d.open_cases}</span><span class="b" style="height:${(d.open_cases / maxT) * 78}px"></span></div>`).join('')}</div>
+    <div class="trend-axis" aria-hidden="true">${t.map((d) => `<span><b>${esc(dayLabel(d.as_of, { weekday: 'short' }))}</b>+${d.new_cases} −${d.cleared_cases}</span>`).join('')}</div>
+    <p class="muted" style="padding:0 12px 10px;font-size:var(--fs-xs)">New and cleared per day. Average ${ratio(D.mi.avg_days_to_resolve)} business days to resolve.</p>`;
+}
+
+function tweenNav() {
+  const el = $('#nps');
+  const from = D.nav.prior_nav_per_share, to = D.nav.nav_per_share;
+  if (!el) return;
+  if (reduceMotion.matches) { el.textContent = nf(6, 6).format(to); return; }
+  const t0 = performance.now(), dur = 700;
+  const step = (now) => {
+    const p = Math.min((now - t0) / dur, 1);
+    const e = 1 - Math.pow(1 - p, 3);
+    const cur = $('#nps');
+    if (cur) cur.textContent = nf(6, 6).format(from + (to - from) * e);
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+/* the release band, shared by overview and sign-off */
+function renderBand(el, where) {
+  const r = release();
+  const state = S.signedOff ? 'RELEASED' : r.ready ? 'READY' : 'BLOCKED';
+  el.dataset.state = state;
+  const hid = `h-band-${where}`;
+  let glyph, title, lines = [], action = '';
+  if (state === 'RELEASED') {
+    glyph = `<svg class="draw" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="12" fill="var(--pass)"/><path class="tick" d="M7.5 13.5l3.8 3.8 7.2-8" fill="none" stroke="var(--surface)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    title = `NAV released for ${dayLabel(D.fund.as_of, { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    lines.push(`Signed off by ${esc(S.signedOff.by)} (approver) at ${esc(timeLabel(S.signedOff.ts))}. Audit entry #${S.signedOff.seq}.`);
+  } else if (state === 'READY') {
+    glyph = `<svg class="draw" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="12" fill="var(--pass)"/><path class="tick" d="M7.5 13.5l3.8 3.8 7.2-8" fill="none" stroke="var(--surface)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    title = 'Ready for sign-off';
+    lines.push('Every case is decided, material cases are approved and escalated cases were decided by an approver.');
+    lines.push(r.signers.length ? `Approvers who can sign off: ${r.signers.map(esc).join(', ')} (decided no case today).` : 'No approver is left who decided no case. Four-eyes cannot be met.');
+    if (where === 'ov') action = `<a class="btn primary" href="#signoff">Go to sign-off <span class="hint" aria-hidden="true"><kbd>G</kbd><kbd>S</kbd></span></a>`;
+  } else {
+    glyph = `<svg viewBox="0 0 16 16" aria-hidden="true" style="color:var(--fail)"><use href="#i-fail"/></svg>`;
+    title = 'NAV release blocked';
+    if (r.pending.length) lines.push(`<span>${r.pending.length} case${r.pending.length > 1 ? 's' : ''} awaiting a decision:</span> ${r.pending.map((c) => caseBtn(c.case_id)).join(' ')}`);
+    if (r.matBlocked.length) lines.push(`<span>Material, not approved:</span> ${r.matBlocked.map((c) => caseBtn(c.case_id)).join(' ')}`);
+    if (r.escUnconfirmed.length) lines.push(`<span>Escalated, needs an approver's decision:</span> ${r.escUnconfirmed.map((c) => caseBtn(c.case_id)).join(' ')}`);
+    if (where === 'ov') action = `<button type="button" class="btn" data-filter="pending">Work the queue <span class="hint" aria-hidden="true"><kbd>G</kbd><kbd>Q</kbd></span></button>`;
+  }
+  el.innerHTML = `<span class="band-glyph">${glyph}</span>
+    <div><h2 id="${hid}"><span class="vh">${state === 'BLOCKED' ? 'Blocked: ' : state === 'READY' ? 'Ready: ' : 'Released: '}</span>${title}</h2>
+      <ul class="lines">${lines.map((l) => `<li>${l}</li>`).join('')}</ul></div>
+    <div class="actions">${action}</div>`;
+}
+
+/* ---------------- queue ---------------- */
+const SEGMENTS = [
+  ['all', 'All', () => true],
+  ['pending', 'Awaiting', (c) => c.status === 'PENDING'],
+  ['approver', 'Material or escalated', (c) => c.material || c.escalated],
+  ['ai', 'AI disagrees', (c) => !!c.ai_flag],
+];
+function flagsHtml(c) {
+  const f = [];
+  if (c.material) f.push(['M', 'Material']);
+  if (c.escalated) f.push(['E', 'Escalated']);
+  if (c.sla_breached) f.push(['S', 'SLA breached']);
+  if (c.ai_flag) f.push(['AI', 'AI disagrees with rules']);
+  return f.map(([k, w]) => `<span class="flag" data-f="${k}" title="${w}"><span aria-hidden="true">${k}</span><span class="vh">${w}</span></span>`).join('') || '<span class="vh">None</span>';
+}
+function rowCells(c) {
+  return `
+    <td class="flags">${flagsHtml(c)}</td>
+    <th scope="row" data-value="${esc(c.case_id)}"><button type="button" class="rowbtn" tabindex="-1" data-id="${esc(c.case_id)}">${esc(c.case_id)}</button><span class="sub">${esc(secShort(c))}</span></th>
+    <td class="num" data-value="${Math.abs(c.nav_impact)}">${bp(c.nav_impact_bp)}<span class="sub">${money(c.nav_impact, true)}</span></td>
+    <td class="num" data-value="${c.age_days}">${c.age_days}<span class="vh"> business days</span><span class="sub">d</span></td>
+    <td>${statusBadge(c.status, true)}<span class="sub">${esc(CAUSE[currentCause(c)])}</span></td>`;
+}
+function buildQueue() {
+  const body = $('#queue-body');
+  body.innerHTML = [...S.cases].sort(byImpact).map((c, i) => `<tr data-id="${esc(c.case_id)}" style="--i:${i}">${rowCells(c)}</tr>`).join('') +
+    `<tr class="empty-row" hidden><td colspan="5">No cases match. Clear the filter with <kbd>Esc</kbd>.</td></tr>`;
+  for (const th of $$('#queue thead th')) th.removeAttribute('aria-sort');
+  $('#queue thead th[data-key="impact"]').setAttribute('aria-sort', 'descending');
+  if (S.firstQueue) {
+    setTimeout(() => $('#queue').classList.remove('stagger'), 260);
+    S.firstQueue = false;
+  } else $('#queue').classList.remove('stagger');
+  applyFilter();
+}
+function updateRow(id, flash = false) {
+  const tr = $(`#queue-body tr[data-id="${CSS.escape(id)}"]`);
+  if (!tr) return;
+  const hadFocus = tr.contains(document.activeElement);
+  const tab = tr.querySelector('.rowbtn').tabIndex;
+  tr.innerHTML = rowCells(caseById(id));
+  tr.querySelector('.rowbtn').tabIndex = tab;
+  if (hadFocus) tr.querySelector('.rowbtn').focus();
+  markOpenRow();
+  if (flash && !reduceMotion.matches) { tr.classList.remove('flash'); void tr.offsetWidth; tr.classList.add('flash'); }
+}
+function renderSegments() {
+  $('#seg').innerHTML = SEGMENTS.map(([k, label, fn]) =>
+    `<button type="button" data-seg="${k}" aria-pressed="${S.filter === k}">${label}<span class="n"><span class="vh">: </span>${S.cases.filter(fn).length}</span></button>`).join('');
+  const r = release();
+  $('#queue-meta').textContent = `${S.cases.length} open, ${r.pending.length} awaiting`;
+}
+function visibleRows() { return $$('#queue-body tr[data-id]').filter((tr) => !tr.hidden); }
+function applyFilter() {
+  const fn = SEGMENTS.find((s) => s[0] === S.filter)[2];
+  const q = S.query.trim().toLowerCase();
+  let n = 0;
+  for (const tr of $$('#queue-body tr[data-id]')) {
+    const c = caseById(tr.dataset.id);
+    const hay = `${c.case_id} ${c.security_id} ${c.security_name} ${CAUSE[currentCause(c)]} ${CAUSE[c.category]} ${STATUS[c.status]}`.toLowerCase();
+    tr.hidden = !(fn(c) && (!q || hay.includes(q)));
+    if (!tr.hidden) n++;
+  }
+  $('#queue-body .empty-row').hidden = n > 0;
+  ensureRoving();
+}
+function ensureRoving() {
+  const rows = visibleRows();
+  const cur = $$('#queue-body .rowbtn').find((b) => b.tabIndex === 0);
+  if (cur && !cur.closest('tr').hidden) return;
+  $$('#queue-body .rowbtn').forEach((b) => (b.tabIndex = -1));
+  const target = rows.find((tr) => tr.dataset.id === S.openId) || rows[0];
+  if (target) target.querySelector('.rowbtn').tabIndex = 0;
+}
+function moveCursor(delta, absolute) {
+  const rows = visibleRows();
+  if (!rows.length) return;
+  const btns = rows.map((tr) => tr.querySelector('.rowbtn'));
+  let i = btns.findIndex((b) => b === document.activeElement);
+  if (i < 0) i = btns.findIndex((b) => b.tabIndex === 0);
+  if (i < 0) i = 0;
+  let next = absolute === 'first' ? 0 : absolute === 'last' ? btns.length - 1 : Math.max(0, Math.min(btns.length - 1, i + delta));
+  if (i === -1 && delta) next = 0;
+  $$('#queue-body .rowbtn').forEach((b) => (b.tabIndex = -1));
+  btns[next].tabIndex = 0;
+  btns[next].focus();
+  btns[next].closest('tr').scrollIntoView({ block: 'nearest' });
+}
+function markOpenRow() {
+  for (const tr of $$('#queue-body tr[data-id]')) {
+    const open = tr.dataset.id === S.openId;
+    tr.classList.toggle('is-open', open);
+    const b = tr.querySelector('.rowbtn');
+    if (open) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
+  }
+}
+
+/* sorting: header buttons, rows moved not rebuilt */
+const collator = new Intl.Collator('en-GB', { numeric: true, sensitivity: 'base' });
+function sortQueue(th) {
+  const key = th.dataset.key;
+  const dir = th.getAttribute('aria-sort') === 'ascending' ? 'descending' : 'ascending';
+  for (const h of $$('#queue thead th')) h.removeAttribute('aria-sort');
+  th.setAttribute('aria-sort', dir);
+  const idx = th.cellIndex;
+  const f = dir === 'ascending' ? 1 : -1;
+  const body = $('#queue-body');
+  const rows = $$('#queue-body tr[data-id]');
+  const val = (tr) => tr.cells[idx].dataset.value;
+  rows.sort((a, b) => f * (key === 'case' ? collator.compare(val(a), val(b)) : Number(val(a)) - Number(val(b))));
+  const empty = $('#queue-body .empty-row');
+  for (const tr of rows) (body.moveBefore ? body.moveBefore(tr, empty) : body.insertBefore(tr, empty));
+  $('#sort-status').textContent = `Sorted by ${th.textContent.trim()}, ${dir}, ${rows.length} rows`;
+}
+function wireSort() {
+  const table = $('#queue');
+  if ('CommandEvent' in window) {
+    table.addEventListener('command', (e) => { if (e.command === '--sort') sortQueue(e.source.closest('th')); });
+  } else {
+    for (const b of $$('#queue thead th > button')) b.addEventListener('click', () => sortQueue(b.closest('th')));
+  }
+}
+
+/* ---------------- case pane ---------------- */
+let queryTab = 'ai';
+function openCase(id, { focus = null, animate = true } = {}) {
+  if (!caseById(id)) return;
+  const changed = S.openId !== id;
+  S.openId = id;
+  S.armed = null;
+  markOpenRow();
+  renderCase(changed && animate);
+  renderEvidence();
+  const tr = $(`#queue-body tr[data-id="${CSS.escape(id)}"]`);
+  if (tr && !tr.hidden) {
+    $$('#queue-body .rowbtn').forEach((b) => (b.tabIndex = -1));
+    tr.querySelector('.rowbtn').tabIndex = 0;
+    tr.scrollIntoView({ block: 'nearest' });
+  }
+  if (focus === 'case') $('#h-case')?.focus();
+  if (focus === 'row' && tr) tr.querySelector('.rowbtn').focus();
+}
+function renderCase(animate = false) {
+  const c = caseById(S.openId);
+  const body = $('#case-body');
+  if (!c) { body.innerHTML = '<p class="muted">Pick a case from the queue.</p>'; $('#decision').innerHTML = ''; return; }
+  const rows = visibleRows();
+  const pos = rows.findIndex((tr) => tr.dataset.id === c.case_id);
+  $('#case-pos').textContent = pos >= 0 ? `${pos + 1} of ${rows.length} in queue` : '';
+  const tags = [];
+  if (c.material) tags.push(`<span class="tag t-M">Material: ${bp(c.nav_impact_bp)} of NAV</span>`);
+  if (c.escalated) tags.push(`<span class="tag t-E">Escalated: ${esc(c.escalation_reason)}</span>`);
+  if (c.sla_breached) tags.push(`<span class="tag t-S">${icon('i-warn')}SLA breached: ${c.age_days} days open against ${c.sla_days}</span>`);
+  tags.push(`<span class="tag">${esc((c.asset_class || 'cash').toLowerCase())}</span>`);
+  tags.push(`<span class="tag">Breaks: ${c.breaks.map((b) => esc(KIND[b.kind])).join(', ')}</span>`);
+  const disagree = c.ai_category && c.ai_category !== c.category;
+  const aiOk = c.ai_status === 'ACCEPTED';
+  const q = queryTab === 'ai' && aiOk ? c.ai_query : c.query_draft;
+  body.innerHTML = `
+    <div>
+      <div class="case-title"><h2 id="h-case" tabindex="-1">${esc(c.case_id)}</h2><span class="sec">${esc(secName(c))}</span></div>
+      <div class="tags">${tags.join('')}</div>
+    </div>
+    <dl class="facts">
+      <div><dt>NAV impact</dt><dd class="num" style="text-align:start">${money(c.nav_impact, true)}<span class="sub">${bp(c.nav_impact_bp)}</span></dd></div>
+      <div><dt>Gross exposure</dt><dd>${money(c.gross_exposure)}</dd></div>
+      <div><dt>Age, business days</dt><dd>${c.age_days}<span class="sub">since ${esc(dayLabel(c.first_seen))}</span></dd></div>
+      <div><dt>SLA</dt><dd>${c.sla_breached ? `<span class="st st-FAIL">${icon('i-fail')}Breached</span>` : `${c.sla_days} days`}<span class="sub">${c.material ? 'material case' : 'standard case'}</span></dd></div>
+      <div><dt>Status</dt><dd>${statusBadge(c.status, true)}${c.final_category ? `<span class="sub">as ${esc(CAUSE[c.final_category])}</span>` : ''}</dd></div>
+    </dl>
+    <section aria-labelledby="h-sugg">
+      <div class="section-h"><h3 id="h-sugg">Suggested cause</h3><span class="meta">Rules first, AI second opinion beside it. The AI never changes a figure.</span></div>
+      ${c.ai_flag ? `<p class="disagree">${icon('i-warn')}${esc(c.ai_flag)}</p>` : disagree ? '' : `<p class="agree">${icon('i-tick')} Rules and AI agree.</p>`}
+      <div class="opinions">
+        <article class="opinion" aria-labelledby="h-rule">
+          <div class="who-says"><span id="h-rule">Rules engine</span><span>deterministic</span></div>
+          <p class="cause">${esc(CAUSE[c.category])}</p>
+          <div class="conf"><span>Confidence ${ratio(c.confidence)}</span><span class="meter" aria-hidden="true"><span style="width:${c.confidence * 100}%"></span></span></div>
+          <p>${esc(c.explanation)}</p>
+        </article>
+        <article class="opinion ai" aria-labelledby="h-ai">
+          <div class="who-says"><span id="h-ai">AI second opinion</span><span>${esc(c.ai_model)}, ${aiOk ? 'passed guardrails' : esc(c.ai_status.toLowerCase())}</span></div>
+          ${aiOk ? `<p class="cause">${esc(CAUSE[c.ai_category])}</p>
+          <div class="conf"><span>Confidence ${ratio(c.ai_confidence)}</span><span class="meter" aria-hidden="true"><span style="width:${c.ai_confidence * 100}%"></span></span></div>
+          <p>${esc(c.ai_explanation)}</p>` : `<p>${esc(c.ai_fallback_reason || 'No AI response; the rule-based output stands.')}</p>`}
+        </article>
+      </div>
+    </section>
+    ${aiOk && c.ai_steps?.length ? `<section aria-labelledby="h-steps">
+      <div class="section-h"><h3 id="h-steps">Investigation steps</h3><span class="meta">from the AI</span></div>
+      <ol class="steps">${c.ai_steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol></section>` : ''}
+    <section aria-labelledby="h-query">
+      <div class="section-h"><h3 id="h-query">Draft custodian query</h3><span class="meta">copy it into your email; nothing is sent from here</span></div>
+      <div class="tabs" role="tablist" aria-label="Draft source">
+        <button type="button" role="tab" id="tab-ai" aria-controls="query-panel" aria-selected="${queryTab === 'ai' && aiOk}" tabindex="${queryTab === 'ai' && aiOk ? 0 : -1}" ${aiOk ? '' : 'disabled'} data-qtab="ai">AI draft</button>
+        <button type="button" role="tab" id="tab-rule" aria-controls="query-panel" aria-selected="${!(queryTab === 'ai' && aiOk)}" tabindex="${queryTab === 'ai' && aiOk ? -1 : 0}" data-qtab="rule">Rule draft</button>
+      </div>
+      <div class="query" role="tabpanel" id="query-panel" aria-labelledby="${queryTab === 'ai' && aiOk ? 'tab-ai' : 'tab-rule'}">
+        <pre id="query-text">${esc(q)}</pre>
+        <span class="copy"><span class="tip" role="status"></span><button type="button" class="btn copy-button" command="--copy" commandfor="query-text" aria-label="Copy draft custodian query" aria-keyshortcuts="y">${icon('i-copy')}<span aria-hidden="true">Copy</span><kbd aria-hidden="true">Y</kbd></button></span>
+      </div>
+    </section>`;
+  if (animate && !reduceMotion.matches) { body.classList.remove('swap'); void body.offsetWidth; body.classList.add('swap'); }
+  renderDecision();
+}
+
+function renderDecision() {
+  const c = caseById(S.openId);
+  const box = $('#decision');
+  if (!c) { box.innerHTML = ''; return; }
+  // keep a half-written note when the bar re-renders for the same case (tab switch, role switch, arming reject)
+  const prevNote = $('#note');
+  const keepNote = prevNote && box.dataset.case === c.case_id ? prevNote.value : '';
+  box.dataset.case = c.case_id;
+  const decided = c.status !== 'PENDING';
+  const stateLine = decided
+    ? `<span>${statusBadge(c.status)}</span><span>${c.final_category ? `as <strong>${esc(CAUSE[c.final_category])}</strong>, ` : ''}by <strong>${esc(c.reviewed_by)}</strong> (${esc(c.reviewed_role)})</span>${c.review_note ? `<span>“${esc(c.review_note)}”</span>` : ''}`
+    : `<span>${statusBadge('PENDING')}</span><span>Nobody has decided this case yet.</span>`;
+  if (S.signedOff) {
+    box.innerHTML = `<h3 id="h-decision" class="vh">Decision</h3><div class="state-line">${stateLine}</div>
+      <p class="readonly">${icon('i-lock')}The NAV for this day is signed off by ${esc(S.signedOff.by)}. Decisions are closed.</p>`;
+    return;
+  }
+  if (!canDecide()) {
+    box.innerHTML = `<h3 id="h-decision" class="vh">Decision</h3><div class="state-line">${stateLine}</div>
+      <p class="readonly">${icon('i-lock')}Read-only. Viewers can see every case and decision but cannot act on them.</p>`;
+    return;
+  }
+  const disagree = c.ai_status === 'ACCEPTED' && c.ai_category && c.ai_category !== c.category;
+  const advice = [];
+  advice.push(`Approve confirms the rule's cause: <strong>${esc(CAUSE[c.category])}</strong>.`);
+  if (disagree) advice.push(`The AI reads it as <strong>${esc(CAUSE[c.ai_category])}</strong>; to record that, reclassify.`);
+  const escNote = c.escalated && role() !== 'approver'
+    ? `<p class="advice esc">${icon('i-warn')} Escalated: an approver must decide this case before sign-off. Your decision is recorded but does not clear the escalation.</p>` : '';
+  const defaultCause = disagree ? c.ai_category : CAUSE_ORDER.find((k) => k !== (c.final_category || c.category));
+  const armed = S.armed;
+  box.innerHTML = `
+    <h3 id="h-decision" class="vh">Decision</h3>
+    <div class="state-line">${stateLine}</div>
+    <p class="advice">${advice.join(' ')}${decided ? ' A new decision replaces this one and is logged separately.' : ''}</p>
+    ${escNote}
+    <div class="decision-row">
+      <div class="note">
+        <label for="note">Note ${armed === 'reject' ? '<strong style="color:var(--fail)">(required to reject)</strong>' : '(required to reject)'}</label>
+        <textarea id="note" rows="1" aria-describedby="note-err" ${armed === 'reject' ? 'aria-required="true"' : ''} placeholder="What you checked, and what you found"></textarea>
+        <p class="err" id="note-err" hidden></p>
+      </div>
+      <div class="actions-row">
+        <button type="button" class="btn primary" id="do-approve" aria-keyshortcuts="a">Approve <kbd aria-hidden="true">A</kbd></button>
+        <button type="button" class="btn danger${armed === 'reject' ? ' armed' : ''}" id="do-reject" aria-keyshortcuts="r">Reject <kbd aria-hidden="true">R</kbd></button>
+        <span class="reclass">
+          <label for="reclass-cause" class="vh">Reclassify as</label>
+          <select id="reclass-cause">${CAUSE_ORDER.map((k) => `<option value="${k}"${k === defaultCause ? ' selected' : ''}>${CAUSE[k]}</option>`).join('')}</select>
+          <button type="button" class="btn" id="do-reclass" aria-keyshortcuts="c">Reclassify <kbd aria-hidden="true">C</kbd></button>
+        </span>
+      </div>
+    </div>`;
+  if (keepNote) $('#note').value = keepNote;
+}
+
+function decide(kind) {
+  const c = caseById(S.openId);
+  if (!c) return;
+  if (!canDecide()) { toast('Read-only: viewers cannot decide cases.'); return; }
+  if (S.signedOff) { toast('The day is signed off. Decisions are closed.'); return; }
+  const noteEl = $('#note');
+  const note = (noteEl?.value || '').trim();
+  let status, final;
+  if (kind === 'approve') { status = 'APPROVED'; final = c.category; }
+  if (kind === 'reject') {
+    if (!note) {
+      S.armed = 'reject';
+      const keep = noteEl?.value || '';
+      renderDecision();
+      $('#note').value = keep;
+      const err = $('#note-err');
+      err.hidden = false; err.innerHTML = `${icon('i-fail')}A rejection needs a note explaining why.`;
+      $('#note').setAttribute('aria-invalid', 'true');
+      $('#note').focus();
+      return;
+    }
+    status = 'REJECTED'; final = null;
+  }
+  if (kind === 'reclass') { status = 'RECLASSIFIED'; final = $('#reclass-cause').value; }
+  const wasReady = release().ready;
+  if (noteEl) noteEl.value = ''; // the note is now part of the decision; do not carry it into the next one
+  const before = { status: c.status, final_category: c.final_category };
+  Object.assign(c, { status, final_category: final, reviewed_by: S.user, reviewed_role: role(), review_note: note });
+  const entry = appendAudit(`CASE_${status}`, { case_id: c.case_id, suggested: c.category, final, before, note, material: c.material, escalated: c.escalated });
+  c.history.push({ seq: entry.seq, ts: entry.ts, actor: S.user, role: role(), action: entry.action, note: note || null, _new: true, final });
+  S.armed = null;
+  toast(`${STATUS[status]} ${c.case_id}${final && status === 'RECLASSIFIED' ? ` as ${CAUSE[final]}` : ''}. Written to the audit log as #${entry.seq}.`);
+  // focus anywhere in the case pane (decision bar or the case heading) is about to be re-rendered away
+  const fromBar = !!(document.activeElement && $('#pane-case').contains(document.activeElement));
+  afterMutation(wasReady);
+  updateRow(c.case_id, true);
+  renderCase(false);
+  renderEvidence();
+  if (fromBar) { const tr = $(`#queue-body tr[data-id="${CSS.escape(c.case_id)}"]`); if (tr && !tr.hidden) tr.querySelector('.rowbtn').focus(); else $('#h-case')?.focus(); }
+}
+
+/* ---------------- evidence pane ---------------- */
+function renderEvidence() {
+  const c = caseById(S.openId);
+  const el = $('#evidence');
+  if (!c) { el.innerHTML = ''; return; }
+  const bk = c.book_position, cu = c.custodian_holding;
+  const diffCell = (b, u, fmt, dp) => {
+    if (b == null || u == null) return '<td class="num">—</td>';
+    const d = Number((u - b).toFixed(dp));
+    return d === 0 ? '<td class="num agree-cell">agrees</td>' : `<td class="num diff-nz">${fmt(d, true)}</td>`;
+  };
+  const posHtml = bk || cu ? `
+    <table class="ev-table">
+      <caption class="vh">Position, book against custodian</caption>
+      <thead><tr><th scope="col"><span class="vh">Field</span></th><th scope="col" class="num">Book</th><th scope="col" class="num">Custodian</th><th scope="col" class="num">Difference</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Quantity</th><td class="num">${qty(bk?.quantity)}</td><td class="num">${qty(cu?.quantity)}</td>${diffCell(bk?.quantity, cu?.quantity, qty, 0)}</tr>
+        <tr><th scope="row">Price (local)</th><td class="num">${price(bk?.price)}</td><td class="num">${price(cu?.price)}</td>${diffCell(bk?.price, cu?.price, price, 4)}</tr>
+      </tbody>
+    </table>${bk?.price_date ? `<p class="sub" style="margin-top:4px">Book price dated ${esc(dayLabel(bk.price_date))}.</p>` : ''}`
+    : '<p class="muted">No position on either side: the custodian sent no security identifier with this payment.</p>';
+  const fmtBy = (kind) => (kind === 'PRICE' ? price : kind === 'QUANTITY' ? qty : money);
+  const breaksHtml = `
+    <table class="ev-table">
+      <caption class="vh">Breaks in this case</caption>
+      <thead><tr><th scope="col">Break</th><th scope="col" class="num">Book</th><th scope="col" class="num">Custodian</th><th scope="col" class="num">Difference</th></tr></thead>
+      <tbody>${c.breaks.map((b) => {
+        const f = fmtBy(b.kind);
+        return `<tr><th scope="row">${esc(b.break_id)}<span class="sub">${esc(KIND[b.kind])}${b.kind.startsWith('CASH') ? ', USD' : ''}</span>${b.reference ? `<span class="sub">Ref ${esc(b.reference)}</span>` : ''}${b.note ? `<span class="sub">“${esc(b.note)}”</span>` : ''}</th>
+          <td class="num">${b.book_value == null ? '<span class="muted">none</span>' : f(b.book_value)}</td>
+          <td class="num">${b.custodian_value == null ? '<span class="muted">none</span>' : f(b.custodian_value)}</td>
+          <td class="num diff-nz">${f(b.difference, true)}</td></tr>`;
+      }).join('')}</tbody>
+    </table>`;
+  const hist = [...c.history].sort((a, b) => a.seq - b.seq);
+  const histHtml = `<ol class="history" id="history">${hist.map((h) => {
+    let act = ACTION[h.action] || h.action;
+    if (h.action === 'AI_CALL' && h.ai_model) act += ` (${esc(h.ai_model)})`;
+    if (h.action === 'CASE_RECLASSIFIED' && h.final) act += ` as ${esc(CAUSE[h.final])}`;
+    const note = Array.isArray(h.note) ? h.note.join('; ') : h.note;
+    const by = h.action === 'AI_CALL' || h.action === 'SLA_BREACHED' || h.action === 'CASE_ESCALATED' ? `during ${esc(h.actor)}'s run` : `${esc(h.actor)}, ${esc(h.role)}`;
+    return `<li class="${h._new ? 'new' : ''}"><span class="seq">#${h.seq}</span><div><span class="act">${act}</span> <span class="by">${by}, ${esc(timeLabel(h.ts))}</span></div>${note ? `<span class="nt">“${esc(note)}”</span>` : ''}</li>`;
+  }).join('')}</ol>`;
+  el.innerHTML = `
+    <section aria-labelledby="h-pos"><div class="section-h"><h3 id="h-pos">Position</h3><span class="meta">${esc(c.security_id || 'no security id')}</span></div>${posHtml}</section>
+    <section aria-labelledby="h-breaks"><div class="section-h"><h3 id="h-breaks">Breaks</h3><span class="meta">${c.breaks.length} on this case</span></div>${breaksHtml}</section>
+    <section aria-labelledby="h-imp"><div class="section-h"><h3 id="h-imp">NAV impact</h3><span class="meta">if the custodian is right</span></div>
+      <dl class="impactbox"><div><dt>Net</dt><dd>${money(c.nav_impact, true)}</dd></div><div><dt>Of NAV</dt><dd>${bp(c.nav_impact_bp)}</dd></div><div><dt>Gross</dt><dd>${money(c.gross_exposure)}</dd></div></dl></section>
+    <section aria-labelledby="h-hist"><div class="section-h"><h3 id="h-hist">Decision history</h3><span class="meta">from the audit log</span></div>${histHtml}</section>`;
+  for (const h of c.history) delete h._new;
+}
+
+/* ---------------- sign-off ---------------- */
+function renderSignoff() {
+  const r = release();
+  const u = user();
+  const n = D.nav;
+  $('#signoff-sub').textContent = `${D.fund.name}, valued ${dayLabel(D.fund.as_of, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}.`;
+  renderBand($('#band-so'), 'so');
+  const counts = D.checks.reduce((m, c) => ((m[c.status] = (m[c.status] || 0) + 1), m), {});
+  $('#navrel-meta').textContent = `checks: ${counts.PASS || 0} pass, ${counts.WARN || 0} warnings, ${counts.FAIL || 0} fail`;
+  $('#navmini').innerHTML = `
+    <div><dt>Net asset value</dt><dd>${money(n.nav)}</dd></div>
+    <div><dt>NAV per share</dt><dd>${nf(6, 6).format(n.nav_per_share)}</dd></div>
+    <div><dt>Movement</dt><dd>${minus(nf(2, 2, true).format(n.movement * 100))}%</dd></div>`;
+
+  const ok = (b) => (b ? 'true' : 'false');
+  const conds = [];
+  conds.push({ ok: ok(!r.pending.length), title: 'No case awaiting a decision',
+    detail: r.pending.length ? `${r.pending.length} awaiting: ${r.pending.map((c) => caseBtn(c.case_id)).join(' ')}` : `All ${r.open.length} open cases have a decision.` });
+  conds.push({ ok: ok(!r.matBlocked.length), title: 'Every material case approved or reclassified',
+    detail: r.material.length ? r.material.map((c) => `${caseBtn(c.case_id)} <span>${esc(STATUS[c.status]).toLowerCase()}${c.reviewed_by ? ` by ${esc(c.reviewed_by)}` : ''}</span>`).join('<br>') : 'No material case today.' });
+  conds.push({ ok: ok(!r.escUnconfirmed.length), title: 'Every escalated case decided by an approver',
+    detail: r.escalated.length ? r.escalated.map((c) => `${caseBtn(c.case_id)} <span>${c.reviewed_by ? `decided by ${esc(c.reviewed_by)} (${esc(c.reviewed_role)})` : 'not decided yet'}</span>`).join('<br>') : 'No escalated case today.' });
+  let fe;
+  if (u.role !== 'approver') fe = { ok: 'na', title: 'Four-eyes: the approver signing decided no case', detail: `Applies to the approver who signs. Approvers who decided no case today: ${r.signers.length ? r.signers.map(esc).join(', ') : 'none'}.` };
+  else if (r.own.length) fe = { ok: 'false', title: 'Four-eyes: the approver signing decided no case', detail: `<span>You decided ${r.own.map((id) => caseBtn(id)).join(', ')}, so you cannot sign off.</span><span>${r.signers.length ? `Ask ${r.signers.map(esc).join(' or ')}.` : 'No other approver is free of today’s decisions.'}</span>` };
+  else fe = { ok: 'true', title: 'Four-eyes: the approver signing decided no case', detail: `${esc(u.name)} decided no case today.` };
+  conds.push(fe);
+  const word = { true: 'Met', false: 'Not met', na: 'Not applicable' };
+  $('#cond').innerHTML = conds.map((c) => `<li data-ok="${c.ok}">${icon(c.ok === 'true' ? 'i-pass' : c.ok === 'false' ? 'i-fail' : 'i-pending')}
+    <div><span class="c-title">${c.title}</span> <span class="c-state st st-${c.ok === 'true' ? 'PASS' : c.ok === 'false' ? 'FAIL' : 'RECLASSIFIED'}">${word[c.ok]}</span></div>
+    <div class="c-detail">${c.detail}</div></li>`).join('');
+
+  // the action
+  const box = $('#signbox');
+  if (S.signedOff) {
+    box.innerHTML = `<p class="st st-RELEASED">${icon('i-pass')}Signed off by ${esc(S.signedOff.by)} at ${esc(timeLabel(S.signedOff.ts))}</p>
+      <p class="why">Audit entry #${S.signedOff.seq}, action DAY_SIGNED_OFF, chained to the entry before it.</p>`;
+  } else if (u.role === 'viewer') {
+    box.innerHTML = `<p class="readonly">${icon('i-lock')}Read-only. You can follow the release position here; signing off needs an approver.</p>`;
+  } else if (u.role === 'analyst') {
+    box.innerHTML = `<p class="why">Sign-off needs an approver who decided none of today's cases. You are signed in as <strong>${esc(u.name)}</strong> (analyst).</p>
+      <p class="why">${r.signers.length ? `Approvers who can sign off: <strong>${r.signers.map(esc).join(', ')}</strong>.` : 'No approver is free of today’s decisions.'}</p>`;
+  } else {
+    const reasons = [];
+    if (r.pending.length) reasons.push(`${r.pending.length} case${r.pending.length > 1 ? 's are' : ' is'} still awaiting a decision.`);
+    if (r.matBlocked.length) reasons.push(`Material case${r.matBlocked.length > 1 ? 's' : ''} not approved: ${r.matBlocked.map((c) => c.case_id).join(', ')}.`);
+    if (r.escUnconfirmed.length) reasons.push(`Escalated case${r.escUnconfirmed.length > 1 ? 's need' : ' needs'} an approver's decision: ${r.escUnconfirmed.map((c) => c.case_id).join(', ')}.`);
+    if (r.own.length) reasons.push(`You decided ${r.own.join(', ')}, so you cannot sign off (four-eyes).`);
+    const reason = reasons.join(' ');
+    const blocked = !!reason;
+    box.innerHTML = `
+      <button type="button" class="btn ${blocked ? '' : 'primary'}" id="do-sign" aria-disabled="${blocked}" aria-describedby="sign-why">${blocked ? icon('i-lock') : icon('i-tick')}Sign off NAV for ${esc(dayLabel(D.fund.as_of, { day: 'numeric', month: 'short', year: 'numeric' }))}</button>
+      <p class="why" id="sign-why">${blocked ? `<strong>Blocked.</strong> ${esc(reason)}` : `All conditions are met. Signing writes DAY_SIGNED_OFF to the audit log as <strong>${esc(u.name)}</strong>.`}</p>
+      <p class="err" id="sign-err" role="alert" hidden></p>`;
+  }
+
+  // who decided what
+  const all = [...S.cases].sort(byImpact);
+  const decidedN = all.filter((c) => c.status !== 'PENDING').length;
+  $('#decided-meta').textContent = `${decidedN} of ${all.length} decided`;
+  $('#decided').innerHTML = `<caption class="vh">Decisions on every open case, largest NAV impact first</caption>
+    <thead><tr><th scope="col">Case</th><th scope="col">Flags</th><th scope="col" class="num">Impact</th><th scope="col">Decision</th><th scope="col">By</th><th scope="col">Note</th></tr></thead>
+    <tbody>${all.map((c) => `<tr class="${c.status === 'PENDING' ? 'pending-row' : ''}">
+      <th scope="row">${caseBtn(c.case_id)}<span class="sub">${esc(secShort(c))}</span></th>
+      <td class="flags">${flagsHtml(c)}</td>
+      <td class="num">${bp(c.nav_impact_bp)}<span class="sub">${money(c.nav_impact, true)}</span></td>
+      <td>${statusBadge(c.status)}<span class="sub">${esc(CAUSE[c.final_category || currentCause(c)])}</span></td>
+      <td>${c.reviewed_by ? `${esc(c.reviewed_by)}<span class="sub">${esc(c.reviewed_role)}</span>` : '<span class="muted">—</span>'}</td>
+      <td class="note-cell">${c.review_note ? esc(c.review_note) : ''}</td></tr>`).join('')}</tbody>`;
+}
+
+function trySignOff() {
+  const u = user();
+  const btn = $('#do-sign');
+  if (!btn || u.role !== 'approver') return;
+  const r = release();
+  const err = $('#sign-err');
+  // mirror the server: pending raises without an audit entry; the rest are logged as SIGN_OFF_BLOCKED
+  if (r.pending.length) { err.hidden = false; err.textContent = `Not signed off: ${r.pending.length} case(s) still pending review.`; return; }
+  const blockedWith = (reason, cases, msg) => {
+    const e = appendAudit('SIGN_OFF_BLOCKED', { reason, cases });
+    err.hidden = false; err.textContent = `${msg} Attempt logged as audit entry #${e.seq}.`;
+    renderChain();
+  };
+  if (r.matBlocked.length) return blockedWith('material cases not approved', r.matBlocked.map((c) => c.case_id), 'Material cases are not approved.');
+  if (r.escUnconfirmed.length) return blockedWith('escalated cases need an approver decision', r.escUnconfirmed.map((c) => c.case_id), 'Escalated cases need an approver’s decision.');
+  if (r.own.length) return blockedWith('four-eyes', r.own, `You decided ${r.own.join(', ')} and cannot also sign off.`);
+  $('#confirm-figs').innerHTML = `<dt>Fund</dt><dd>${esc(D.fund.name)}</dd><dt>Valuation date</dt><dd>${esc(dayLabel(D.fund.as_of, { day: 'numeric', month: 'long', year: 'numeric' }))}</dd>
+    <dt>NAV</dt><dd>${money(D.nav.nav)} ${esc(D.fund.base_currency)}</dd><dt>NAV per share</dt><dd>${nf(6, 6).format(D.nav.nav_per_share)}</dd><dt>Signing as</dt><dd>${esc(u.name)} (approver)</dd>`;
+  $('#confirm').showModal();
+}
+
+/* ---------------- footer ---------------- */
+const HINTS = {
+  overview: [['G Q', 'cases'], ['G S', 'sign-off'], ['Ctrl K', 'find'], ['?', 'all keys']],
+  queue: [['J K', 'move'], ['Enter', 'open'], ['A', 'approve'], ['R', 'reject'], ['C', 'reclassify'], ['/', 'filter'], ['2 3', 'panes']],
+  case: [['A', 'approve'], ['R', 'reject'], ['C', 'reclassify'], ['Y', 'copy query'], ['1', 'queue'], ['3', 'evidence']],
+  evidence: [['1', 'queue'], ['2', 'case'], ['J K', 'next case']],
+  note: [['Ctrl Enter', 'submit'], ['Esc', 'leave field']],
+  search: [['Esc', 'clear'], ['↓', 'to the queue']],
+  signoff: [['G O', 'overview'], ['G Q', 'cases'], ['Ctrl K', 'find']],
+};
+const CTX_NAME = { overview: 'Overview', queue: 'Queue', case: 'Case', evidence: 'Evidence', note: 'Note', search: 'Filter', signoff: 'Sign-off' };
+let ctx = 'overview';
+function setContext(k) {
+  if (k === ctx && $('#keys').childElementCount) return;
+  ctx = k;
+  $('#ctx').textContent = CTX_NAME[k] || '';
+  const viewer = role() === 'viewer';
+  $('#keys').innerHTML = (HINTS[k] || []).filter(([, w]) => !(viewer && ['approve', 'reject', 'reclassify', 'submit'].includes(w)))
+    .map(([keys, w]) => `<span>${keys.split(' ').map((x) => `<kbd>${esc(x)}</kbd>`).join('')} ${esc(w)}</span>`).join('');
+}
+function contextFromFocus() {
+  const a = document.activeElement;
+  const scr = currentScreen();
+  if (scr !== 'cases') return setContext(scr);
+  if (a?.id === 'note') return setContext('note');
+  if (a?.id === 'q') return setContext('search');
+  if (a?.closest('#pane-ev')) return setContext('evidence');
+  if (a?.closest('#pane-case')) return setContext('case');
+  return setContext('queue');
+}
+function renderChain() {
+  const last = S.audit[S.audit.length - 1];
+  $('#chain').innerHTML = `${icon('i-link')}<span>Audit log: ${S.auditCount} entries, head ${last.hash ? `<span class="mono">${esc(last.hash.slice(0, 10))}</span>` : 'hashing'}</span>`;
+}
+
+/* ---------------- toasts + announcements ---------------- */
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  $('#toasts').append(t);
+  setTimeout(() => t.remove(), 4200);
+}
+let lastAnnounce = '';
+function announce(msg) {
+  if (msg === lastAnnounce) msg += ' ';
+  lastAnnounce = msg;
+  $('#announcer').textContent = msg;
+}
+
+function afterMutation(wasReady) {
+  const r = release();
+  renderSegments();
+  renderOverview();
+  renderSignoff();
+  renderChain();
+  if (!wasReady && r.ready) {
+    for (const b of [$('#band-ov'), $('#band-so')]) {
+      b.classList.remove('just-ready'); void b.offsetWidth; b.classList.add('just-ready');
+    }
+    // play the tick and ring once; later re-renders of the band must not replay them
+    setTimeout(() => { for (const b of [$('#band-ov'), $('#band-so')]) b.classList.remove('just-ready'); }, 900);
+    announce('All release conditions are met. The NAV is ready for sign-off by an approver who decided no case.');
+    toast('Release conditions met: ready for sign-off.');
+  }
+}
+
+/* ---------------- routing ---------------- */
+const SCREENS = ['overview', 'cases', 'signoff'];
+function currentScreen() { const h = location.hash.slice(1); return SCREENS.includes(h) ? h : 'overview'; }
+function showScreen(name, { focus = true } = {}) {
+  for (const s of SCREENS) $(`#screen-${s}`).hidden = s !== name;
+  for (const a of $$('.screens-nav a')) {
+    if (a.dataset.screen === name) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  }
+  if (name === 'cases') {
+    if (!S.openId) {
+      const first = release().pending[0] || [...S.cases].sort(byImpact)[0];
+      openCase(first.case_id, { animate: false });
+    }
+    if (focus) { const b = $$('#queue-body .rowbtn').find((x) => x.tabIndex === 0); (b || $('#h-cases')).focus(); }
+  } else if (focus) {
+    $(`#h-${name}`).focus();
+  }
+  if (name === 'overview') renderOverview();
+  if (name === 'signoff') renderSignoff();
+  contextFromFocus();
+}
+function go(name) {
+  if (location.hash.slice(1) === name) showScreen(name);
+  else location.hash = name;
+}
+addEventListener('hashchange', () => showScreen(currentScreen()));
+
+/* ---------------- copy ---------------- */
+const copyTimers = new WeakMap();
+let lastCopyMsg = '';
+function legacyCopy(text) {
+  const f = Object.assign(document.createElement('textarea'), { value: text });
+  f.setAttribute('readonly', '');
+  f.style.cssText = 'position:fixed;inset-block-start:0;opacity:0';
+  document.body.append(f); f.select();
+  try { return document.execCommand('copy'); } finally { f.remove(); }
+}
+async function copyFrom(button, target) {
+  const text = target.innerText.trim();
+  if (!text) return;
+  let ok = true;
+  try { await navigator.clipboard.writeText(text); } catch { ok = legacyCopy(text); }
+  const tip = button.previousElementSibling;
+  clearTimeout(copyTimers.get(button));
+  button.removeAttribute('data-copied');
+  let msg = ok ? 'Copied' : 'Copy failed';
+  if (msg === lastCopyMsg) msg += ' ';
+  lastCopyMsg = msg;
+  tip.textContent = '';
+  if (ok) button.setAttribute('data-copied', '');
+  requestAnimationFrame(() => (tip.textContent = msg));
+  copyTimers.set(button, setTimeout(() => { button.removeAttribute('data-copied'); tip.textContent = ''; }, 2000));
+}
+if ('CommandEvent' in window) {
+  document.addEventListener('command', (e) => { if (e.command === '--copy') copyFrom(e.source, e.target); }, true);
+} else {
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('button[command="--copy"]');
+    if (b) { const t = document.getElementById(b.getAttribute('commandfor')); if (t) copyFrom(b, t); }
+  });
+}
+
+/* ---------------- command palette ---------------- */
+function paletteItems() {
+  const items = [
+    { g: 'Go to', label: 'Morning overview', keys: 'G O', run: () => go('overview') },
+    { g: 'Go to', label: 'Cases', keys: 'G Q', run: () => go('cases') },
+    { g: 'Go to', label: 'Sign-off', keys: 'G S', run: () => go('signoff') },
+  ];
+  for (const c of [...S.cases].sort(byImpact)) {
+    items.push({ g: 'Case', label: c.case_id, small: `${secShort(c)}, ${CAUSE[currentCause(c)]}, ${STATUS_SHORT[c.status].toLowerCase()}`, run: () => { go('cases'); openCase(c.case_id, { focus: 'row' }); } });
+  }
+  items.push({ g: 'Filter', label: 'Show cases awaiting a decision', run: () => { setFilter('pending'); go('cases'); } });
+  items.push({ g: 'Filter', label: 'Show cases where the AI disagrees', run: () => { setFilter('ai'); go('cases'); } });
+  for (const u of D.users) if (u.name !== S.user) items.push({ g: 'Sign in', label: `Sign in as ${u.name}`, small: u.role, run: () => switchUser(u.name) });
+  items.push({ g: 'View', label: 'Switch theme', run: toggleTheme });
+  items.push({ g: 'View', label: prefs.demo ? 'Hide demo banner' : 'Show demo banner', run: toggleDemo });
+  items.push({ g: 'Help', label: 'Keyboard shortcuts', keys: '?', run: () => $('#help').showModal() });
+  items.push({ g: 'Mockup', label: 'Reset mockup data', small: 'restore the morning’s state', run: resetMock });
+  return items;
+}
+let palIdx = 0, palShown = [];
+function renderPalette() {
+  const q = $('#pal-q').value.trim().toLowerCase();
+  const words = q.split(/\s+/).filter(Boolean);
+  palShown = paletteItems().filter((it) => words.every((w) => `${it.g} ${it.label} ${it.small || ''}`.toLowerCase().includes(w))).slice(0, 40);
+  palIdx = Math.min(palIdx, Math.max(0, palShown.length - 1));
+  $('#pal-list').innerHTML = palShown.length ? palShown.map((it, i) => `<li role="option" id="pal-${i}" aria-selected="${i === palIdx}" data-i="${i}">
+    <span class="grp">${esc(it.g)}</span><span class="lbl">${esc(it.label)}${it.small ? `<small>${esc(it.small)}</small>` : ''}</span>
+    ${it.keys ? `<span aria-hidden="true">${it.keys.split(' ').map((k) => `<kbd>${esc(k)}</kbd>`).join('')}</span>` : ''}</li>`).join('')
+    : '<li role="option" aria-disabled="true" aria-selected="false"><span class="lbl muted">Nothing matches. Try a case id such as EX-20261113-007.</span></li>';
+  $('#pal-q').setAttribute('aria-activedescendant', palShown.length ? `pal-${palIdx}` : '');
+  $(`#pal-${palIdx}`)?.scrollIntoView({ block: 'nearest' });
+}
+function openPalette() {
+  const d = $('#palette');
+  if (d.open) return;
+  $('#pal-q').value = ''; palIdx = 0; renderPalette();
+  d.showModal();
+}
+function runPalette(i) {
+  const it = palShown[i];
+  if (!it) return;
+  $('#palette').close();
+  setTimeout(it.run, 0);
+}
+$('#pal-q').addEventListener('input', () => { palIdx = 0; renderPalette(); });
+$('#pal-q').addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowDown') { e.preventDefault(); palIdx = Math.min(palIdx + 1, palShown.length - 1); renderPalette(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); palIdx = Math.max(palIdx - 1, 0); renderPalette(); }
+  else if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); runPalette(palIdx); }
+});
+$('#pal-list').addEventListener('click', (e) => { const li = e.target.closest('li[data-i]'); if (li) runPalette(Number(li.dataset.i)); });
+
+/* light dismiss where closedby is missing */
+if (!('closedBy' in HTMLDialogElement.prototype)) {
+  const outside = (e, d) => { const r = d.getBoundingClientRect(); return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom; };
+  for (const d of $$('dialog[closedby="any"]')) {
+    let down = false;
+    d.addEventListener('pointerdown', (e) => { down = outside(e, d); });
+    d.addEventListener('pointerup', (e) => { if (down && outside(e, d)) d.close(); });
+  }
+}
+
+/* ---------------- preferences ---------------- */
+function systemDark() { return matchMedia('(prefers-color-scheme: dark)').matches; }
+function renderedDark() {
+  const m = $('meta[name="color-scheme"]').content;
+  return m === 'dark' || (m === 'light dark' && systemDark());
+}
+function toggleTheme() {
+  const target = renderedDark() ? 'light' : 'dark';
+  const sys = systemDark() ? 'dark' : 'light';
+  try { if (target === sys) localStorage.removeItem('rp-wb-scheme'); else localStorage.setItem('rp-wb-scheme', target); } catch {}
+  $('meta[name="color-scheme"]').content = target === sys ? 'light dark' : target;
+}
+addEventListener('storage', (e) => {
+  if (e.key === 'rp-wb-scheme') $('meta[name="color-scheme"]').content = e.newValue ?? 'light dark';
+});
+function toggleDemo() {
+  prefs.demo = !prefs.demo;
+  try { localStorage.setItem('rp-wb-demo', prefs.demo ? '1' : '0'); } catch {}
+  renderHeader();
+  announce(prefs.demo ? 'Demo banner shown.' : 'Demo banner hidden.');
+}
+function switchUser(name) {
+  S.user = name;
+  $('#user-select').value = name;
+  renderHeader();
+  renderDecision();
+  renderSignoff();
+  renderOverview();
+  $('#keys').innerHTML = '';
+  contextFromFocus();
+  toast(`Signed in as ${name} (${role()}).${role() === 'viewer' ? ' Nothing is actionable for viewers.' : role() === 'analyst' ? ' Analysts decide cases but cannot sign off.' : ''}`);
+}
+function setFilter(k) {
+  S.filter = k;
+  renderSegments();
+  applyFilter();
+}
+function resetMock() {
+  const u = S.user;
+  S = freshState(u);
+  navTweened = true;
+  buildQueue(); renderSegments(); renderOverview(); renderSignoff(); renderChain();
+  S.openId = null;
+  showScreen(currentScreen(), { focus: true });
+  toast('Mockup reset to the morning’s state.');
+}
+
+/* ---------------- events ---------------- */
+$('#user-select').addEventListener('change', (e) => switchUser(e.target.value));
+$('#demo-toggle').addEventListener('click', toggleDemo);
+$('#theme-toggle').addEventListener('click', toggleTheme);
+$('#open-help').addEventListener('click', () => $('#help').showModal());
+$('#open-palette').addEventListener('click', openPalette);
+$('#q').addEventListener('input', (e) => { S.query = e.target.value; applyFilter(); });
+$('#q').addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { e.preventDefault(); if (e.target.value) { e.target.value = ''; S.query = ''; applyFilter(); } else moveCursor(0); }
+  if (e.key === 'ArrowDown' || (e.key === 'Enter' && !e.isComposing)) { e.preventDefault(); moveCursor(0, 'first'); }
+});
+$('#seg').addEventListener('click', (e) => { const b = e.target.closest('[data-seg]'); if (b) setFilter(b.dataset.seg); });
+$('#queue-body').addEventListener('click', (e) => {
+  const tr = e.target.closest('tr[data-id]');
+  if (!tr) return;
+  openCase(tr.dataset.id);
+  const b = tr.querySelector('.rowbtn');
+  $$('#queue-body .rowbtn').forEach((x) => (x.tabIndex = -1));
+  b.tabIndex = 0;
+  if (e.target.closest('.rowbtn') || e.detail) b.focus();
+});
+$('#queue-body').addEventListener('keydown', (e) => {
+  if (!e.target.classList.contains('rowbtn')) return;
+  if (e.key === 'ArrowDown') { e.preventDefault(); moveCursor(1); }
+  if (e.key === 'ArrowUp') { e.preventDefault(); moveCursor(-1); }
+  if (e.key === 'Home') { e.preventDefault(); moveCursor(0, 'first'); }
+  if (e.key === 'End') { e.preventDefault(); moveCursor(0, 'last'); }
+});
+document.addEventListener('click', (e) => {
+  const open = e.target.closest('[data-open]');
+  if (open) { e.preventDefault(); go('cases'); openCase(open.dataset.open, { focus: 'row' }); return; }
+  const filt = e.target.closest('[data-filter]');
+  if (filt) { setFilter(filt.dataset.filter); go('cases'); return; }
+  const t = e.target.closest('[data-qtab]');
+  if (t && !t.disabled) { queryTab = t.dataset.qtab; renderCase(false); $(`#tab-${queryTab}`).focus(); return; }
+  if (e.target.closest('#do-approve')) decide('approve');
+  else if (e.target.closest('#do-reject')) decide('reject');
+  else if (e.target.closest('#do-reclass')) decide('reclass');
+  else if (e.target.closest('#do-sign')) trySignOff();
+});
+document.addEventListener('keydown', (e) => {
+  // tablist arrows
+  if (e.target.matches('[role="tab"]') && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+    const tabs = $$('[role="tab"]:not([disabled])', e.target.parentElement);
+    const i = tabs.indexOf(e.target);
+    const n = tabs[(i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length];
+    if (n) { queryTab = n.dataset.qtab; renderCase(false); $(`#tab-${queryTab}`).focus(); }
+  }
+});
+$('#confirm').addEventListener('close', () => {
+  const d = $('#confirm');
+  const v = d.returnValue; d.returnValue = '';
+  if (v !== 'sign') return;
+  const e = appendAudit('DAY_SIGNED_OFF', { cases: S.cases.length + S.cleared.length });
+  S.signedOff = { by: S.user, ts: e.ts, seq: e.seq };
+  renderSignoff(); renderOverview(); renderChain(); renderDecision();
+  $('#h-band-so')?.setAttribute('tabindex', '-1');
+  $('#h-band-so')?.focus();
+  announce(`NAV signed off by ${S.user}. Audit entry ${e.seq}.`);
+});
+document.addEventListener('focusin', contextFromFocus);
+document.addEventListener('input', (e) => {
+  if (e.target.id === 'note' && e.target.value.trim()) { e.target.removeAttribute('aria-invalid'); const err = $('#note-err'); if (err) err.hidden = true; }
+});
+
+/* global shortcuts */
+let chord = null, chordTimer = 0;
+function setChord(v) { chord = v; $('#chord').textContent = v ? 'G …' : ''; clearTimeout(chordTimer); if (v) chordTimer = setTimeout(() => setChord(null), 1200); }
+document.addEventListener('keydown', (e) => {
+  const anyDialog = $$('dialog').some((d) => d.open);
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    if ($('#palette').open) $('#palette').close(); else if (!anyDialog) openPalette();
+    return;
+  }
+  if (anyDialog) return;
+  const t = e.target;
+  const typing = t.matches?.('input, textarea, select, [contenteditable="true"]');
+  if (typing) {
+    if (t.id === 'note' && e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.isComposing) {
+      e.preventDefault(); decide(S.armed === 'reject' ? 'reject' : 'approve');
+    } else if (t.id === 'note' && e.key === 'Escape') {
+      e.preventDefault(); S.armed = null; const v = t.value; renderDecision(); $('#note').value = v; $('#do-approve').focus();
+    } else if (t.id === 'reclass-cause' && e.key === 'Enter') {
+      e.preventDefault(); decide('reclass');
+    } else if (t.id === 'reclass-cause' && e.key === 'Escape') {
+      e.preventDefault(); $('#do-reclass').focus();
+    }
+    return;
+  }
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key;
+  if (chord === 'g') {
+    const dest = { o: 'overview', q: 'cases', s: 'signoff' }[k.toLowerCase()];
+    setChord(null);
+    if (dest) { e.preventDefault(); go(dest); }
+    return;
+  }
+  if (k === 'g' || k === 'G') { setChord('g'); return; }
+  if (k === '?') { e.preventDefault(); $('#help').showModal(); return; }
+  if (k === '/') { e.preventDefault(); if (currentScreen() !== 'cases') go('cases'); setTimeout(() => { $('#q').focus(); $('#q').select(); }, 0); return; }
+  if (currentScreen() !== 'cases') return;
+  const lk = k.toLowerCase();
+  // a held key must not decide (or copy) again and again
+  if (e.repeat && ['a', 'r', 'c', 'y'].includes(lk)) { e.preventDefault(); return; }
+  // decision keys act on the open case only. If the cursor sits on another row, open that row first
+  // rather than deciding a case the analyst is not looking at.
+  if (['a', 'r', 'c'].includes(lk) && t.classList?.contains('rowbtn') && t.dataset.id !== S.openId) {
+    e.preventDefault();
+    openCase(t.dataset.id, { focus: 'row' });
+    announce(`Opened ${t.dataset.id}. Press ${lk.toUpperCase()} again to ${{ a: 'approve', r: 'reject', c: 'reclassify' }[lk]} it.`);
+    return;
+  }
+  if (lk === 'j') { e.preventDefault(); moveCursor(1); }
+  else if (lk === 'k') { e.preventDefault(); moveCursor(-1); }
+  else if (k === '1') { e.preventDefault(); const b = $$('#queue-body .rowbtn').find((x) => x.tabIndex === 0); b?.focus(); }
+  else if (k === '2') { e.preventDefault(); $('#h-case')?.focus(); }
+  else if (k === '3') { e.preventDefault(); $('#h-ev').focus(); }
+  else if (lk === 'a') { e.preventDefault(); decide('approve'); }
+  else if (lk === 'r') {
+    e.preventDefault();
+    if (!canDecide()) { toast('Read-only: viewers cannot decide cases.'); return; }
+    if (!$('#note')) return;
+    S.armed = 'reject'; const v = $('#note')?.value || ''; renderDecision(); $('#note').value = v; $('#note').focus();
+    announce('Reject: write a note, then press Control Enter.');
+  }
+  else if (lk === 'c') {
+    e.preventDefault();
+    if (!canDecide()) { toast('Read-only: viewers cannot decide cases.'); return; }
+    $('#reclass-cause')?.focus();
+  }
+  else if (lk === 'y') { e.preventDefault(); const b = $('.copy-button'); if (b) copyFrom(b, $('#query-text')); }
+  else if (k === 'Escape' && S.query) { $('#q').value = ''; S.query = ''; applyFilter(); }
+});
+
+/* ---------------- boot ---------------- */
+S = freshState();
+try { prefs.demo = localStorage.getItem('rp-wb-demo') === '1'; } catch {}
+renderHeader();
+wireSort();
+buildQueue();
+renderSegments();
+renderChain();
+renderOverview();
+renderSignoff();
+S.wasReady = release().ready;
+showScreen(currentScreen(), { focus: false });
+</script>
+</body>
+</html>
