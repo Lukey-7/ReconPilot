@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from fastapi import Depends, FastAPI, Request
+from fastapi.responses import JSONResponse
+from starlette.responses import Response
 from sqlalchemy.orm import sessionmaker
 
 from reconpilot_web import auth, db
@@ -14,6 +16,15 @@ SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "same-origin",
 }
+
+
+def add_security_headers(request: Request, response: Response) -> Response:
+    """Set the security headers (and ``no-store`` on API routes) unless a route set its own."""
+    for name, value in SECURITY_HEADERS.items():
+        response.headers.setdefault(name, value)
+    if request.url.path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control", "no-store")
+    return response
 
 
 def create_app(settings: Settings) -> FastAPI:
@@ -47,12 +58,14 @@ def create_app(settings: Settings) -> FastAPI:
 
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
-        response = await call_next(request)
-        for name, value in SECURITY_HEADERS.items():
-            response.headers.setdefault(name, value)
-        if request.url.path.startswith("/api/"):
-            response.headers.setdefault("Cache-Control", "no-store")
-        return response
+        return add_security_headers(request, await call_next(request))
+
+    # An unhandled exception is answered by Starlette's outermost error layer, which
+    # the middleware above never sees; this handler gives that 500 the headers too.
+    @app.exception_handler(Exception)
+    async def server_error(request: Request, exc: Exception) -> Response:
+        response = JSONResponse({"detail": "Internal server error."}, status_code=500)
+        return add_security_headers(request, response)
 
     app.include_router(auth.router)
     return app

@@ -15,6 +15,13 @@ CSRF
     exception, because it is what issues the token; it accepts JSON only, which a
     cross-site form cannot send.
 
+Usernames
+    Usernames are case-insensitive: they are stored in lower case, and sign-in
+    lower-cases what is typed, so "Analyst1" and "analyst1" are one account.
+
+Signing in again from a browser that still holds a session revokes that
+session, so one browser never keeps two live sessions.
+
 Lockout
     Five consecutive failed sign-ins lock the account for 15 minutes. While it is
     locked even the right password is refused with 423.
@@ -94,6 +101,11 @@ def get_db(request: Request) -> Iterator[Session]:
 # --------------------------------------------------------------------------- users
 
 
+def normalise_username(username: str) -> str:
+    """The stored form of a username: trimmed and lower-cased."""
+    return username.strip().lower()
+
+
 def user_payload(user: User) -> dict[str, Any]:
     return {
         "username": user.username,
@@ -119,9 +131,11 @@ def create_user(
     Raises ``ValueError`` for an unknown role, a taken username or a password the
     policy refuses (the message lists every problem).
     """
-    username = username.strip()
+    username = normalise_username(username)
     if not username or len(username) > 64:
         raise ValueError("Username must be 1 to 64 characters.")
+    if not username.isprintable():
+        raise ValueError("Username cannot contain control characters.")
     if role not in ROLES:
         raise ValueError(f"Role must be one of {', '.join(ROLES)}.")
     problems = check_password_policy(password)
@@ -257,11 +271,15 @@ def _refuse(db: Session, status_code: int, detail: str) -> HTTPException:
 def login(body: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)) -> dict:
     now = _now()
     ip = _client_ip(request)
-    username = body.username.strip()
+    username = normalise_username(body.username)
     audit = DbAuditLog(db)
     bad_credentials = "Wrong username or password."
 
-    user = db.execute(select(User).where(User.username == username).with_for_update()).scalar_one_or_none()
+    user = None
+    if username.isprintable() and len(username) <= 64:  # no stored username is longer or holds NUL
+        user = db.execute(
+            select(User).where(User.username == username).with_for_update()
+        ).scalar_one_or_none()
     if user is None or user.password_hash is None:
         verify_password(_dummy_hash(), body.password)
         audit.append(username[:128], "", "SIGN_IN_FAILED", {"reason": "unknown user", "ip": ip})
@@ -296,6 +314,9 @@ def login(body: LoginRequest, request: Request, response: Response, db: Session 
     user.failed_logins = 0
     user.locked_until = None
     user.last_login_at = now
+    previous = _load_session(db, request.cookies.get(SESSION_COOKIE))
+    if previous is not None and previous.revoked_at is None:
+        previous.revoked_at = now
     token, csrf = new_token(), new_token()
     db.add(
         UserSession(

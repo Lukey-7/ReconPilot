@@ -324,3 +324,58 @@ def test_app_refuses_database_of_other_mode(clean_db, pg_uri, pg_dir):
 
     with pytest.raises(RuntimeError, match="this instance runs in demo mode"):
         create_app(make_settings(pg_uri, pg_dir, mode="demo"))
+
+
+# --------------------------------------------------------------------------- hardening
+
+
+def test_security_headers_on_unhandled_error(app):
+    @app.get("/api/test/boom")
+    def boom() -> dict:
+        raise RuntimeError("boom")
+
+    with TestClient(app, raise_server_exceptions=False) as c:
+        response = c.get("/api/test/boom")
+    assert response.status_code == 500
+    assert response.json() == {"detail": "Internal server error."}
+    assert response.headers["Content-Security-Policy"] == "default-src 'self'; frame-ancestors 'none'"
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["Referrer-Policy"] == "same-origin"
+    assert response.headers["Cache-Control"] == "no-store"
+
+
+def test_nul_in_username_is_a_failed_sign_in(client, users, db_session):
+    response = client.post("/api/auth/login", json={"username": "analyst1\x00", "password": TEST_PASSWORD})
+    assert response.status_code == 401
+    failed = [e for e in DbAuditLog(db_session).entries() if e["action"] == "SIGN_IN_FAILED"]
+    assert failed[-1]["actor"] == "analyst1�"
+    assert verify_chain(db_session) == (True, None)
+    with pytest.raises(ValueError, match="control characters"):
+        from reconpilot_web.auth import create_user
+
+        create_user(db_session, "bad\x00name", TEST_PASSWORD, "analyst")
+
+
+def test_usernames_are_case_insensitive(make_user, make_client, db_session):
+    make_user("Analyst1", "analyst")
+    with pytest.raises(ValueError, match="already exists"):
+        make_user("ANALYST1", "analyst")
+    assert db_session.execute(select(User.username)).scalars().all() == ["analyst1"]
+    for typed in ("analyst1", "Analyst1", " ANALYST1 "):
+        c = make_client()
+        response = c.post("/api/auth/login", json={"username": typed, "password": TEST_PASSWORD})
+        assert response.status_code == 200, typed
+        assert response.json()["user"]["username"] == "analyst1"
+
+
+def test_signing_in_again_revokes_the_previous_session(client, users, db_session):
+    sign_in(client, "analyst1")
+    first = client.cookies["rp_session"]
+    sign_in(client, "analyst1")
+    assert client.cookies["rp_session"] != first
+    rows = db_session.execute(select(UserSession).order_by(UserSession.id)).scalars().all()
+    assert len(rows) == 2
+    assert rows[0].revoked_at is not None and rows[1].revoked_at is None
+    with TestClient(client.app, cookies={"rp_session": first}) as replay:
+        assert replay.get("/api/auth/me").status_code == 401
+    assert client.get("/api/auth/me").status_code == 200
