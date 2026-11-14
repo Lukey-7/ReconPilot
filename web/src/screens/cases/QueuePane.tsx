@@ -64,7 +64,7 @@ const columns = [
     cell: (c) => (
       <>
         {count(c.getValue())}
-        <span className="sr-only"> business days</span>
+        <span className="sr-only"> business {c.getValue() === 1 ? "day" : "days"}</span>
         <span className="wb-q-unit" aria-hidden="true">
           d
         </span>

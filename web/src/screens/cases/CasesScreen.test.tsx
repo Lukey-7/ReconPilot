@@ -182,7 +182,7 @@ describe("case workbench", () => {
     expect(within(ai).getByText("Late settlement")).toBeInTheDocument();
     expect(within(ai).getByText("AI explanation for C1.")).toBeInTheDocument();
     expect(screen.getByText("Check the trade blotter.")).toBeInTheDocument();
-    expect(screen.getByText(/Escalated: material \(-1.82 bp of NAV\) \(at escalation\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Escalated: material \(-1.82 bp of NAV\), as recorded at escalation/)).toBeInTheDocument();
     // The AI's draft first, the rules' draft a tab away.
     expect(screen.getByText("AI draft query for C1.")).toBeInTheDocument();
     const user = userEvent.setup();
@@ -337,6 +337,15 @@ describe("case workbench", () => {
     await openCase("C1");
     expect(screen.getByText(/an approver must decide this case before sign-off/)).toBeInTheDocument();
     first.unmount();
+    setup(analyst, {
+      "GET /api/funds/GEF1/cases/C1": {
+        body: detailOf({ ...C1, status: "APPROVED" }, {}, { reviewed_by: "approver2", reviewed_role: "approver" }),
+      },
+    });
+    const second = renderApp(`${BASE}&case=C1`);
+    await openCase("C1");
+    expect(screen.getByText(/an approver has decided this case\. A decision from you replaces theirs/)).toBeInTheDocument();
+    second.unmount();
     setup(approver, { [`GET /api/funds/GEF1/days/${DAY}/release`]: { body: releaseFor("GEF1", DAY) } });
     renderApp(`${BASE}&case=C1`);
     await openCase("C1");

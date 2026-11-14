@@ -251,8 +251,9 @@ export function DecisionBar({ detail, fund, asOf, role, signedOffBy, beforeShort
       {c.escalated && role !== "approver" && (
         <p className="wb-advice wb-advice-esc">
           <Icon name="warn" />
-          Escalated: an approver must decide this case before sign-off. Your decision is recorded but does not clear the
-          escalation.
+          {c.reviewed_role === "approver"
+            ? "Escalated: an approver has decided this case. A decision from you replaces theirs, and the case then needs an approver again before sign-off."
+            : "Escalated: an approver must decide this case before sign-off. Your decision is recorded but does not clear the escalation."}
         </p>
       )}
       <div className="wb-note-field">
@@ -262,7 +263,7 @@ export function DecisionBar({ detail, fund, asOf, role, signedOffBy, beforeShort
         <textarea
           id={noteId}
           ref={noteRef}
-          rows={2}
+          rows={1}
           value={note}
           maxLength={2000}
           placeholder="What you checked, and what you found"

@@ -10,7 +10,7 @@ import type { CaseDetail, CaseHistoryEntry, RoleName } from "../../api/types";
 import { Icon } from "../../components/Icon";
 import { StatusLabel } from "../../components/Labels";
 import { ErrorLine } from "../../components/QueryState";
-import { bp, count, dayLabel, money, timestamp } from "../../format";
+import { bp, count, dayLabel, money, plural, timestamp } from "../../format";
 import { auditActionLabel, causeLabel, roleLabel } from "../../vocabulary";
 import { securityText } from "../overview/caseLinks";
 import { DecisionBar } from "./DecisionBar";
@@ -225,7 +225,7 @@ function historyLine(entry: Extract<CaseHistoryEntry, { type: "audit" }>): { wha
       break;
     case "SLA_BREACHED":
       if (typeof p.age_days === "number" && typeof p.sla_days === "number") {
-        note = `Open ${count(p.age_days)} business days against an SLA of ${count(p.sla_days)}.`;
+        note = `Open ${plural(p.age_days, "business day")} against an SLA of ${plural(p.sla_days, "day")}.`;
       }
       break;
     case "CASE_REOPENED":
@@ -315,12 +315,12 @@ export function CasePane({
             {c.material && <FlagTag flag="material">Material: {bp(c.nav_impact_bp)} of NAV</FlagTag>}
             {c.escalated && (
               <FlagTag flag="escalated">
-                Escalated{c.escalation_reason ? `: ${c.escalation_reason} (at escalation)` : ""}
+                Escalated{c.escalation_reason ? `: ${c.escalation_reason}, as recorded at escalation` : ""}
               </FlagTag>
             )}
             {c.sla_breached && (
               <FlagTag flag="sla">
-                Past SLA: open {count(c.age_days)} business days against {count(c.sla_days)}
+                Past SLA: open {plural(c.age_days, "business day")} against {plural(c.sla_days, "day")}
               </FlagTag>
             )}
             {c.ai_flag && <FlagTag flag="ai" />}
@@ -341,7 +341,7 @@ export function CasePane({
           <div>
             <dt>Age</dt>
             <dd>
-              <span className="fig">{count(c.age_days)}</span> business days
+              <span className="fig">{count(c.age_days)}</span> business {c.age_days === 1 ? "day" : "days"}
               {c.first_seen && <span className="wb-sub">since {dayLabel(c.first_seen)}</span>}
             </dd>
           </div>
@@ -355,7 +355,7 @@ export function CasePane({
                 </span>
               ) : (
                 <>
-                  <span className="fig">{count(c.sla_days)}</span> days
+                  <span className="fig">{count(c.sla_days)}</span> {c.sla_days === 1 ? "day" : "days"}
                 </>
               )}
               <span className="wb-sub">{c.material ? "material case" : "standard case"}</span>

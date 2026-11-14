@@ -514,7 +514,7 @@
 }
 .wb-note-field textarea {
   width: 100%;
-  min-height: 38px;
+  min-height: 32px;
   resize: vertical;
   line-height: 1.4;
 }
