@@ -1,0 +1,228 @@
+/*
+ * Management information. Few blocks with space between them: breaks by cause and age
+ * first, the trend across the width, then the detail. Wide screens use two columns;
+ * narrow ones stack the blocks in reading order.
+ */
+
+.mi-exports {
+  margin-inline-start: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.mi-export-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.mi-export-buttons .faint {
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.mi-export-status {
+  font-size: 12.5px;
+  min-height: 1em;
+}
+.mi-exports .state-line {
+  margin: 0;
+}
+
+.mi-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "cause"
+    "trend"
+    "resolve"
+    "top"
+    "sla";
+  align-items: start;
+}
+@media (min-width: 1100px) {
+  .mi-grid {
+    grid-template-columns: minmax(0, 1.75fr) minmax(300px, 1fr);
+    grid-template-areas:
+      "cause resolve"
+      "trend trend"
+      "top   sla";
+  }
+}
+.mi-grid-notrun {
+  grid-template-areas: none;
+}
+.mi-area-cause {
+  grid-area: cause;
+}
+.mi-area-resolve {
+  grid-area: resolve;
+}
+.mi-area-trend {
+  grid-area: trend;
+}
+.mi-area-top {
+  grid-area: top;
+}
+.mi-area-sla {
+  grid-area: sla;
+}
+
+/* ===== A block ===== */
+.mi-block {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 14px 16px 16px;
+  min-width: 0;
+}
+.mi-block h2 {
+  font-size: 15px;
+  font-weight: 600;
+}
+.mi-block-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-bottom: 10px;
+}
+.mi-block-head .faint {
+  font-size: 12.5px;
+}
+.mi-note {
+  margin-top: 10px;
+  font-size: 13px;
+}
+.mi-notrun p + p {
+  margin-top: 10px;
+}
+.mi-notrun h2 {
+  margin-bottom: 8px;
+}
+.mi-day-status {
+  font-weight: 600;
+}
+
+/* ===== Tables ===== */
+.mi-block .table-wrap {
+  position: relative;
+}
+.mi-matrix td,
+.mi-matrix th[scope="row"] {
+  white-space: nowrap;
+}
+.mi-matrix th.mi-group {
+  text-align: center;
+  border-bottom-color: var(--rule-strong);
+}
+.mi-total th,
+.mi-total td {
+  font-weight: 600;
+  border-top: 1px solid var(--rule-strong);
+  border-bottom: none;
+}
+.mi-strong {
+  font-weight: 600;
+}
+.mi-case-cell {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  padding: 4px 0;
+}
+.mi-case-cell .faint {
+  font-size: 12px;
+}
+.mi-case-id {
+  font-family: var(--font-fig);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.mi-cause-cell,
+.mi-now {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.mi-flags {
+  display: inline-flex;
+  gap: 4px;
+}
+.mi-more {
+  margin-top: 12px;
+}
+.mi-more summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 13px;
+  width: fit-content;
+}
+.mi-more summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.mi-more[open] summary {
+  margin-bottom: 6px;
+}
+
+/* ===== Trend ===== */
+.mi-measures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.mi-measure {
+  min-height: 28px;
+  font-size: 12.5px;
+}
+.mi-measure.active {
+  background: var(--accent-wash);
+  border-color: var(--accent);
+  color: var(--ink);
+}
+.mi-chart-wrap {
+  overflow-x: auto;
+}
+.mi-chart {
+  display: block;
+}
+.mi-chart-base {
+  stroke: var(--rule-strong);
+  stroke-width: 1;
+}
+.mi-bar rect {
+  fill: var(--bar);
+  transition: height var(--t-panel) var(--ease), y var(--t-panel) var(--ease);
+}
+.mi-bar.current rect {
+  fill: var(--accent);
+}
+.mi-bar text {
+  font-family: var(--font-fig);
+  font-size: 10.5px;
+  fill: var(--ink-3);
+}
+.mi-bar .mi-bar-value {
+  fill: var(--ink-2);
+}
+.mi-bar.current text {
+  fill: var(--ink);
+  font-weight: 600;
+}
+.mi-trend-table th[scope="row"] {
+  white-space: nowrap;
+}
+.mi-trend-table tr[aria-current="date"] th,
+.mi-trend-table tr[aria-current="date"] td {
+  background: var(--accent-wash);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mi-bar rect {
+    transition: none;
+  }
+}
