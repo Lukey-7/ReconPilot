@@ -13,6 +13,7 @@ import { RequireAuth } from "../auth/RequireAuth";
 import { SignInScreen } from "../auth/SignInScreen";
 import { KeyboardProvider } from "../keyboard/KeyboardProvider";
 import { CasesScreen } from "../screens/cases/CasesScreen";
+import { FundsScreen } from "../screens/funds/FundsScreen";
 import { NotFoundScreen } from "../screens/NotFoundScreen";
 import { OverviewScreen } from "../screens/overview/OverviewScreen";
 import { SignOffScreen } from "../screens/signoff/SignOffScreen";
@@ -56,6 +57,7 @@ export function AppRoutes() {
         <Route path="/upload" element={<UploadScreen />} />
         <Route path="/cases" element={<CasesScreen />} />
         <Route path="/signoff" element={<SignOffScreen />} />
+        <Route path="/funds" element={<FundsScreen />} />
       </Route>
       <Route path="/" element={<Home />} />
       <Route path="*" element={<NotFoundScreen />} />

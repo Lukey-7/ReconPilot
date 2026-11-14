@@ -1,6 +1,6 @@
 /**
  * The frame around every signed-in screen: the top bar, the sticky NAV strip, the screen
- * itself, and the shell's shortcuts (g o, g u, g q, g s, ?).
+ * itself, and the shell's shortcuts (g o, g u, g q, g s, g f, ?).
  */
 import { useState } from "react";
 import { Outlet, useNavigate } from "react-router";
@@ -9,7 +9,7 @@ import { ErrorLine, Loading } from "../components/QueryState";
 import { useShortcut } from "../keyboard/KeyboardProvider";
 import { HelpDialog } from "./HelpDialog";
 import { NavStrip } from "./NavStrip";
-import { SCREENS, TopBar } from "./TopBar";
+import { FUNDS_SCREEN, SCREENS, TopBar } from "./TopBar";
 import { WorkspaceProvider, useWorkspace } from "./workspace";
 
 function ScreenShortcuts({ onShowHelp }: { onShowHelp: () => void }) {
@@ -20,6 +20,10 @@ function ScreenShortcuts({ onShowHelp }: { onShowHelp: () => void }) {
   useShortcut(upload.keys, () => navigate(href(upload.path)), { description: "Go to upload and run", group: "Go to" });
   useShortcut(cases.keys, () => navigate(href(cases.path)), { description: "Go to the cases", group: "Go to" });
   useShortcut(signoff.keys, () => navigate(href(signoff.path)), { description: "Go to sign-off", group: "Go to" });
+  useShortcut(FUNDS_SCREEN.keys, () => navigate(href(FUNDS_SCREEN.path)), {
+    description: "Go to the funds and their settings",
+    group: "Go to",
+  });
   useShortcut("?", onShowHelp, { description: "Show keyboard shortcuts", group: "General" });
   return null;
 }

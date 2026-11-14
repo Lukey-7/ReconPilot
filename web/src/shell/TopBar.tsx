@@ -21,6 +21,9 @@ export const SCREENS = [
   { path: "/signoff", label: "Sign-off", keys: "g s" },
 ] as const;
 
+/** Every fund and the chosen fund's settings: reached from beside the fund selector, not the screen list. */
+export const FUNDS_SCREEN = { path: "/funds", label: "Funds", keys: "g f" } as const;
+
 function PendingBadge() {
   const { fund, asOf } = useWorkspace();
   const release = useRelease(fund?.code ?? null, asOf);
@@ -35,19 +38,29 @@ function PendingBadge() {
 }
 
 function FundSelect() {
-  const { funds, fund, setFund } = useWorkspace();
+  const { funds, fund, setFund, href } = useWorkspace();
   if (!fund) return null;
   return (
-    <label className="field-inline">
-      <span>Fund</span>
-      <select value={fund.code} onChange={(e) => setFund(e.target.value)}>
-        {funds.map((f) => (
-          <option key={f.code} value={f.code}>
-            {f.code} · {f.name}
-          </option>
-        ))}
-      </select>
-    </label>
+    <div className="fund-pick">
+      <label className="field-inline">
+        <span>Fund</span>
+        <select value={fund.code} onChange={(e) => setFund(e.target.value)}>
+          {funds.map((f) => (
+            <option key={f.code} value={f.code}>
+              {f.code} · {f.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <NavLink
+        to={href(FUNDS_SCREEN.path)}
+        className={({ isActive }) => (isActive ? "btn ghost funds-link active" : "btn ghost funds-link")}
+        title="Every fund, and this fund's settings"
+      >
+        {FUNDS_SCREEN.label}
+        <Kbd keys={FUNDS_SCREEN.keys} />
+      </NavLink>
+    </div>
   );
 }
 

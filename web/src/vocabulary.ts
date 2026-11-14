@@ -229,3 +229,45 @@ export type AuditAction = keyof typeof AUDIT_ACTIONS;
 export function auditActionLabel(action: string): string {
   return action in AUDIT_ACTIONS ? AUDIT_ACTIONS[action as AuditAction] : action;
 }
+
+/** Asset classes (`reconpilot.models.ASSET_CLASSES`), as price-move limits name them. */
+export const ASSET_CLASS_LABELS: Record<string, string> = {
+  EQUITY: "Equity",
+  BOND: "Bond",
+};
+
+/** The release checks' settings a fund can set (`reconpilot.pipeline.CHECK_SETTINGS`). */
+export const CHECK_SETTING_LABELS = {
+  max_price_age_days: "Price age",
+  movement_threshold: "NAV per share movement",
+  cash_tolerance: "Cash tie-out tolerance",
+  price_move_limits: "Day-on-day price-move limits",
+} as const;
+
+/** A run's progress (`jobs.status`): queued for the worker, running, finished or given up. */
+export const RUN_STATUSES = {
+  queued: "Queued",
+  running: "Running",
+  done: "Finished",
+  failed: "Failed",
+} as const;
+export type RunStatus = keyof typeof RUN_STATUSES;
+
+export function runStatusLabel(status: string): string {
+  return status in RUN_STATUSES ? RUN_STATUSES[status as RunStatus] : status;
+}
+
+/** A day's status as the end of a sentence ("Mon 9 Nov 2026 is ..."). */
+export const DAY_STATUS_PHRASES = {
+  uploaded: "loaded, but its files have errors",
+  validated: "loaded but not run yet",
+  running: "being run now",
+  ready: "ready for review, with its cases being decided",
+  signed_off: "signed off",
+  failed: "loaded, but its last run failed",
+} as const;
+
+export function dayStatusPhrase(status: string | null | undefined): string {
+  if (status == null) return "without files";
+  return status in DAY_STATUS_PHRASES ? DAY_STATUS_PHRASES[status as DayStatus] : dayStatusLabel(status).toLowerCase();
+}
