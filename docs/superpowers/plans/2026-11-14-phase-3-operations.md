@@ -359,7 +359,7 @@ name `audit_{FUND or ALL}_{YYYY-MM-DD}.csv` (today, UTC). Audited as `EXPORT_DOW
   the rules' cause; `is_open` is false on the day it cleared.
 - **The overview's trend** gains `open_gross_impact` per day (the same figure as MI's
   trend, now computed once in `mi.trend_rows`), so the overview shows the open impact per
-  run day gross beside net, and each day in its figures opens that day.
+  run day, gross with net beneath it, and each day in its figures opens that day.
 
 ### Front end
 
@@ -375,7 +375,8 @@ name `audit_{FUND or ALL}_{YYYY-MM-DD}.csv` (today, UTC). Audited as `EXPORT_DOW
 - **Sign-off**: the audit trail gains a link to the day in the audit log.
 - **Case workbench**: the case pane gains "Across days": first seen, and per day the
   status, cause, age, impact and flags, each day opening the case as it stood then.
-- **Overview trend**: net and gross open impact per day in its figures, days as links.
+- **Overview trend**: the open impact per day in its figures (gross, net beneath), days
+  as links.
 - `api/queries.ts` gains `useAuditLog`, `useAuditFacets`, `useAuditEntry`,
   `useVerifyChain`, `useAuditExport` and their paths; the vocabulary gains
   `AUDIT_CHAIN_VERIFIED`, `USER_CREATED`, `FUND_CREATED`, `ACCOUNT_LOCKED` and the
@@ -395,6 +396,8 @@ name `audit_{FUND or ALL}_{YYYY-MM-DD}.csv` (today, UTC). Audited as `EXPORT_DOW
 - Vitest `screens/audit/AuditScreen.test.tsx` (filters to the query and the address,
   paging, the entry detail, verification intact and broken, export and its refusal), the
   case pane's days and the overview trend's figures.
-- Playwright `e2e/audit.spec.ts`: a viewer filters the log to a case's decisions, opens
-  an entry, verifies the chain and exports the CSV (file name and header); an analyst
-  sees a carried case across days; axe on the audit screen in both themes.
+- Playwright `e2e/history-and-audit.spec.ts` (named to run after the business-day
+  journeys, whose two days it uses; run alone, it works them itself): an analyst follows
+  a carried case across days and opens an earlier day from the overview trend; a viewer
+  filters the log to a case's approval, opens an entry, verifies the chain and exports
+  the CSV (file name and columns); axe on the audit screen in both themes.
