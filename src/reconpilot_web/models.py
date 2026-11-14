@@ -117,6 +117,11 @@ class User(Base):
     preferred_fund_id: Mapped[int | None] = mapped_column(
         ForeignKey("funds.id", ondelete="SET NULL", use_alter=True, name="users_preferred_fund_id_fkey")
     )
+    # Demo mode only: the visitor fund a one-click sandbox user belongs to. Such a user sees that
+    # fund alone and is deleted with it. ``None`` for every real user.
+    demo_fund_id: Mapped[int | None] = mapped_column(
+        ForeignKey("funds.id", ondelete="CASCADE", use_alter=True, name="users_demo_fund_id_fkey"), index=True
+    )
 
 
 class UserSession(Base):
@@ -141,6 +146,7 @@ class UserSession(Base):
 
 class Fund(Base):
     __tablename__ = "funds"
+    __table_args__ = (Index("funds_demo_expiry", "is_demo", "demo_expires_at"),)
 
     id: Mapped[int] = mapped_column(Integer, Identity(), primary_key=True)
     code: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
@@ -155,6 +161,8 @@ class Fund(Base):
     is_demo: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     demo_visitor: Mapped[str | None] = mapped_column(String(128))
     demo_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # SHA-256 of the token in the visitor's ``rp_demo`` cookie, so they can return to their fund.
+    demo_resume_hash: Mapped[str | None] = mapped_column(String(64), unique=True, index=True)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = _now()
 

@@ -3,7 +3,7 @@ __pycache__/
 *.pyc
 *.egg-info/
 .pytest_cache/
-demo/
+/demo/
 runs/
 data/
 *.xlsx

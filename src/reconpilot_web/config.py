@@ -17,6 +17,12 @@ Variables:
     Folder for local state: the embedded database and the AI cache. Default ``.rp_data``.
 ``RP_AI_CACHE_DIR``
     Folder for cached AI responses. Default ``<RP_DATA_DIR>/ai_cache``.
+``RP_DEMO_MAX_FUNDS``
+    Demo mode: the most visitor funds alive at once (default 200). Past it, "Try the
+    demo" asks the visitor to come back later.
+``RP_DEMO_CREATIONS_PER_HOUR``
+    Demo mode: how many demo funds one visitor (one address) may start in an hour
+    (default 5).
 """
 
 from __future__ import annotations
@@ -32,6 +38,9 @@ MODES: tuple[str, ...] = ("real", "demo")
 
 _TRUE = {"1", "true", "yes", "on"}
 
+DEFAULT_DEMO_MAX_FUNDS = 200
+DEFAULT_DEMO_CREATIONS_PER_HOUR = 5
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -41,6 +50,21 @@ class Settings:
     cookie_secure: bool
     data_dir: Path
     ai_cache_dir: Path
+    demo_max_funds: int = DEFAULT_DEMO_MAX_FUNDS
+    demo_creations_per_hour: int = DEFAULT_DEMO_CREATIONS_PER_HOUR
+
+
+def _positive_int(env: Mapping[str, str], name: str, default: int) -> int:
+    raw = (env.get(name) or "").strip()
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        raise ValueError(f"{name} must be a whole number, not {raw!r}") from None
+    if value < 1:
+        raise ValueError(f"{name} must be 1 or more, not {value}")
+    return value
 
 
 def _flag(value: str | None) -> bool:
@@ -63,4 +87,6 @@ def load_settings(env: Mapping[str, str] = os.environ) -> Settings:
         cookie_secure=_flag(env.get("RP_COOKIE_SECURE")),
         data_dir=data_dir,
         ai_cache_dir=ai_cache_dir,
+        demo_max_funds=_positive_int(env, "RP_DEMO_MAX_FUNDS", DEFAULT_DEMO_MAX_FUNDS),
+        demo_creations_per_hour=_positive_int(env, "RP_DEMO_CREATIONS_PER_HOUR", DEFAULT_DEMO_CREATIONS_PER_HOUR),
     )

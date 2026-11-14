@@ -29,6 +29,10 @@ re-verifies end to end; each download is audited as ``EXPORT_DOWNLOADED``.
 
 Listed entries name their fund by code and, for an entry about a case, ``case_as_of``:
 the latest day the case was in a run, where the workbench can open it.
+
+A demo visitor's users (``auth.fund_scope``) read their own fund's entries only: every
+list, facet, entry and export is confined to that fund. Verifying still re-checks the whole
+chain, since a chain can only be checked whole, but counts only the visitor's own entries.
 """
 
 from __future__ import annotations
@@ -49,7 +53,7 @@ from sqlalchemy.orm import Session
 
 from reconpilot.audit import GENESIS, record_hash
 from reconpilot_web.auditlog import AUDIT_LOCK_KEY, DbAuditLog, verify_chain
-from reconpilot_web.auth import current_user, get_db
+from reconpilot_web.auth import current_user, fund_scope, get_db
 from reconpilot_web.days import parse_as_of
 from reconpilot_web.daytrail import day_window
 from reconpilot_web.funds import get_fund
@@ -128,6 +132,7 @@ def audit_filters(
     actor: str | None = Query(None, max_length=128),
     action: str | None = Query(None, max_length=1000),
     case: str | None = Query(None, max_length=64),
+    user: User = Depends(current_user),  # first, so a demo visitor's fund scope applies to ``fund``
     db: Session = Depends(get_db),
 ) -> AuditFilters:
     """The filters from the query string (a dependency), 404 for an unknown fund and 422 for a bad value."""
@@ -165,6 +170,9 @@ def audit_filters(
 def conditions(db: Session, filters: AuditFilters) -> list[ColumnElement[bool]]:
     """SQL conditions for ``filters``."""
     where: list[ColumnElement[bool]] = []
+    scope = fund_scope(db)
+    if scope is not None:  # a demo visitor reads their own fund's entries only
+        where.append(AuditEntry.fund_id == scope)
     if filters.fund is not None:
         where.append(AuditEntry.fund_id == filters.fund.id)
     if filters.as_of is not None and filters.fund is not None:
@@ -231,6 +239,12 @@ def _record(entry: AuditEntry) -> dict[str, Any]:
     }
 
 
+def _scoped(db: Session) -> list[ColumnElement[bool]]:
+    """The demo visitor's confinement to their fund's entries, or nothing for a real user."""
+    scope = fund_scope(db)
+    return [AuditEntry.fund_id == scope] if scope is not None else []
+
+
 def _count(db: Session, where: list[ColumnElement[bool]]) -> int:
     return db.execute(select(func.count()).select_from(AuditEntry).where(*where)).scalar_one()
 
@@ -264,7 +278,7 @@ def page_payload(db: Session, filters: AuditFilters, limit: int, before: int | N
         "has_newer": newer > 0,
         "newer_before": newer_before,
         "next_before": entries[-1].seq if more and entries else None,
-        "latest_seq": db.execute(select(func.max(AuditEntry.seq))).scalar_one_or_none() or 0,
+        "latest_seq": db.execute(select(func.max(AuditEntry.seq)).where(*_scoped(db))).scalar_one_or_none() or 0,
     }
 
 
@@ -318,7 +332,7 @@ def facets(
     db: Session = Depends(get_db),
 ) -> dict:
     """The actors and actions present in the log (or the fund's part of it), for the filter menus."""
-    where: list[ColumnElement[bool]] = []
+    where: list[ColumnElement[bool]] = _scoped(db)
     if fund and fund.strip():
         where.append(AuditEntry.fund_id == get_fund(db, fund.strip()).id)
     actors = db.execute(select(AuditEntry.actor).where(*where).distinct().order_by(AuditEntry.actor)).scalars()
@@ -329,7 +343,7 @@ def facets(
 @router.get("/entries/{seq}")
 def read_entry(seq: int, user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
     """One entry in full, with whether its hash recomputes and it links to the entry before it."""
-    entry = db.execute(select(AuditEntry).where(AuditEntry.seq == seq)).scalar_one_or_none()
+    entry = db.execute(select(AuditEntry).where(AuditEntry.seq == seq, *_scoped(db))).scalar_one_or_none()
     if entry is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"There is no audit entry #{seq}.")
     if seq == 1:
@@ -352,11 +366,15 @@ def verify(user: User = Depends(current_user), db: Session = Depends(get_db)) ->
     """
     db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": AUDIT_LOCK_KEY})
     chain_ok, broken_at = verify_chain(db)
-    count, last_seq = db.execute(select(func.count(AuditEntry.id), func.max(AuditEntry.seq))).one()
+    # A demo visitor is told about their own fund's entries, not how much others have done.
+    scope = fund_scope(db)
+    count, last_seq = db.execute(
+        select(func.count(AuditEntry.id), func.max(AuditEntry.seq)).where(*_scoped(db))
+    ).one()
     last_hash = db.execute(
         select(AuditEntry.hash).where(AuditEntry.seq == last_seq)
     ).scalar_one_or_none() if last_seq is not None else None
-    record = DbAuditLog(db).append(user.username, user.role, VERIFY_ACTION, {
+    record = DbAuditLog(db, fund_id=scope).append(user.username, user.role, VERIFY_ACTION, {
         "intact": chain_ok,
         "broken_at": broken_at,
         "entries": count,
@@ -385,7 +403,7 @@ def export_csv(
     content, rows = csv_bytes(db, filters)
     scope = filters.fund.code if filters.fund is not None else "ALL"
     filename = f"audit_{scope}_{datetime.now(timezone.utc).date()}.csv"
-    DbAuditLog(db, fund_id=filters.fund.id if filters.fund is not None else None).append(
+    DbAuditLog(db, fund_id=filters.fund.id if filters.fund is not None else fund_scope(db)).append(
         user.username, user.role, EXPORT_ACTION, {
             "export": AUDIT_CSV_EXPORT,
             "filename": filename,

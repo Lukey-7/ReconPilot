@@ -325,9 +325,68 @@ def _cmd_dev(args: argparse.Namespace) -> int:
     return 0
 
 
+def demo_settings(settings: Settings, env=os.environ) -> Settings:
+    """``settings`` for a demo instance: demo mode and, unless ``RP_DATA_DIR`` says otherwise,
+    an embedded database of its own in ``<data dir>/demo``, never the real one beside it."""
+    import dataclasses
+
+    data_dir = settings.data_dir if env.get("RP_DATA_DIR") else settings.data_dir / "demo"
+    ai_cache_dir = settings.ai_cache_dir if env.get("RP_AI_CACHE_DIR") else data_dir / "ai_cache"
+    return dataclasses.replace(settings, mode="demo", data_dir=data_dir, ai_cache_dir=ai_cache_dir)
+
+
+def serve_demo(settings: Settings, host: str, port: int, dist: Path | None,
+               *, poll_interval: float = 1.0) -> None:
+    """The whole demo in one process: migrate, then the API and front end, a worker and the
+    cleanup job (spec section 11). Returns when the server stops."""
+    import threading
+
+    from sqlalchemy.orm import sessionmaker
+
+    from reconpilot_web import db, demo
+    from reconpilot_web.jobs import run_worker
+
+    migrate(settings)  # records demo mode in a new database, and refuses a real one
+    url, _ = database_urls(settings)
+    engine = db.make_engine(url)
+    stop = threading.Event()
+    worker = threading.Thread(target=run_worker, args=(settings,),
+                              kwargs={"stop": stop, "poll_interval": poll_interval},
+                              name="reconpilot-worker", daemon=True)
+    cleanup = threading.Thread(target=demo.run_cleanup, args=(sessionmaker(bind=engine, expire_on_commit=False), stop),
+                               name="reconpilot-demo-cleanup", daemon=True)
+    worker.start()
+    cleanup.start()
+    try:
+        _serve_api(settings, host, port, dist)
+    finally:
+        stop.set()
+        worker.join(timeout=30)
+        cleanup.join(timeout=30)
+        engine.dispose()
+
+
 def _cmd_serve(args: argparse.Namespace) -> int:
+    import logging
+
     try:
         settings = load_settings()
+        if args.mode == "demo" or (args.mode is None and settings.mode == "demo"):
+            logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+            for noisy in ("pgserver", "alembic"):
+                logging.getLogger(noisy).setLevel(logging.WARNING)
+            settings = demo_settings(settings)
+            dist = web_dist()
+            where = "RP_DATABASE_URL" if settings.database_url else f"the embedded database in {settings.data_dir}"
+            print(f"Demo instance on {where}, with a worker and the cleanup job running in-process.")
+            print(f"Serving the front end from {dist}." if dist else
+                  f"API only: no built front end in {WEB_DIR / 'dist'} (run 'npm run build' in {WEB_DIR}).")
+            serve_demo(settings, args.host, args.port, dist)
+            return 0
+        if args.mode == "real":
+            import dataclasses
+
+            settings = dataclasses.replace(settings, mode="real")
         dist = web_dist()
         print(f"Serving the front end from {dist}." if dist else
               f"API only: no built front end in {WEB_DIR / 'dist'} (run 'npm run build' in {WEB_DIR}).")
@@ -337,6 +396,28 @@ def _cmd_serve(args: argparse.Namespace) -> int:
         return 1
     except KeyboardInterrupt:
         pass
+    return 0
+
+
+def _cmd_demo_cleanup(args: argparse.Namespace) -> int:
+    from reconpilot_web import db, demo
+    from reconpilot_web.models import assert_instance_mode
+
+    try:
+        settings = load_settings()
+        url, _ = database_urls(settings)
+        engine = db.make_engine(url)
+        try:
+            with db.SessionLocal(bind=engine) as session:
+                assert_instance_mode(session, "demo")
+            with db.SessionLocal(bind=engine) as session, session.begin():
+                codes = demo.delete_expired(session)
+        finally:
+            engine.dispose()
+    except (ValueError, RuntimeError) as exc:
+        print(f"reconpilot-web: {exc}", file=sys.stderr)
+        return 1
+    print(f"Deleted {len(codes)} expired demo fund(s){': ' + ', '.join(codes) if codes else '.'}")
     return 0
 
 
@@ -371,10 +452,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="serve the API and the built front end (run the worker separately)",
         description="Serve the API against RP_DATABASE_URL (or the embedded database), and the built "
         "front end from web/dist when it exists. Run 'reconpilot-web migrate' first and "
-        "'reconpilot-web worker' alongside to run days.",
+        "'reconpilot-web worker' alongside to run days. With --mode demo, serve the public demo "
+        "instead: its own database (the embedded one in RP_DATA_DIR/demo unless RP_DATA_DIR or "
+        "RP_DATABASE_URL is set), migrated on start, with a worker and the expiry cleanup running "
+        "in the same process, so one Python process and PostgreSQL host the whole demo.",
     )
     _add_listen_args(p)
+    p.add_argument("--mode", choices=("real", "demo"), default=None,
+                   help="the instance mode (default RP_MODE); demo serves the public demo")
     p.set_defaults(func=_cmd_serve)
+
+    p = sub.add_parser(
+        "demo-cleanup",
+        help="delete demo funds unused for 24 hours (demo databases only)",
+        description="Delete every visitor fund of a demo database that has not been used for 24 hours, "
+        "with its days, cases and users. 'serve --mode demo' already does this every ten minutes; "
+        "this is for running it from a scheduler as well.",
+    )
+    p.set_defaults(func=_cmd_demo_cleanup)
 
     p = sub.add_parser(
         "migrate",

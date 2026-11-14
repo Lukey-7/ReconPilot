@@ -25,7 +25,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from reconpilot_web.auditlog import DbAuditLog
-from reconpilot_web.auth import current_user, get_db, require_roles
+from reconpilot_web.auth import current_user, fund_scope, get_db, require_roles
 from reconpilot_web.funds import fund_settings, get_fund, is_business_day, previous_business_day
 from reconpilot_web.jobs import enqueue, job_payload
 from reconpilot_web.models import AuditEntry, BusinessDay, Fund, InputFile, Job, User
@@ -256,7 +256,28 @@ def upload_files(
         )
     contents = {kind: _read_upload(upload, FILE_KINDS[kind]) for kind, upload in by_kind.items()}
     names = {kind: base_name(upload.filename)[:255] for kind, upload in by_kind.items()}
+    day, report = store_files(db, fund, day_date, contents, names, user)
+    db.commit()
+    return {"status": day.status, **report.to_dict()}
 
+
+def store_files(
+    db: Session,
+    fund: Fund,
+    day_date: date,
+    contents: dict[str, bytes],
+    names: dict[str, str],
+    user: User,
+    *,
+    generated: bool = False,
+) -> tuple[BusinessDay, ValidationReport]:
+    """Store a day's files (``{kind: bytes}``, named by ``names``) and validate the whole set held.
+
+    In ``db``'s transaction (the caller commits). The day must already be open for files
+    (``check_day_order``); 409 when it is signed off or being run. Audited as
+    ``FILES_UPLOADED`` (with ``generated`` true for the demo's generated days) and then
+    ``VALIDATION_PASSED`` or ``VALIDATION_FAILED``.
+    """
     # One row per day, created by the first upload; locked so uploads, runs and sign-off queue up.
     db.execute(
         insert(BusinessDay).values(fund_id=fund.id, as_of=day_date, status="uploaded")
@@ -295,7 +316,10 @@ def upload_files(
     day.error = None
 
     audit = DbAuditLog(db, fund_id=fund.id)
-    audit.append(user.username, user.role, "FILES_UPLOADED", {"as_of": str(day_date), "files": uploaded})
+    uploaded_payload: dict[str, Any] = {"as_of": str(day_date), "files": uploaded}
+    if generated:
+        uploaded_payload["generated"] = True
+    audit.append(user.username, user.role, "FILES_UPLOADED", uploaded_payload)
     outcome = {"as_of": str(day_date), "errors": len(report.errors), "warnings": len(report.warnings)}
     if report.ok:
         audit.append(user.username, user.role, "VALIDATION_PASSED", outcome)
@@ -304,8 +328,7 @@ def upload_files(
             f"{i.file}{f' row {i.row}' if i.row else ''}: {i.message}" for i in report.errors[:AUDIT_ERROR_SAMPLE]
         ]
         audit.append(user.username, user.role, "VALIDATION_FAILED", outcome)
-    db.commit()
-    return {"status": day.status, **report.to_dict()}
+    return day, report
 
 
 def next_business_day(fund: Fund, d: date) -> date:
@@ -376,13 +399,19 @@ def start_run(
     user: User = Depends(require_roles("analyst", "approver")),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Queue a run of the day's validated files (202 with the job id).
+    """Queue a run of the day's validated files (202 with the job id); see ``queue_run``."""
+    fund = get_fund(db, code)
+    job_id = queue_run(db, fund, parse_as_of(as_of), user)
+    db.commit()
+    return {"job_id": job_id}
+
+
+def queue_run(db: Session, fund: Fund, day_date: date, user: User) -> int:
+    """Queue a run of the day in ``db``'s transaction (the caller commits); the job's id.
 
     409 when the day is signed off, already running, has validation errors, is not
     the fund's latest day, or its previous business day is not signed off.
     """
-    fund = get_fund(db, code)
-    day_date = parse_as_of(as_of)
     check_day_order(db, fund, day_date)
     day = get_day(db, fund, day_date, for_update=True)
     if day is None:
@@ -415,8 +444,7 @@ def start_run(
         "rerun": previous_status != "validated" or day.run_at is not None,
         "previous_status": previous_status,
     })
-    db.commit()
-    return {"job_id": job_id}
+    return job_id
 
 
 def intake_payload(db: Session, fund: Fund, as_of: date, *, demo: bool) -> dict[str, Any]:
@@ -539,6 +567,11 @@ jobs_router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 @jobs_router.get("/{job_id}")
 def read_job(job_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
     job = db.get(Job, job_id)
+    scope = fund_scope(db)
+    if job is not None and scope is not None:  # a demo visitor sees their own fund's jobs only
+        day = db.get(BusinessDay, int((job.payload or {}).get("business_day_id") or 0))
+        if day is None or day.fund_id != scope:
+            job = None
     if job is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"No job {job_id}.")
     return job_payload(job)

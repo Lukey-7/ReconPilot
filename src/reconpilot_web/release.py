@@ -207,16 +207,21 @@ def read_release(
     return release_payload(db, fund, get_day(db, fund, day_date), day_date, user)
 
 
-@router.post("/{as_of}/signoff")
-def sign_off(
-    code: str,
-    as_of: str,
-    user: User = Depends(require_roles("approver")),
-    db: Session = Depends(get_db),
-) -> dict:
-    """Sign off the day (see module doc): 200 with the signed-off day, or 409 with the reasons."""
-    fund = get_fund(db, code)
-    day_date = parse_as_of(as_of)
+class SignOffRefused(Exception):
+    """Sign-off refused; ``detail`` is the 409 body. The refusal's audit entry is already written."""
+
+    def __init__(self, detail: dict[str, Any]):
+        super().__init__(detail.get("message", ""))
+        self.detail = detail
+
+
+def sign_off_day(db: Session, fund: Fund, day_date: date, user: User) -> BusinessDay:
+    """Sign off the day as ``user`` in ``db``'s transaction (the caller commits).
+
+    Re-checks everything under the day's lock. 404 or 409 (``HTTPException``) when there is
+    no day or it is already signed off; ``SignOffRefused`` when a reason blocks it, after
+    auditing ``SIGN_OFF_BLOCKED`` (the caller commits that entry before answering 409).
+    """
     day = get_day(db, fund, day_date, for_update=True)
     if day is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"No files have been uploaded for {day_date}.")
@@ -232,8 +237,7 @@ def sign_off(
             "as_of": str(day_date),
             "reasons": [{"code": r.code, "cases": r.case_ids} for r in reasons],
         })
-        db.commit()
-        raise HTTPException(status.HTTP_409_CONFLICT, {
+        raise SignOffRefused({
             "message": f"{day_date} cannot be signed off yet.",
             "reasons": [asdict(r) for r in reasons],
         })
@@ -241,14 +245,30 @@ def sign_off(
     try:
         ReviewSession(cases, audit, user.username, user.role).sign_off()
     except (PermissionDenied, ReviewError) as exc:  # the engine's own rules, as a second line of defence
-        db.commit()  # keep the engine's SIGN_OFF_BLOCKED entry
-        raise HTTPException(status.HTTP_409_CONFLICT, {"message": str(exc), "reasons": []}) from None
+        raise SignOffRefused({"message": str(exc), "reasons": []}) from None  # keeps the engine's entry
 
     day.status = "signed_off"
     day.signed_off_by = user.id
     day.signed_off_at = func.now()
     day.release_ready = True
     day.release = {**status_.to_dict(), "signed_off_by": user.username}
+    return day
+
+
+@router.post("/{as_of}/signoff")
+def sign_off(
+    code: str,
+    as_of: str,
+    user: User = Depends(require_roles("approver")),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Sign off the day (see module doc): 200 with the signed-off day, or 409 with the reasons."""
+    fund = get_fund(db, code)
+    try:
+        day = sign_off_day(db, fund, parse_as_of(as_of), user)
+    except SignOffRefused as refused:
+        db.commit()  # keep the SIGN_OFF_BLOCKED entry
+        raise HTTPException(status.HTTP_409_CONFLICT, refused.detail) from None
     db.commit()
     db.refresh(day)
     return day_payload(db, fund, day)

@@ -28,6 +28,14 @@ Lockout
 
 Roles are checked here, on the server, from the session: ``require_roles``
 answers 403 to anyone else, and ``require_admin`` to anyone without the admin flag.
+
+Demo visitors (spec section 11)
+    A one-click demo user belongs to one visitor fund (``users.demo_fund_id``) and has
+    no password, so it can only be entered through the demo's own routes. Every
+    request it makes is scoped to that fund: ``current_user`` records the scope on the
+    request's database session (``FUND_SCOPE``), ``funds.get_fund`` answers 404 for any
+    other fund, and lists (funds, jobs, the audit log) leave other funds out. Each of
+    its requests also keeps the fund alive for ``DEMO_TTL`` more.
 """
 
 from __future__ import annotations
@@ -42,7 +50,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from reconpilot_web.auditlog import DbAuditLog
-from reconpilot_web.models import ROLES, User, UserSession
+from reconpilot_web.models import ROLES, Fund, User, UserSession
 from reconpilot_web.security import (
     check_password_policy,
     hash_password,
@@ -63,10 +71,18 @@ MAX_FAILED_LOGINS = 5
 LOCKOUT_PERIOD = timedelta(minutes=15)
 
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE"})
-CSRF_EXEMPT_PATHS = frozenset({"/api/auth/login"})
+# Sign-in and starting or resuming a demo issue the CSRF token, so they cannot need one; all take JSON only.
+CSRF_EXEMPT_PATHS = frozenset({"/api/auth/login", "/api/demo", "/api/demo/resume"})
 
 SYSTEM_ACTOR = "reconpilot-web"
 SYSTEM_ROLE = "system"
+
+# The key in a request's ``Session.info`` holding the one fund a demo user may see.
+FUND_SCOPE = "fund_scope"
+# A demo fund lives this long after its last use (spec section 11) ...
+DEMO_TTL = timedelta(hours=24)
+# ... and its expiry is moved on at most this often, not on every request.
+DEMO_TOUCH_EVERY = timedelta(minutes=1)
 
 # Verified against when the username is unknown, so a miss takes as long as a wrong password.
 _DUMMY_HASH: str | None = None
@@ -104,6 +120,38 @@ def get_db(request: Request) -> Iterator[Session]:
 def normalise_username(username: str) -> str:
     """The stored form of a username: trimmed and lower-cased."""
     return username.strip().lower()
+
+
+def fund_scope(db: Session) -> int | None:
+    """The id of the one fund this request's user may see, or ``None`` for a real user."""
+    return db.info.get(FUND_SCOPE)
+
+
+def touch_demo_fund(db: Session, fund_id: int, now: datetime) -> None:
+    """Keep a demo fund alive for ``DEMO_TTL`` from ``now`` (written at most once a minute)."""
+    fund = db.get(Fund, fund_id)
+    if fund is not None and fund.is_demo and (
+        fund.demo_expires_at is None or fund.demo_expires_at < now + DEMO_TTL - DEMO_TOUCH_EVERY
+    ):
+        fund.demo_expires_at = now + DEMO_TTL
+
+
+def demo_payload(db: Session, user: User) -> dict[str, Any] | None:
+    """A demo user's fund, its expiry and the fund's one-click users (for the role switcher)."""
+    if user.demo_fund_id is None:
+        return None
+    fund = db.get(Fund, user.demo_fund_id)
+    if fund is None:
+        return None
+    team = db.execute(select(User).where(User.demo_fund_id == fund.id).order_by(User.id)).scalars().all()
+    return {
+        "fund": fund.code,
+        "fund_name": fund.name,
+        "expires_at": fund.demo_expires_at.isoformat() if fund.demo_expires_at else None,
+        "users": [
+            {"username": u.username, "display_name": u.display_name or u.username, "role": u.role} for u in team
+        ],
+    }
 
 
 def user_payload(user: User) -> dict[str, Any]:
@@ -190,6 +238,9 @@ def current_user(request: Request, db: Session = Depends(get_db)) -> User:
     if row is None or user is None or not _session_is_live(row, now) or not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Sign in to continue.")
     row.last_seen_at = now
+    if user.demo_fund_id is not None:
+        db.info[FUND_SCOPE] = user.demo_fund_id
+        touch_demo_fund(db, user.demo_fund_id, now)
     db.commit()
     request.state.user_session = row
     request.state.user = user
@@ -244,7 +295,7 @@ class LoginRequest(BaseModel):
     password: str
 
 
-def _set_cookies(response: Response, request: Request, token: str, csrf: str) -> None:
+def set_session_cookies(response: Response, request: Request, token: str, csrf: str) -> None:
     secure = request.app.state.settings.cookie_secure
     max_age = int(ABSOLUTE_TIMEOUT.total_seconds())
     response.set_cookie(
@@ -285,6 +336,7 @@ def login(body: LoginRequest, request: Request, response: Response, db: Session 
         audit.append(username[:128], "", "SIGN_IN_FAILED", {"reason": "unknown user", "ip": ip})
         raise _refuse(db, status.HTTP_401_UNAUTHORIZED, bad_credentials)
 
+    audit = DbAuditLog(db, fund_id=user.demo_fund_id)
     if user.locked_until is not None and user.locked_until > now:
         audit.append(user.username, user.role, "SIGN_IN_FAILED", {"reason": "locked", "ip": ip})
         raise _refuse(db, status.HTTP_423_LOCKED, _locked_message(user.locked_until, now))
@@ -314,6 +366,18 @@ def login(body: LoginRequest, request: Request, response: Response, db: Session 
     user.failed_logins = 0
     user.locked_until = None
     user.last_login_at = now
+    token, csrf = open_session(db, request, user, now)
+    audit.append(user.username, user.role, "SIGN_IN", {"ip": ip})
+    db.commit()
+    set_session_cookies(response, request, token, csrf)
+    return {"user": user_payload(user)}
+
+
+def open_session(db: Session, request: Request, user: User, now: datetime) -> tuple[str, str]:
+    """Start a session for ``user`` in ``db``'s transaction, ending any this browser still holds.
+
+    Returns ``(session token, CSRF token)`` for ``set_session_cookies`` once the caller commits.
+    """
     previous = _load_session(db, request.cookies.get(SESSION_COOKIE))
     if previous is not None and previous.revoked_at is None:
         previous.revoked_at = now
@@ -326,14 +390,11 @@ def login(body: LoginRequest, request: Request, response: Response, db: Session 
             created_at=now,
             last_seen_at=now,
             expires_at=now + ABSOLUTE_TIMEOUT,
-            ip_address=ip,
+            ip_address=_client_ip(request),
             user_agent=(request.headers.get("user-agent") or "")[:512] or None,
         )
     )
-    audit.append(user.username, user.role, "SIGN_IN", {"ip": ip})
-    db.commit()
-    _set_cookies(response, request, token, csrf)
-    return {"user": user_payload(user)}
+    return token, csrf
 
 
 def _locked_message(until: datetime, now: datetime) -> str:
@@ -345,7 +406,7 @@ def _locked_message(until: datetime, now: datetime) -> str:
 def logout(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)) -> Response:
     row: UserSession = request.state.user_session
     row.revoked_at = _now()
-    DbAuditLog(db).append(user.username, user.role, "SIGN_OUT", {"ip": _client_ip(request)})
+    DbAuditLog(db, fund_id=user.demo_fund_id).append(user.username, user.role, "SIGN_OUT", {"ip": _client_ip(request)})
     db.commit()
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
     _clear_cookies(response, request)
@@ -353,5 +414,7 @@ def logout(request: Request, user: User = Depends(current_user), db: Session = D
 
 
 @router.get("/me")
-def me(user: User = Depends(current_user)) -> dict:
-    return user_payload(user)
+def me(user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
+    """The signed-in user; a demo user also gets ``demo`` (their fund and its one-click users)."""
+    demo = demo_payload(db, user)
+    return {**user_payload(user), "demo": demo} if demo is not None else user_payload(user)

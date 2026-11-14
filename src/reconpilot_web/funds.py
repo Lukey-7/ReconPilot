@@ -28,7 +28,7 @@ from reconpilot.models import BASE_CURRENCY
 from reconpilot.nav import PRICE_MOVE_LIMITS, run_checks
 from reconpilot.pipeline import CHECK_SETTINGS
 from reconpilot_web.auditlog import DbAuditLog
-from reconpilot_web.auth import SYSTEM_ACTOR, SYSTEM_ROLE, current_user, get_db
+from reconpilot_web.auth import SYSTEM_ACTOR, SYSTEM_ROLE, current_user, fund_scope, get_db
 from reconpilot_web.models import BusinessDay, Fund, User
 
 _ENGINE_LIFECYCLE = LifecycleSettings()
@@ -209,9 +209,14 @@ def create_fund(
 
 
 def get_fund(db: Session, code: str) -> Fund:
-    """The fund with this code, or 404."""
+    """The fund with this code, or 404.
+
+    Also 404 when the request's user is a demo visitor's and the fund is not theirs
+    (``auth.fund_scope``), so one visitor cannot even learn that another's fund exists.
+    """
     fund = db.execute(select(Fund).where(Fund.code == normalise_code(code))).scalar_one_or_none()
-    if fund is None:
+    scope = fund_scope(db)
+    if fund is None or (scope is not None and fund.id != scope):
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"No fund {code}.")
     return fund
 
@@ -251,7 +256,11 @@ router = APIRouter(prefix="/api/funds", tags=["funds"])
 
 @router.get("")
 def list_funds(user: User = Depends(current_user), db: Session = Depends(get_db)) -> list[dict]:
-    funds = db.execute(select(Fund).order_by(Fund.code)).scalars().all()
+    query = select(Fund).order_by(Fund.code)
+    scope = fund_scope(db)
+    if scope is not None:  # a demo visitor sees their own fund only
+        query = query.where(Fund.id == scope)
+    funds = db.execute(query).scalars().all()
     return [fund_summary(db, f) for f in funds]
 
 

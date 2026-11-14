@@ -27,7 +27,9 @@ new run no longer raises is withdrawn (``CASE_WITHDRAWN_BY_RERUN``).
 The AI provider comes from the environment, never the database: the first of
 ``ANTHROPIC_API_KEY``, ``OPENAI_API_KEY`` and ``GOOGLE_API_KEY`` that is set, or
 ``RP_AI_PROVIDER``; ``RP_AI_MODEL``, ``RP_AI_EFFORT`` and ``RP_AI_TIMEOUT`` override
-the engine's defaults.
+the engine's defaults. A demo visitor's fund never calls a provider, key or not: its
+AI answers come from the demo's pre-filled cache (``demo_ai_client``), and anything
+not cached falls back to the rules.
 """
 
 from __future__ import annotations
@@ -49,7 +51,7 @@ from reconpilot.pipeline import DayResult, run_day
 from reconpilot.review import PermissionDenied, ReviewError, ReviewSession
 from reconpilot.storage import case_from_dict, case_to_dict, read_day, trade_from_dict, trade_to_dict
 from reconpilot_web import jobs
-from reconpilot_web.aicache import DbResponseCache
+from reconpilot_web.aicache import DbResponseCache, demo_client
 from reconpilot_web.auditlog import DbAuditLog
 from reconpilot_web.auth import SYSTEM_ACTOR, SYSTEM_ROLE
 from reconpilot_web.funds import fund_check_settings, fund_lifecycle, fund_settings, previous_business_day
@@ -86,6 +88,11 @@ def ai_client():
         os.environ.get("RP_AI_EFFORT", "").strip() or "medium",
         float(timeout) if timeout else 120.0,
     )
+
+
+def demo_ai_client():
+    """The demo's AI: answers from the pre-filled cache only (``aicache.CacheOnlyClient``)."""
+    return demo_client()
 
 
 def load_day_data(session: Session, day: BusinessDay) -> DayData:
@@ -374,7 +381,7 @@ def run_day_job(session: Session, payload: dict) -> dict:
 
     settings = fund_settings(fund)
     use_ai = bool(settings["ai_enabled"])
-    client = ai_client() if use_ai else None
+    client = (demo_ai_client() if fund.is_demo else ai_client()) if use_ai else None
     audit = DbAuditLog(session, fund_id=fund.id)
     cache_session = Session(bind=session.get_bind()) if client is not None else None
     try:

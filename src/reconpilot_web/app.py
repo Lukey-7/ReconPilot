@@ -15,6 +15,7 @@ from reconpilot_web import (
     cases,
     days,
     daytrail,
+    demo,
     db,
     funds,
     mi,
@@ -22,6 +23,7 @@ from reconpilot_web import (
     preferences,
     release,
 )
+from reconpilot_web.aicache import load_demo_cache
 from reconpilot_web.config import Settings
 from reconpilot_web.models import assert_instance_mode
 
@@ -69,7 +71,8 @@ def create_app(settings: Settings, web_dist: Path | None = None) -> FastAPI:
     """Build the app for ``settings``, serving the built front end in ``web_dist`` if given.
 
     Refuses (``RuntimeError``) a database written for the other instance mode, so
-    a demo instance can never open real data or the other way round.
+    a demo instance can never open real data or the other way round. A demo instance
+    loads the demo's pre-filled AI cache into its database.
     """
     from reconpilot_web.cli import database_urls
 
@@ -79,6 +82,9 @@ def create_app(settings: Settings, web_dist: Path | None = None) -> FastAPI:
     try:
         with session_factory() as session:
             assert_instance_mode(session, settings.mode)
+        if settings.mode == "demo":  # the demo's AI answers, built in advance (spec section 11)
+            with session_factory() as session, session.begin():
+                load_demo_cache(session)
     except BaseException:
         engine.dispose()
         raise
@@ -116,6 +122,7 @@ def create_app(settings: Settings, web_dist: Path | None = None) -> FastAPI:
     app.include_router(daytrail.router)
     app.include_router(mi.router)
     app.include_router(auditviewer.router)
+    app.include_router(demo.router)
     if web_dist is not None:
         mount_web(app, web_dist)
     return app
