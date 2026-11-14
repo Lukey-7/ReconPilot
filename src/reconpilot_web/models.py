@@ -112,6 +112,11 @@ class User(Base):
     external_subject: Mapped[str | None] = mapped_column(String(255), unique=True)
     created_at: Mapped[datetime] = _now()
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The fund the user last chose to work (see ``preferences``); cleared if the fund is removed.
+    # ``use_alter``: funds.created_by points back at users, so this key is added after both tables.
+    preferred_fund_id: Mapped[int | None] = mapped_column(
+        ForeignKey("funds.id", ondelete="SET NULL", use_alter=True, name="users_preferred_fund_id_fkey")
+    )
 
 
 class UserSession(Base):

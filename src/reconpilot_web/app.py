@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from starlette.responses import Response
 from sqlalchemy.orm import sessionmaker
 
-from reconpilot_web import auth, cases, days, daytrail, db, funds, overview, release
+from reconpilot_web import auth, cases, days, daytrail, db, funds, overview, preferences, release
 from reconpilot_web.config import Settings
 from reconpilot_web.models import assert_instance_mode
 
@@ -94,6 +94,7 @@ def create_app(settings: Settings, web_dist: Path | None = None) -> FastAPI:
         return add_security_headers(request, response)
 
     app.include_router(auth.router)
+    app.include_router(preferences.router)
     app.include_router(funds.router)
     app.include_router(days.router)
     app.include_router(days.jobs_router)
