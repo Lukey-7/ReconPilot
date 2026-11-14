@@ -16,6 +16,7 @@ import { CasesScreen } from "../screens/cases/CasesScreen";
 import { NotFoundScreen } from "../screens/NotFoundScreen";
 import { OverviewScreen } from "../screens/overview/OverviewScreen";
 import { SignOffScreen } from "../screens/signoff/SignOffScreen";
+import { UploadScreen } from "../screens/upload/UploadScreen";
 import { AppShell } from "../shell/AppShell";
 import { ThemeProvider } from "../theme/ThemeProvider";
 
@@ -52,6 +53,7 @@ export function AppRoutes() {
         }
       >
         <Route path="/overview" element={<OverviewScreen />} />
+        <Route path="/upload" element={<UploadScreen />} />
         <Route path="/cases" element={<CasesScreen />} />
         <Route path="/signoff" element={<SignOffScreen />} />
       </Route>

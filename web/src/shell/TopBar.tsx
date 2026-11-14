@@ -16,6 +16,7 @@ import { useWorkspace } from "./workspace";
 
 export const SCREENS = [
   { path: "/overview", label: "Overview", keys: "g o" },
+  { path: "/upload", label: "Upload", keys: "g u" },
   { path: "/cases", label: "Cases", keys: "g q" },
   { path: "/signoff", label: "Sign-off", keys: "g s" },
 ] as const;

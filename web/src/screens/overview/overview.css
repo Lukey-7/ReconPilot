@@ -457,3 +457,7 @@
 .ov-day-status {
   font-weight: 600;
 }
+
+.ov-upload-link {
+  margin-top: 12px;
+}

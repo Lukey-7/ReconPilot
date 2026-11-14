@@ -441,4 +441,13 @@ describe("Morning overview", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("The database is unavailable.");
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
+
+  it("leads to upload and run when the day has no files", async () => {
+    setup({ status: 404, body: { detail: "No files have been uploaded for 2026-11-10." } });
+    renderApp(URL_DAY);
+    expect(await screen.findByRole("link", { name: "Upload the day’s files" })).toHaveAttribute(
+      "href",
+      "/upload?fund=GEF1&day=2026-11-10",
+    );
+  });
 });

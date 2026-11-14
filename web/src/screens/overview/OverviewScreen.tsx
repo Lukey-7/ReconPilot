@@ -9,6 +9,8 @@
  */
 import "./overview.css";
 
+import { Link } from "react-router";
+
 import { ApiError } from "../../api/client";
 import { useOverview } from "../../api/queries";
 import type { Overview } from "../../api/types";
@@ -26,6 +28,18 @@ import { ImpactSection } from "./ImpactSection";
 import { ReleaseSection } from "./ReleaseSection";
 import { TrendSection } from "./TrendSection";
 
+/** The way to the upload and run screen for the day on show. */
+function UploadLink({ children }: { children: string }) {
+  const { href } = useWorkspace();
+  return (
+    <p className="ov-upload-link">
+      <Link className="btn" to={href("/upload")}>
+        {children}
+      </Link>
+    </p>
+  );
+}
+
 function NotRun({ overview }: { overview: Overview }) {
   const status = overview.day_status;
   let next: string;
@@ -39,6 +53,7 @@ function NotRun({ overview }: { overview: Overview }) {
       <p>
         <span className="ov-day-status">{dayStatusLabel(status)}.</span> {next}
       </p>
+      {status !== "running" && <UploadLink>Go to upload and run</UploadLink>}
     </section>
   );
 }
@@ -93,13 +108,19 @@ export function OverviewScreen() {
     body = daysLoading ? (
       <Loading label="Loading business days" />
     ) : (
-      <Empty>No business day has been loaded for {fund.name} yet. Upload the first day&rsquo;s files to begin.</Empty>
+      <>
+        <Empty>No business day has been loaded for {fund.name} yet. Upload the first day&rsquo;s files to begin.</Empty>
+        <UploadLink>Upload the first day&rsquo;s files</UploadLink>
+      </>
     );
   else if (query.isPending) body = <Loading label="Loading the overview" />;
   else if (query.isError) {
     body =
       query.error instanceof ApiError && query.error.status === 404 ? (
-        <Empty>{query.error.message} Upload the day&rsquo;s files to begin.</Empty>
+        <>
+          <Empty>{query.error.message} Upload the day&rsquo;s files to begin.</Empty>
+          <UploadLink>Upload the day&rsquo;s files</UploadLink>
+        </>
       ) : (
         <ErrorLine error={query.error} retry={() => void query.refetch()} />
       );
