@@ -242,6 +242,22 @@ describe("Morning overview", () => {
     expect(within(acc).getByText(/1 break is not in any case/)).toBeInTheDocument();
   });
 
+  it("stays uncluttered: three impact totals, and the minor sections two to a panel", async () => {
+    setup(overview());
+    renderApp(URL_DAY);
+    const impact = await section("Open breaks by NAV impact");
+    const totals = within(impact).getByTestId("impact-gross").closest("dl") as HTMLElement;
+    expect(within(totals).getAllByRole("term").map((t) => t.textContent)).toEqual([
+      "Gross impact",
+      "Net impact",
+      "Material",
+    ]);
+    const panelOf = (name: string) => screen.getByRole("region", { name }).parentElement;
+    expect(panelOf("Ageing")).toBe(panelOf("SLA breaches and escalations"));
+    expect(panelOf("Trend")).toBe(panelOf("Cleared today"));
+    expect(panelOf("Ageing")).toHaveClass("ov-panel");
+  });
+
   it("ranks open breaks by NAV impact and shows gross and net together", async () => {
     setup(overview());
     renderApp(URL_DAY);

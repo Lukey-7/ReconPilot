@@ -1,8 +1,9 @@
 /**
  * Open breaks ranked by NAV impact, largest first, with the gross and net totals side by
  * side: net alone would let offsetting breaks hide each other, so it is never shown alone.
- * The ten largest show at first; the rest are a click away. A row opens its case in the
- * workbench.
+ * Three totals only (gross, net, how many are material); each case's own gross exposure is in
+ * the workbench. The ten largest show at first; the rest are a click away. A row opens its
+ * case in the workbench.
  */
 import { createColumnHelper } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
@@ -10,6 +11,7 @@ import { useNavigate } from "react-router";
 
 import type { Overview, OverviewCase } from "../../api/types";
 import { DataTable } from "../../components/DataTable";
+import { TweenedMoney } from "../../components/Figures";
 import { StatusLabel } from "../../components/Labels";
 import { bp, count, money, plural } from "../../format";
 import { FLAGS } from "../../vocabulary";
@@ -38,7 +40,10 @@ function Flags({ c }: { c: OverviewCase }) {
   );
 }
 
-/** A thin bar for the size of the impact, with a tick at the materiality threshold. Decorative: the figure beside it says it. */
+/**
+ * A thin bar for the size of the impact, brighter when material, with a tick at the
+ * materiality threshold. Decorative: the figure beside it and the Material label say it.
+ */
 function ImpactBar({ value, scale, threshold, material }: { value: number; scale: number; threshold: number; material: boolean }) {
   const width = scale > 0 ? Math.min(100, (Math.abs(value) / scale) * 100) : 0;
   const tick = scale > 0 ? Math.min(100, (threshold / scale) * 100) : 0;
@@ -143,25 +148,19 @@ export function ImpactSection({ impact, currency, materialityBp }: { impact: Imp
         <div>
           <dt>Gross impact</dt>
           <dd className="fig" data-testid="impact-gross">
-            {money(impact.gross)} <span className="faint">{currency}</span>
+            <TweenedMoney value={impact.gross} /> <span className="faint">{currency}</span>
           </dd>
         </div>
         <div>
           <dt>Net impact</dt>
           <dd className="fig" data-testid="impact-net">
-            {money(impact.net, { signed: true })} <span className="faint">{currency}</span>
+            <TweenedMoney value={impact.net} signed /> <span className="faint">{currency}</span>
           </dd>
         </div>
         <div>
           <dt>Material</dt>
           <dd className="fig">
             {count(impact.material)} <span className="faint">at {bp(materialityBp).replace(/^\+/, "")} or more</span>
-          </dd>
-        </div>
-        <div>
-          <dt>Gross exposure</dt>
-          <dd className="fig">
-            {money(impact.gross_exposure)} <span className="faint">{currency}</span>
           </dd>
         </div>
       </dl>
@@ -173,28 +172,12 @@ export function ImpactSection({ impact, currency, materialityBp }: { impact: Imp
         getRowId={(c) => c.case_id}
         onActivate={(c) => navigate(caseHref(c.case_id))}
         empty="No open breaks. Every case from earlier days has cleared or there were none."
-        className="ov-impact-table"
+        className="ov-impact-table list-enter"
       />
       {cases.length > IMPACT_ROWS_SHOWN && (
         <button type="button" className="btn ghost ov-show-all" aria-expanded={showAll} onClick={() => setShowAll((v) => !v)}>
           {showAll ? `Show the ${IMPACT_ROWS_SHOWN} largest` : `Show all ${plural(cases.length, "open case")}`}
         </button>
-      )}
-      {cases.length > 0 && (
-        <p className="ov-legend faint" aria-hidden="true">
-          <span>
-            <i className="material" />
-            Material
-          </span>
-          <span>
-            <i />
-            Below threshold
-          </span>
-          <span>
-            <i className="tick" />
-            {bp(materialityBp).replace(/^\+/, "")} threshold
-          </span>
-        </p>
       )}
     </section>
   );

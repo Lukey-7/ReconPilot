@@ -1,6 +1,7 @@
 /*
  * The morning overview. Few panels and plenty of space between groups: the release status
- * first, then the day's account and the open breaks; the rest is a glance away.
+ * first, then the open breaks and the day's account; the rest is a glance away, two
+ * sections to a quiet panel.
  * Wide screens use two columns (the work on the left, the day's shape on the right);
  * narrow screens stack the sections in reading order.
  */
@@ -18,8 +19,6 @@
     "account"
     "impact"
     "age"
-    "attention"
-    "cleared"
     "trend";
   align-items: start;
 }
@@ -27,11 +26,11 @@
   .ov-grid {
     grid-template-columns: minmax(0, 1.75fr) minmax(300px, 1fr);
     grid-template-areas:
-      "release   account"
-      "impact    account"
-      "impact    age"
-      "impact    attention"
-      "cleared   trend";
+      "release account"
+      "impact  account"
+      "impact  age"
+      "impact  trend";
+    grid-template-rows: auto auto auto 1fr;
   }
   .ov-grid-notrun {
     grid-template-areas:
@@ -51,14 +50,24 @@
 .ov-area-age {
   grid-area: age;
 }
-.ov-area-attention {
-  grid-area: attention;
-}
-.ov-area-cleared {
-  grid-area: cleared;
-}
 .ov-area-trend {
   grid-area: trend;
+}
+
+/* ===== Two sections sharing one quiet panel, divided by a rule ===== */
+.ov-panel {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  min-width: 0;
+}
+.ov-panel > .ov-block {
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+.ov-panel > .ov-block + .ov-block {
+  border-top: 1px solid var(--rule);
 }
 
 /* ===== A block ===== */
@@ -326,34 +335,6 @@
 .ov-show-all {
   margin-top: 10px;
 }
-.ov-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-  margin-top: 10px;
-  font-size: 12px;
-}
-.ov-legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.ov-legend i {
-  display: inline-block;
-  width: 14px;
-  height: 6px;
-  border-radius: 2px;
-  background: var(--bar);
-}
-.ov-legend i.material {
-  background: var(--bar-material);
-}
-.ov-legend i.tick {
-  width: 2px;
-  height: 12px;
-  border-radius: 0;
-  background: var(--signal);
-}
 
 /* ===== Ageing ===== */
 .ov-ageing-table th[scope="row"] {
@@ -365,20 +346,6 @@
 }
 .ov-age-name {
   min-width: 96px;
-}
-.ov-age-bar {
-  display: block;
-  height: 4px;
-  margin-top: 4px;
-  max-width: 120px;
-  border-radius: 2px;
-  background: var(--panel-2);
-}
-.ov-age-bar span {
-  display: block;
-  height: 100%;
-  border-radius: 2px;
-  background: var(--bar);
 }
 
 /* ===== SLA breaches and escalations ===== */

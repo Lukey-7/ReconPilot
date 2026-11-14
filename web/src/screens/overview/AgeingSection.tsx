@@ -13,7 +13,6 @@ import { ageBucketLabel } from "../../vocabulary";
 export function AgeingSection({ ageing, currency }: { ageing: AgeingBucket[]; currency: string }) {
   const { href } = useWorkspace();
   const total = ageing.reduce((sum, b) => sum + b.count, 0);
-  const widest = Math.max(1, ...ageing.map((b) => b.count));
   return (
     <section className="ov-block ov-ageing" aria-labelledby="ov-h-ageing">
       <div className="ov-block-head">
@@ -41,11 +40,7 @@ export function AgeingSection({ ageing, currency }: { ageing: AgeingBucket[]; cu
             {ageing.map((b) => (
               <tr key={b.bucket} data-bucket={b.bucket}>
                 <th scope="row" className="ov-age-name">
-                  {b.count > 0 ? <Link to={href("/cases", { age: b.bucket })}>{ageBucketLabel(b.bucket)}</Link> : ageBucketLabel(b.bucket)}
-                  <span className="ov-age-bar" aria-hidden="true">
-                    <span style={{ width: `${((b.count / widest) * 100).toFixed(1)}%` }} />
-                  </span>
-                </th>
+                  {b.count > 0 ? <Link to={href("/cases", { age: b.bucket })}>{ageBucketLabel(b.bucket)}</Link> : ageBucketLabel(b.bucket)}                </th>
                 <td className="num">{count(b.count)}</td>
                 <td className="num">{money(b.gross)}</td>
                 <td className="num">{money(b.net, { signed: true })}</td>

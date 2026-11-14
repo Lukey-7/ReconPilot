@@ -2,8 +2,9 @@
  * The morning overview (spec section 10, screen 1), from `GET .../overview`.
  *
  * The most important thing first: the day's release status with its reasons in plain
- * words, then every break accounted for, the open breaks by NAV impact (gross and net
- * together), ageing, SLA breaches and escalations, what cleared today and a small trend.
+ * words, then the open breaks by NAV impact (gross and net together) beside every break
+ * accounted for; the rest is a glance away in two quiet panels, the age of the open cases
+ * with their SLA breaches and escalations, and the days so far with what cleared today.
  * Detail is on demand (checks, long lists and the trend's figures sit behind expanders),
  * and every case id opens the case in the workbench. Every figure is the server's.
  */
@@ -75,24 +76,27 @@ function OverviewBody({ overview }: { overview: Overview }) {
           <div className="ov-area-impact">
             <ImpactSection impact={impact} currency={currency} materialityBp={overview.fund.materiality_bp} />
           </div>
-          <div className="ov-area-age">
+          {/* One panel for how long the open cases have waited, and which are overdue or escalated. */}
+          <div className="ov-area-age ov-panel">
             <AgeingSection ageing={overview.ageing} currency={currency} />
-          </div>
-          <div className="ov-area-attention">
             <AttentionSection slaBreaches={overview.sla_breaches} escalations={overview.escalations} />
           </div>
-          <div className="ov-area-cleared">
+          {/* One panel for the days so far, and what this day's run cleared. */}
+          <div className="ov-area-trend ov-panel">
+            <TrendSection trend={overview.trend} asOf={overview.as_of} currency={currency} />
             <ClearedSection cleared={overview.cleared_today} currency={currency} />
           </div>
         </>
       ) : (
-        <div className="ov-area-account">
-          <NotRun overview={overview} />
-        </div>
+        <>
+          <div className="ov-area-account">
+            <NotRun overview={overview} />
+          </div>
+          <div className="ov-area-trend">
+            <TrendSection trend={overview.trend} asOf={overview.as_of} currency={currency} />
+          </div>
+        </>
       )}
-      <div className="ov-area-trend">
-        <TrendSection trend={overview.trend} asOf={overview.as_of} currency={currency} />
-      </div>
     </div>
   );
 }
