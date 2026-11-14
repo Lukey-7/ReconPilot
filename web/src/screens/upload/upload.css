@@ -185,10 +185,6 @@
 .up-missing th[scope="row"] .mono {
   color: var(--ink-2);
 }
-.up-sha {
-  display: block;
-  font-size: 12px;
-}
 .up-res {
   display: inline-flex;
   align-items: center;
@@ -288,4 +284,35 @@
 }
 .up-rerun {
   color: var(--ink-2);
+}
+
+/* Row headings read as ordinary cells: the file name is the row's label, not a header band. */
+.up-files th[scope="row"] {
+  background: none;
+  color: var(--ink);
+  font-size: 13px;
+}
+.up-hashes {
+  margin-top: 8px;
+  font-size: 12.5px;
+}
+.up-hashes summary {
+  cursor: pointer;
+  color: var(--ink-2);
+}
+.up-hashes ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.up-hashes li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+}
+.up-hashes .mono {
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
 }

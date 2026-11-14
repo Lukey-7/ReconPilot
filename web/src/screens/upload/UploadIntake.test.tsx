@@ -88,8 +88,8 @@ describe("Upload and run: whether the day can take files", () => {
     const notice = await screen.findByText("Tue 10 Nov 2026 is not signed off yet.");
     const box = notice.closest(".up-order") as HTMLElement;
     expect(box).toHaveTextContent(
-      "Days are worked in order, so Wed 11 Nov 2026’s files can be loaded once Tue 10 Nov 2026’s NAV is signed off. " +
-        "Tue 10 Nov 2026 is ready for review, with its cases being decided.",
+      "Days are worked in order, so Wed 11 Nov 2026’s files can be loaded only after that day’s NAV is signed off. " +
+        "It is ready for review, with its cases being decided.",
     );
     expect(within(box).getByRole("link", { name: "Open the sign-off for Tue 10 Nov 2026" })).toHaveAttribute(
       "href",
@@ -257,6 +257,7 @@ describe("Upload and run: the run", () => {
           runs: [
             run({
               job_id: 2,
+              duration_seconds: 2.43,
               started_by: "approver1",
               rerun: true,
               outcome: {
@@ -284,7 +285,7 @@ describe("Upload and run: the run", () => {
     expect(rows[0]).toHaveTextContent("Finished");
     expect(rows[0]).toHaveTextContent("5 open cases (3 new, 2 carried); 8 breaks found.");
     expect(rows[0]).toHaveTextContent("Re-run: 1 decision kept, 2 decisions voided.");
-    expect(rows[0]).toHaveTextContent("0.8 s");
+    expect(rows[0]).toHaveTextContent("2.4 s");
     expect(rows[1]).toHaveTextContent("Failed");
     expect(rows[1]).toHaveTextContent("RuntimeError: disk on fire");
     expect(screen.getByText("2 runs of Tue 10 Nov 2026")).toBeInTheDocument();

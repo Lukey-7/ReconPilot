@@ -11,6 +11,7 @@ import { runStatusLabel } from "../../vocabulary";
 
 function seconds(value: number | null): string {
   if (value == null) return "";
+  if (value < 1) return "under 1 s";
   if (value < 60) return `${value.toLocaleString("en-GB", { maximumFractionDigits: 1 })} s`;
   return `${Math.floor(value / 60)} min ${Math.round(value % 60)} s`;
 }

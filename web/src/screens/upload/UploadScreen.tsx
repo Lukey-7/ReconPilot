@@ -25,7 +25,7 @@ import { ScreenHeader } from "../../components/ScreenHeader";
 import { dayLabel } from "../../format";
 import { useWorkspace } from "../../shell/workspace";
 import { dayStatusLabel } from "../../vocabulary";
-import { DropZone } from "./DropZone";
+import { DropZone, useDropZone } from "./DropZone";
 import { FileChecklist, Validation } from "./FileChecklist";
 import { ORDER_BLOCKS, OrderNotice } from "./OrderNotice";
 import { RunBlock, canAct } from "./RunBlock";
@@ -37,6 +37,8 @@ function DayPanel({ fund, asOf, user }: { fund: FundSummary; asOf: string; user:
   // screen still works from the day itself, and the server still refuses what it must.
   const intakeQuery = useIntake(fund.code, asOf);
   const intake = intakeQuery.data ?? null;
+  const expected = intake?.expected_files ?? null;
+  const drop = useDropZone(fund.code, asOf, expected);
   if (dayQuery.isPending || intakeQuery.isPending) return <Loading label="Loading the day" />;
   const noFiles = dayQuery.error instanceof ApiError && dayQuery.error.status === 404;
   if (dayQuery.isError && !noFiles) return <ErrorLine error={dayQuery.error} retry={() => void dayQuery.refetch()} />;
@@ -46,8 +48,9 @@ function DayPanel({ fund, asOf, user }: { fund: FundSummary; asOf: string; user:
   const running = status === "running";
   const orderBlocked = !!intake?.blocked && ORDER_BLOCKS.has(intake.blocked.code);
   const nextDay = days?.next_day ?? null;
-  const expected = intake?.expected_files ?? null;
   const mayUpload = canAct(user) && !locked && !running && !orderBlocked;
+  const dropFirst = !day || status === "uploaded";
+  const dropZone = <DropZone state={drop} maxFileBytes={intake?.max_file_bytes ?? null} />;
 
   return (
     <div className="up-grid">
@@ -70,11 +73,11 @@ function DayPanel({ fund, asOf, user }: { fund: FundSummary; asOf: string; user:
           </div>
         )}
         {!day && !orderBlocked && <p className="muted">No files have been uploaded for {dayLabel(asOf)} yet.</p>}
-        {(day || !orderBlocked) && <FileChecklist asOf={asOf} day={day} expected={expected} />}
+        {/* Until the files are valid, getting them in is the job, so the drop zone comes first. */}
+        {mayUpload && dropFirst && dropZone}
         {day && <Validation day={day} expected={expected} />}
-        {mayUpload && (
-          <DropZone fund={fund.code} asOf={asOf} expected={expected} maxFileBytes={intake?.max_file_bytes ?? null} />
-        )}
+        {(day || !orderBlocked) && <FileChecklist asOf={asOf} day={day} expected={expected} />}
+        {mayUpload && !dropFirst && dropZone}
         {!canAct(user) && <p className="faint">Viewers can follow the day but cannot upload files or run it.</p>}
       </section>
       {day && <RunBlock fund={fund} day={day} user={user} followingDay={intake?.following_day ?? null} />}
@@ -92,7 +95,7 @@ export function UploadScreen() {
   if (!fund) body = fundsLoading ? <Loading label="Loading funds" /> : <Empty>No fund is set up yet.</Empty>;
   else if (!target)
     body = daysLoading ? <Loading label="Loading business days" /> : <Empty>No business day is open for files.</Empty>;
-  else body = <DayPanel fund={fund} asOf={target} user={user} />;
+  else body = <DayPanel key={`${fund.code} ${target}`} fund={fund} asOf={target} user={user} />;
 
   return (
     <section className="screen up-screen">

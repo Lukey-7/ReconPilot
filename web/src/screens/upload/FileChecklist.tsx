@@ -13,6 +13,16 @@ export function sizeText(bytes: number): string {
   return `${(bytes / 1024 / 1024).toLocaleString("en-GB", { maximumFractionDigits: 1 })} MB`;
 }
 
+/** When a file came in: the time alone for today, the date and time otherwise. */
+function uploadedWhen(iso: string | null): string {
+  if (!iso) return "";
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return "";
+  const today = new Date();
+  if (at.toDateString() !== today.toDateString()) return timestamp(iso);
+  return new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" }).format(at);
+}
+
 function issueWhere(issue: ValidationIssue): string {
   return issue.row != null ? `${issue.file}, row ${count(issue.row)}` : issue.file;
 }
@@ -132,17 +142,9 @@ export function FileChecklist({
               </th>
               <td className="num">{row.held ? sizeText(row.held.size_bytes) : ""}</td>
               <td>
-                {row.held ? (
-                  <>
-                    {row.held.uploaded_by ?? "unknown"}
-                    {row.held.uploaded_at ? `, ${timestamp(row.held.uploaded_at)}` : ""}
-                    <span className="up-sha mono faint" title={`SHA-256 ${row.held.sha256}`}>
-                      {row.held.sha256.slice(0, 12)}…
-                    </span>
-                  </>
-                ) : (
-                  ""
-                )}
+                {row.held
+                  ? `${row.held.uploaded_by ?? "unknown"}${row.held.uploaded_at ? `, ${uploadedWhen(row.held.uploaded_at)}` : ""}`
+                  : ""}
               </td>
               <td>
                 <Result row={row} checked={!!report} />
@@ -151,6 +153,18 @@ export function FileChecklist({
           ))}
         </tbody>
       </table>
+      {day && day.files.length > 0 && (
+        <details className="up-hashes">
+          <summary>SHA-256 fingerprints of the files held</summary>
+          <ul>
+            {day.files.map((f) => (
+              <li key={f.kind}>
+                {f.filename}: <span className="mono">{f.sha256}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   );
 }

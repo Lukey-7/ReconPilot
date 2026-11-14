@@ -54,8 +54,8 @@ export function OrderNotice({ intake, fundCode }: { intake: Intake; fundCode: st
     case "PREVIOUS_NOT_SIGNED_OFF":
       title = `${other} is not signed off yet.`;
       detail =
-        `Days are worked in order, so ${target}’s files can be loaded once ${other}’s NAV is signed off. ` +
-        `${other} is ${dayStatusPhrase(block.day_status)}.`;
+        `Days are worked in order, so ${target}’s files can be loaded only after that day’s NAV is signed off. ` +
+        `It is ${dayStatusPhrase(block.day_status)}.`;
       break;
     case "PREVIOUS_NOT_LOADED":
       title = `${other} has no files yet.`;

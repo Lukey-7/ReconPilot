@@ -3,6 +3,9 @@
  * they arrive; the server stores them, validates the whole set it holds for the day and
  * answers. A file whose name ReconPilot does not read is listed and not sent, so one stray
  * file does not hold up the rest.
+ *
+ * The upload's state lives in `useDropZone`, held by the screen, so it survives the drop
+ * zone moving on the screen once the files are valid.
  */
 import { type DragEvent, useId, useState } from "react";
 
@@ -17,22 +20,10 @@ function baseName(name: string): string {
   return name.replace(/\\/g, "/").split("/").pop()?.trim() ?? name;
 }
 
-export function DropZone({
-  fund,
-  asOf,
-  expected,
-  maxFileBytes,
-}: {
-  fund: string;
-  asOf: string;
-  expected: ExpectedFile[] | null;
-  maxFileBytes: number | null;
-}) {
+/** The upload and the names last left out: send files, keeping only those ReconPilot reads. */
+export function useDropZone(fund: string, asOf: string, expected: ExpectedFile[] | null) {
   const upload = useUploadFiles(fund, asOf);
-  const [over, setOver] = useState(false);
   const [skipped, setSkipped] = useState<string[]>([]);
-  const inputId = useId();
-  const hintId = useId();
   const known = expected ? new Set(expected.map((f) => f.filename.toLowerCase())) : null;
 
   function send(list: FileList | null) {
@@ -43,6 +34,21 @@ export function DropZone({
     if (wanted.length) upload.mutate(wanted);
     else upload.reset();
   }
+
+  return { upload, skipped, send };
+}
+
+export function DropZone({
+  state,
+  maxFileBytes,
+}: {
+  state: ReturnType<typeof useDropZone>;
+  maxFileBytes: number | null;
+}) {
+  const { upload, skipped, send } = state;
+  const [over, setOver] = useState(false);
+  const inputId = useId();
+  const hintId = useId();
 
   function onDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
