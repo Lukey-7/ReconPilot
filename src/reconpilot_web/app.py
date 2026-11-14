@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from starlette.responses import Response
 from sqlalchemy.orm import sessionmaker
 
-from reconpilot_web import auth, cases, days, daytrail, db, funds, overview, preferences, release
+from reconpilot_web import auth, cases, days, daytrail, db, funds, mi, overview, preferences, release
 from reconpilot_web.config import Settings
 from reconpilot_web.models import assert_instance_mode
 
@@ -102,6 +102,7 @@ def create_app(settings: Settings, web_dist: Path | None = None) -> FastAPI:
     app.include_router(release.router)
     app.include_router(overview.router)
     app.include_router(daytrail.router)
+    app.include_router(mi.router)
     if web_dist is not None:
         mount_web(app, web_dist)
     return app

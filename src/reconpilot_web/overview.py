@@ -11,7 +11,7 @@ from the day's stored run, so the screen never works a figure out for itself:
   let offsetting breaks hide each other);
 * ageing buckets, SLA breaches, escalations and the cases cleared today;
 * the trend of open, new and cleared cases per run day (the engine's
-  ``mi.summarise_day`` over the day ledgers).
+  ``mi.summarise_day`` over the day ledgers that ``reconpilot_web.mi`` rebuilds).
 
 Cause names and statuses are the engine's enum values; wording is the front
 end's job.
@@ -19,7 +19,6 @@ end's job.
 
 from __future__ import annotations
 
-from dataclasses import asdict
 from datetime import date
 from typing import Any
 
@@ -28,19 +27,16 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from reconpilot.ledger import BUCKETS
-from reconpilot.mi import summarise_day
 from reconpilot.models import Case
 from reconpilot.storage import case_from_dict
 from reconpilot_web.auth import current_user, get_db
 from reconpilot_web.cases import case_item, case_versions, has_run
 from reconpilot_web.days import RUN_STATUSES, _username, get_day, parse_as_of
 from reconpilot_web.funds import fund_settings, get_fund
+from reconpilot_web.mi import TREND_DAYS, ledger_history, trend_rows
 from reconpilot_web.models import BreakRow, BusinessDay, CaseSnapshot, Fund, User
 from reconpilot_web.release import client_checks, compute_release
 from reconpilot_web.runner import load_day_data
-
-# How many run days the trend covers, as the engine's MI does.
-TREND_DAYS = 20
 
 DECIDED_STATUSES = ("APPROVED", "REJECTED", "RECLASSIFIED")
 
@@ -117,24 +113,12 @@ def ageing(open_cases: list[Case]) -> list[dict[str, Any]]:
 
 
 def trend(db: Session, fund: Fund, as_of: date, days: int = TREND_DAYS) -> list[dict[str, Any]]:
-    """Open, new and cleared cases for each run day up to ``as_of`` (at most ``days``), oldest first."""
-    run_days = db.execute(
-        select(BusinessDay.as_of)
-        .where(BusinessDay.fund_id == fund.id, BusinessDay.as_of <= as_of, BusinessDay.run_at.is_not(None),
-               BusinessDay.status.in_(RUN_STATUSES))
-        .order_by(BusinessDay.as_of.desc())
-        .limit(days)
-    ).scalars().all()
-    run_days = sorted(run_days)
-    if not run_days:
-        return []
-    ledgers: dict[date, list[Case]] = {d: [] for d in run_days}
-    for snapshot_as_of, data in db.execute(
-        select(CaseSnapshot.as_of, CaseSnapshot.data)
-        .where(CaseSnapshot.fund_id == fund.id, CaseSnapshot.as_of.in_(run_days))
-    ).all():
-        ledgers[snapshot_as_of].append(case_from_dict(data))
-    return [asdict(summarise_day(str(d), ledgers[d])) for d in run_days]
+    """Open, new and cleared cases for each run day up to ``as_of`` (at most ``days``), oldest first.
+
+    Computed from the command line's ledgers (every case seen so far), so the average
+    time to resolve covers every case cleared up to each day, as on the MI screen.
+    """
+    return trend_rows(ledger_history(db, fund, as_of, days))
 
 
 def overview_payload(db: Session, fund: Fund, day: BusinessDay) -> dict[str, Any]:

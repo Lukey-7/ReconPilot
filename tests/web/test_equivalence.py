@@ -6,12 +6,16 @@ through the API (upload, run with the worker's handler, decide, sign off) into
 PostgreSQL. Every day the two must agree on the open cases and the cases cleared
 that day, the NAV, the checks, and the audit trail once the web-only entries
 (sign-ins, uploads, validation, run bookkeeping, user and fund creation) are
-taken out.
+taken out. Afterwards, for every day, the MI route agrees with the engine's MI
+over the command line's ledgers, the exported Excel report holds the same cells
+as the command line's, and the exported ``mi.csv`` is byte for byte the command
+line's.
 """
 
 from __future__ import annotations
 
 import csv
+import io
 import json
 from datetime import date
 from pathlib import Path
@@ -21,7 +25,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from reconpilot import cli as engine_cli
-from reconpilot.ledger import load_ledger
+from openpyxl import load_workbook
+
+from reconpilot.ledger import load_ledger, snapshot_dates
+from reconpilot.mi import build_mi, write_mi_csv
 from reconpilot.sequence import SequenceConfig, generate_sequence
 from reconpilot.storage import case_from_dict, load_cases, write_day
 from reconpilot_web import jobs
@@ -223,3 +230,50 @@ def test_web_matches_cli_over_five_days(sequence_folders, make_user, make_fund, 
         (e["actor"], e["role"], e["action"], e["payload"]) for e in cli_log if not web_only(e["action"])
     ]
     assert verify_chain(db_session) == (True, None)
+
+    for as_of in days:
+        compare_mi_and_exports(clients[ANALYST], run, as_of, tmp_path)
+
+
+# --------------------------------------------------------------------------- MI and exports
+
+
+def workbook_cells(content: bytes) -> dict[str, list[tuple]]:
+    wb = load_workbook(io.BytesIO(content))
+    return {ws.title: [tuple(row) for row in ws.iter_rows(values_only=True)] for ws in wb.worksheets}
+
+
+def compare_mi_and_exports(client, run: Path, as_of: date, scratch: Path) -> None:
+    """The web's MI and exports for ``as_of`` against the command line's ledgers and files."""
+    history = {str(d): load_ledger(run, d) for d in snapshot_dates(run) if d <= as_of}
+    engine = build_mi(str(as_of), history[str(as_of)], history)
+    body = client.get(f"/api/funds/{FUND_CODE}/days/{as_of}/mi").json()
+    assert body["has_run"] is True and body["run_days"] == len(history)
+    cells = {(r["cause"], c["bucket"]): c for r in body["by_cause_age"]["rows"] for c in r["cells"] if c["count"]}
+    assert {k: v["count"] for k, v in cells.items()} == engine.by_cause_age, f"{as_of}: MI by cause and age"
+    assert {k: v["net"] for k, v in cells.items()} == engine.impact_by_cause_age, f"{as_of}: MI impact"
+    assert {r["cause"]: (r["cleared"], r["avg_days"]) for r in body["time_to_resolve"]["rows"]} ==         engine.resolve_by_cause, f"{as_of}: time to resolve"
+    assert body["time_to_resolve"]["all"]["avg_days"] == engine.avg_days_to_resolve
+    assert [r["case_id"] for r in body["top_open"]] == [c.case_id for c in engine.top_cases]
+    assert [(r["case_id"], r["cleared_on"]) for r in body["sla_breaches"]] == [
+        (c.case_id, c.cleared_on or None) for c in engine.sla_breaches]
+    assert [{k: v for k, v in t.items() if k != "open_gross_impact"} for t in body["trend"]] == [
+        vars(t) for t in engine.trend], f"{as_of}: trend"
+
+    response = client.get(f"/api/funds/{FUND_CODE}/days/{as_of}/exports/mi.csv")
+    assert response.status_code == 200, response.text
+    expected = write_mi_csv(scratch / f"mi_{as_of}.csv", history).read_bytes()
+    assert response.content == expected, f"{as_of}: mi.csv differs from the command line's"
+    if as_of == max(snapshot_dates(run)):
+        assert response.content == (run / "mi.csv").read_bytes()
+
+    response = client.get(f"/api/funds/{FUND_CODE}/days/{as_of}/exports/report.xlsx")
+    assert response.status_code == 200, response.text
+    web = workbook_cells(response.content)
+    cli = workbook_cells((run / f"exceptions_{as_of}.xlsx").read_bytes())
+    # The web names the engine's "NAV release" check for what it checks (spec section 9).
+    cli["NAV checks"] = [("Material cases approved", *row[1:]) if row[0] == "NAV release" else row
+                         for row in cli["NAV checks"]]
+    assert list(web) == list(cli)
+    for sheet in cli:
+        assert web[sheet] == cli[sheet], f"{as_of}: sheet {sheet} differs from the command line's"
