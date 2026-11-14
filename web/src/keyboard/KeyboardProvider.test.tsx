@@ -5,7 +5,15 @@ import { describe, expect, it, vi } from "vitest";
 
 import { mockApi } from "../test/mockApi";
 import { location, renderApp, signedInRoutes } from "../test/render";
-import { KeyboardProvider, SEQUENCE_TIMEOUT_MS, isTypingTarget, useShortcut } from "./KeyboardProvider";
+import {
+  type CommandInfo,
+  KeyboardProvider,
+  SEQUENCE_TIMEOUT_MS,
+  isTypingTarget,
+  useCommand,
+  useCommands,
+  useShortcut,
+} from "./KeyboardProvider";
 
 function Probe({ onA, onGo }: { onA: () => void; onGo: () => void }) {
   useShortcut("a", onA, { description: "Approve" });
@@ -94,6 +102,40 @@ describe("keyboard framework", () => {
     }
   });
 
+  it("lets a whileTyping shortcut through a field, and nothing else", () => {
+    const onPalette = vi.fn();
+    const onA = vi.fn();
+    function TypingProbe() {
+      useShortcut("mod+k", onPalette, { description: "Palette", whileTyping: true });
+      useShortcut("a", onA, { description: "Approve" });
+      return <input aria-label="Field" />;
+    }
+    render(
+      <KeyboardProvider>
+        <TypingProbe />
+      </KeyboardProvider>,
+    );
+    const field = screen.getByLabelText("Field");
+    fireEvent.keyDown(field, { key: "a" });
+    expect(onA).not.toHaveBeenCalled();
+    const notPrevented = fireEvent.keyDown(field, { key: "k", ctrlKey: true });
+    expect(onPalette).toHaveBeenCalledTimes(1);
+    expect(notPrevented).toBe(false); // the browser's own Ctrl+K does not also run
+    fireEvent.keyDown(document.body, { key: "k", metaKey: true });
+    expect(onPalette).toHaveBeenCalledTimes(2);
+  });
+
+  it("leaves a text field on Esc, so the screen's keys work again", async () => {
+    const { onA } = renderProbe();
+    const user = userEvent.setup();
+    const field = screen.getByLabelText("Note");
+    await user.click(field);
+    await user.keyboard("{Escape}");
+    expect(field).not.toHaveFocus();
+    await user.keyboard("a");
+    expect(onA).toHaveBeenCalledTimes(1);
+  });
+
   it("knows what counts as typing", () => {
     const input = document.createElement("input");
     const checkbox = Object.assign(document.createElement("input"), { type: "checkbox" });
@@ -105,6 +147,65 @@ describe("keyboard framework", () => {
     expect(isTypingTarget(editable)).toBe(true);
     expect(isTypingTarget(checkbox)).toBe(false);
     expect(isTypingTarget(document.body)).toBe(false);
+  });
+});
+
+describe("palette actions", () => {
+  let listed: CommandInfo[] = [];
+  function Lister() {
+    listed = useCommands();
+    return null;
+  }
+
+  function ActionProbe({ canDecide, onApprove, onExport }: { canDecide: boolean; onApprove: (key: string) => void; onExport: () => void }) {
+    useShortcut("a", (e) => onApprove(e.key), { description: "Approve the open case", group: "Cases", enabled: canDecide, palette: "Approve C1" });
+    useShortcut("j", () => {}, { description: "Next case", group: "Cases" });
+    useCommand("Download the report", onExport, { group: "MI", keywords: "export" });
+    useCommand("Never offered", () => {}, { enabled: false });
+    return null;
+  }
+
+  it("lists palette shortcuts and commands while they are enabled, and runs them", () => {
+    const onApprove = vi.fn();
+    const onExport = vi.fn();
+    const { rerender } = render(
+      <KeyboardProvider>
+        <ActionProbe canDecide onApprove={onApprove} onExport={onExport} />
+        <Lister />
+      </KeyboardProvider>,
+    );
+    expect(listed.map((c) => [c.label, c.group, c.keys ?? null])).toEqual([
+      ["Approve C1", "Cases", "a"],
+      ["Download the report", "MI", null],
+    ]);
+    listed[0]?.run();
+    expect(onApprove).toHaveBeenCalledWith("a"); // the handler is told which key it stands for
+    listed[1]?.run();
+    expect(onExport).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <KeyboardProvider>
+        <ActionProbe canDecide={false} onApprove={onApprove} onExport={onExport} />
+        <Lister />
+      </KeyboardProvider>,
+    );
+    expect(listed.map((c) => c.label)).toEqual(["Download the report"]);
+  });
+
+  it("forgets an action when its component leaves", () => {
+    const { rerender } = render(
+      <KeyboardProvider>
+        <ActionProbe canDecide onApprove={() => {}} onExport={() => {}} />
+        <Lister />
+      </KeyboardProvider>,
+    );
+    expect(listed).toHaveLength(2);
+    rerender(
+      <KeyboardProvider>
+        <Lister />
+      </KeyboardProvider>,
+    );
+    expect(listed).toHaveLength(0);
   });
 });
 
@@ -141,6 +242,33 @@ describe("shell shortcuts", () => {
 
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("g then u, m, l and f reach upload, MI, the audit log and the funds", async () => {
+    mockApi(signedInRoutes());
+    renderApp("/overview?fund=GEF1&day=2026-11-10");
+    await screen.findByRole("heading", { name: "Morning overview" });
+    const user = userEvent.setup();
+    await user.keyboard("gu");
+    await waitFor(() => expect(location()).toBe("/upload?fund=GEF1&day=2026-11-10"));
+    await user.keyboard("gm");
+    await waitFor(() => expect(location()).toBe("/mi?fund=GEF1&day=2026-11-10"));
+    await user.keyboard("gl");
+    await waitFor(() => expect(location()).toBe("/audit?fund=GEF1&day=2026-11-10"));
+    await user.keyboard("gf");
+    await waitFor(() => expect(location()).toBe("/funds?fund=GEF1&day=2026-11-10"));
+  });
+
+  it("the help dialog lists Ctrl+K and what Esc does", async () => {
+    mockApi(signedInRoutes());
+    renderApp("/overview?fund=GEF1&day=2026-11-10");
+    await screen.findByRole("heading", { name: "Morning overview" });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Keyboard shortcuts" }));
+    const dialog = await screen.findByRole("dialog", { name: "Keyboard shortcuts" });
+    const row = within(dialog).getByText("Jump to a case, screen, fund or day, or run an action").closest(".help-row");
+    expect(row?.textContent).toContain("CtrlK");
+    expect(within(dialog).getByText(/Leave the field you are typing in, or close the open dialog/)).toBeInTheDocument();
   });
 
   it("does not move screens while typing in the day selector's neighbour fields", async () => {

@@ -2,8 +2,10 @@
 import * as Dialog from "@radix-ui/react-dialog";
 
 import { Icon } from "../components/Icon";
+import { keyNames } from "../components/Kbd";
 import { useGroupedShortcuts } from "../keyboard/KeyboardProvider";
 
+/** "g o" as G then O; "mod+k" as Ctrl and K pressed together. */
 function Keys({ keys }: { keys: string }) {
   const parts = keys.split(" ");
   return (
@@ -11,7 +13,9 @@ function Keys({ keys }: { keys: string }) {
       {parts.map((k, i) => (
         <span key={i}>
           {i > 0 && <span className="then">then</span>}
-          <kbd>{k === "Escape" ? "Esc" : k.replace("mod+", "Ctrl+")}</kbd>
+          {keyNames(k).map((name, j) => (
+            <kbd key={j}>{name}</kbd>
+          ))}
         </span>
       ))}
     </span>
@@ -32,7 +36,8 @@ export function HelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange
             </Dialog.Close>
           </div>
           <Dialog.Description className="muted">
-            Shortcuts work anywhere except while you are typing in a field.
+            Shortcuts work anywhere except while you are typing in a field; Esc leaves the field. Ctrl+K works
+            everywhere.
           </Dialog.Description>
           {groups.map(([group, items]) => (
             <section key={group} className="help-group" aria-label={group}>
@@ -49,14 +54,14 @@ export function HelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange
               </dl>
             </section>
           ))}
-          <section className="help-group" aria-label="Dialogs">
-            <h3>Dialogs and menus</h3>
+          <section className="help-group" aria-label="Fields and dialogs">
+            <h3>Fields and dialogs</h3>
             <dl>
               <div className="help-row">
                 <dt>
                   <Keys keys="Escape" />
                 </dt>
-                <dd>Close the open dialog, menu or popover</dd>
+                <dd>Leave the field you are typing in, or close the open dialog, menu or popover</dd>
               </div>
             </dl>
           </section>
