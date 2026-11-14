@@ -149,3 +149,123 @@ stale job found the day no longer waiting to run.
 - Playwright (`e2e/funds-and-upload.spec.ts`, its own throwaway database as in phase 2,
   with a second fund): the previous-day message, switching funds and the choice following
   the user into a new session, the funds screen read-only, and axe on both new views.
+
+---
+
+## Stage 3b: MI and exports
+
+Spec section 10, screen 5: breaks by cause and age with impact, time to resolve, the trend,
+the top five and SLA breaches, with exports to Excel and `mi.csv`.
+
+### The ledger across days
+
+The command line keeps, for every run day, a ledger of every case seen so far: the cases
+cleared on any earlier day, the cases cleared that day and the cases still open
+(`ledger.save_ledger`). The engine's MI (`mi.build_mi`, `mi.mi_rows`) is computed from those
+ledgers. The web layer stores only each day's own cases in `case_snapshots` (the cases
+cleared that day and the cases still open), so `reconpilot_web.mi.ledger_history` rebuilds
+the command line's ledgers from them: for run day `d`, every case cleared on a run day up to
+`d` (in clearing order, each clearing day largest absolute impact first, as the engine rolls
+them forward) followed by `d`'s open cases (largest absolute impact first). A run day is a
+day with a finished run whose status is `ready` or `signed_off`, as for the overview.
+
+The overview's trend uses the same ledgers, so its average time to resolve now covers every
+case cleared so far, as the command line's MI sheet does, instead of only the day's own
+clearings. Every other trend figure is unchanged.
+
+### `GET /api/funds/{code}/days/{as_of}/mi`
+
+Any signed-in role (viewers included); 404 when the day has no files. Computed with the
+engine's `mi.build_mi` from the rebuilt ledgers (trend: at most 20 run days, oldest first).
+Causes are the engine's current cause (`ledger.current_category`: resolved, else
+reclassified, else the accepted AI cause, else the rules' cause) as enum values.
+
+```json
+{
+  "fund": {"code": "GEF1", "name": "...", "base_currency": "USD", "materiality_bp": 1.0},
+  "as_of": "2026-11-10", "day_status": "ready", "has_run": true, "run_days": 2,
+  "by_cause_age": {
+    "buckets": ["0-1", "2-5", ">5"],
+    "rows": [{"cause": "TIMING", "count": 2, "net": 0, "gross": 0,
+              "cells": [{"bucket": "0-1", "count": 1, "net": 0, "gross": 0}]}],
+    "total": {"count": 0, "net": 0, "gross": 0, "cells": []}
+  },
+  "time_to_resolve": {"rows": [{"cause": "TIMING", "cleared": 3, "avg_days": 1.33}],
+                      "all": {"cleared": 3, "avg_days": 1.33}},
+  "top_open": [{"case_id": "...", "security_id": "...", "security_name": "...", "cause": "TIMING",
+                "nav_impact": 0, "nav_impact_bp": 0, "age_days": 0, "material": false,
+                "escalated": false, "sla_breached": false, "status": "PENDING"}],
+  "sla_breaches": [{"case_id": "...", "security_id": "...", "security_name": "...", "cause": "TIMING",
+                    "age_days": 0, "sla_days": 0, "material": false, "status": "PENDING",
+                    "cleared_on": null}],
+  "trend": [{"as_of": "...", "open_cases": 0, "new_cases": 0, "cleared_cases": 0, "material_open": 0,
+             "escalated_open": 0, "sla_breaches_open": 0, "aged_over_5": 0, "open_nav_impact": 0,
+             "open_gross_impact": 0, "avg_days_to_resolve": null}],
+  "exports": {"report": "/api/funds/GEF1/days/2026-11-10/exports/report.xlsx",
+              "mi_csv": "/api/funds/GEF1/days/2026-11-10/exports/mi.csv"}
+}
+```
+
+- `by_cause_age` lists every cause with an open case (engine order) and every bucket; each
+  cell, row and the total carry the count and the **net and gross** impact (gross: the sum
+  of absolute impacts, so offsetting breaks cannot hide). Counts sum to the open cases.
+- `time_to_resolve`: per cause, the cases cleared up to `as_of` and their average business
+  days open (`ledger.days_to_resolve`); `all` across causes (`avg_days` null when none).
+- `top_open`: the five open cases with the largest absolute NAV impact.
+- `sla_breaches`: every case that has breached its SLA up to `as_of`, open ones first, then
+  oldest; `cleared_on` is set for one that has since cleared.
+- `trend` is the engine's `summarise_day` per run day, plus `open_gross_impact`.
+- Before the day has run: `has_run` false, empty lists and zero counts, `exports` null,
+  and `trend` still shows the earlier run days.
+
+### Exports, audited
+
+Both are `GET` (so a plain link works), any signed-in role, 404 for a day with no files and
+409 for a day that has not finished a run. Each download writes `EXPORT_DOWNLOADED` to the
+audit log with the fund and `{"as_of", "export": "exception_report" | "mi_csv", "filename",
+"bytes", "sha256", "run_days"}`, in the same transaction that produces the file.
+
+- `GET .../exports/report.xlsx`: the engine's `report.write_report` for the day, built as
+  the command line's `_render` builds it: the day's stored files read by the engine with
+  the previous day's open items attached, `reconcile` and `compute_nav` again (both are
+  deterministic), the day's open cases, its checks with the release check under its
+  accurate name and recomputed from the current cases (as every screen shows it), the
+  signer's username, and the rebuilt ledgers for its MI sheet. File name
+  `exceptions_{FUND}_{as_of}.xlsx`.
+- `GET .../exports/mi.csv`: the engine's `mi.write_mi_csv` over every run day up to
+  `as_of` (`as_of, metric, cause, age_bucket, value`), byte for byte what the command line
+  writes for the same days. File name `mi_{FUND}_{as_of}.csv`.
+
+Exports keep the engine's cause codes and column names, so they match the command line's
+files and load into a BI tool unchanged; the screens use the vocabulary.
+
+### Front end
+
+- **MI screen** (`/mi`, `g m`, "MI" in the screen list), `screens/mi/`: the header carries
+  the two export buttons (downloaded with `fetch`, so a refusal shows in plain words
+  instead of a downloaded error page). Then, one block each and nothing decorative:
+  open breaks by cause and age (counts per bucket, gross and net per cause, a total row;
+  the impact per bucket behind an expander), the trend (a bar per run day for one chosen
+  measure: open, new, cleared, material, escalated or past SLA; the figures behind an
+  expander), time to resolve by cause, the top five open cases and SLA breaches. Case ids
+  open the case in the workbench. A day not yet run says so and shows only the trend.
+- `api/client.ts` gains `download(path)`; `api/queries.ts` gains `useMi` and `paths.mi`,
+  `paths.exportReport`, `paths.exportMiCsv`; the vocabulary gains `EXPORT_DOWNLOADED` and
+  the trend measures.
+
+### Tests
+
+- pytest `tests/web/test_mi.py`: sign-in, 404 and the not-run shape; counts summing to the
+  open cases with gross and net per cell, row and total; time to resolve and SLA breaches
+  across days including cases cleared on earlier days; top five; viewers may read and
+  export; both exports audited with their hash; 409 before a run; the Excel workbook's
+  sheets and the CSV's columns. `tests/web/test_equivalence.py` additionally checks, for
+  every one of its five days, that the MI route agrees with the engine's `build_mi` over
+  the command line's ledgers, that the exported workbook's cells equal the command line's
+  workbook (but for the release check's accurate name), and that `mi.csv` is byte for
+  byte the command line's.
+- Vitest `screens/mi/MiScreen.test.tsx`: the matrix and totals, gross beside net, the
+  trend measure switch, top five and SLA rows linking to cases, the not-run day, export
+  downloads and an export refusal.
+- Playwright `e2e/mi.spec.ts`: MI for a run day with both exports downloaded (the file
+  names and the CSV header checked) and axe on the screen in both themes.
