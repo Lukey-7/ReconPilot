@@ -172,6 +172,12 @@
   font-size: 12px;
   color: var(--ink-3);
 }
+/* The selected row's wash darkens the background: keep secondary text at 4.5:1 on it. */
+.data-table tr.selected .wb-q-sec,
+.data-table tr.selected .wb-q-sub,
+.data-table tr.selected .wb-q-unit {
+  color: var(--ink-2);
+}
 .wb-q-sec {
   max-width: 22ch;
   overflow: hidden;
