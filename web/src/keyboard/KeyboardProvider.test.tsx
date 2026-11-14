@@ -61,6 +61,24 @@ describe("keyboard framework", () => {
     expect(onA).not.toHaveBeenCalled();
   });
 
+  it("leaves a key to the focused control when the shortcut declines it", () => {
+    const onEnter = vi.fn();
+    function EnterProbe() {
+      useShortcut("Enter", onEnter, { description: "Open", when: (e) => !(e.target instanceof HTMLButtonElement) });
+      return <button type="button">A button</button>;
+    }
+    render(
+      <KeyboardProvider>
+        <EnterProbe />
+      </KeyboardProvider>,
+    );
+    const onButton = fireEvent.keyDown(screen.getByRole("button", { name: "A button" }), { key: "Enter" });
+    expect(onEnter).not.toHaveBeenCalled();
+    expect(onButton).toBe(true); // not prevented: the button still clicks
+    fireEvent.keyDown(document.body, { key: "Enter" });
+    expect(onEnter).toHaveBeenCalledTimes(1);
+  });
+
   it("forgets a half-typed sequence after the timeout", () => {
     vi.useFakeTimers();
     try {

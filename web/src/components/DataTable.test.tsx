@@ -69,6 +69,16 @@ describe("DataTable", () => {
     expect(screen.getByRole("row", { name: /C3/ })).toHaveAttribute("aria-selected", "true");
   });
 
+  it("reports the rows in the order shown, and again after sorting", async () => {
+    const onOrderChange = vi.fn();
+    render(<DataTable data={rows} columns={columns} caption="Open cases" getRowId={(r) => r.id} onOrderChange={onOrderChange} />);
+    expect(onOrderChange).toHaveBeenLastCalledWith(["C1", "C2", "C3"]);
+    expect(screen.getByRole("row", { name: /C2/ })).toHaveAttribute("data-row-id", "C2");
+    const header = screen.getByRole("columnheader", { name: "Impact" });
+    await userEvent.setup().click(within(header).getByRole("button"));
+    expect(onOrderChange).toHaveBeenLastCalledWith(["C3", "C1", "C2"]);
+  });
+
   it("says when there is nothing to show", () => {
     render(<DataTable data={[]} columns={columns} caption="Open cases" getRowId={(r) => r.id} empty="No open cases." />);
     expect(screen.getByText("No open cases.")).toBeInTheDocument();

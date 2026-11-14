@@ -7,6 +7,8 @@
  * - Columns with `meta: { numeric: true }` are right-aligned with tabular figures.
  * - With `onActivate`, a row opens on click or on Enter when focused; `selectedId` marks
  *   the open row with `aria-selected`.
+ * - Every body row carries `data-row-id`, and `onOrderChange` reports the row ids in the
+ *   order shown (after sorting), so a screen can move through them from the keyboard.
  */
 import {
   type ColumnDef,
@@ -17,7 +19,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { Icon } from "./Icon";
 
@@ -41,6 +43,8 @@ export interface DataTableProps<T> {
   initialSorting?: SortingState;
   selectedId?: string | null;
   onActivate?: (row: T) => void;
+  /** Called with the row ids in the order shown, whenever that order changes. */
+  onOrderChange?: (ids: string[]) => void;
   empty?: ReactNode;
   className?: string;
 }
@@ -54,6 +58,7 @@ export function DataTable<T>({
   initialSorting = [],
   selectedId = null,
   onActivate,
+  onOrderChange,
   empty = "Nothing to show.",
   className = "",
 }: DataTableProps<T>) {
@@ -69,6 +74,15 @@ export function DataTable<T>({
   });
 
   const rows = table.getRowModel().rows;
+  const order = JSON.stringify(rows.map((row) => row.id));
+  const onOrderChangeRef = useRef(onOrderChange);
+  useEffect(() => {
+    onOrderChangeRef.current = onOrderChange;
+  });
+  useEffect(() => {
+    onOrderChangeRef.current?.(JSON.parse(order) as string[]);
+  }, [order]);
+
   return (
     <div className="table-wrap">
       <table className={`data-table ${className}`.trim()}>
@@ -118,6 +132,7 @@ export function DataTable<T>({
               return (
                 <tr
                   key={row.id}
+                  data-row-id={row.id}
                   aria-selected={onActivate ? selected : undefined}
                   className={[onActivate ? "activatable" : "", selected ? "selected" : ""].join(" ").trim() || undefined}
                   tabIndex={onActivate ? 0 : undefined}

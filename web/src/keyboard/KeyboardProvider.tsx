@@ -32,6 +32,8 @@ export interface ShortcutInfo {
 interface Registered extends ShortcutInfo {
   id: number;
   handler: (event: KeyboardEvent) => void;
+  /** Whether this press is the shortcut's; when false the key keeps its ordinary meaning. */
+  when?: (event: KeyboardEvent) => boolean;
 }
 
 const NON_TEXT_INPUTS = new Set(["button", "checkbox", "radio", "submit", "reset", "range", "color", "file", "image"]);
@@ -82,10 +84,15 @@ class Registry {
     if (this.items.delete(id)) this.changed();
   }
 
-  /** The most recently registered shortcut for `keys` (a screen's binding wins over the shell's). */
-  find(keys: string): Registered | undefined {
+  /**
+   * The most recently registered shortcut for `keys` that takes this press (a screen's
+   * binding wins over the shell's).
+   */
+  find(keys: string, event?: KeyboardEvent): Registered | undefined {
     let found: Registered | undefined;
-    for (const item of this.items.values()) if (item.keys === keys) found = item;
+    for (const item of this.items.values()) {
+      if (item.keys === keys && (!event || !item.when || item.when(event))) found = item;
+    }
     return found;
   }
 
@@ -139,7 +146,7 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
       if (pending.current) {
         const sequence = `${pending.current.token} ${token}`;
         clearPending();
-        const match = registry.find(sequence);
+        const match = registry.find(sequence, event);
         if (match) {
           event.preventDefault();
           match.handler(event);
@@ -151,7 +158,7 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
         pending.current = { token, timer: setTimeout(clearPending, SEQUENCE_TIMEOUT_MS) };
         return;
       }
-      const match = registry.find(token);
+      const match = registry.find(token, event);
       if (match) {
         event.preventDefault();
         match.handler(event);
@@ -179,21 +186,34 @@ export interface ShortcutOptions {
   group?: string;
   /** Register only while true (for example, only when the person may act). */
   enabled?: boolean;
+  /**
+   * Take a press only when this returns true (for example, Enter only when focus is not on
+   * a button or link); otherwise the key does what it ordinarily does.
+   */
+  when?: (event: KeyboardEvent) => boolean;
 }
 
 /** Register a shortcut for as long as the calling component is mounted (and `enabled`). */
 export function useShortcut(keys: string, handler: (event: KeyboardEvent) => void, options: ShortcutOptions): void {
   const registry = useRegistry();
-  const { description, group = "General", enabled = true } = options;
+  const { description, group = "General", enabled = true, when } = options;
   const handlerRef = useRef(handler);
+  const whenRef = useRef(when);
 
   useEffect(() => {
     handlerRef.current = handler;
+    whenRef.current = when;
   });
 
   useEffect(() => {
     if (!enabled) return;
-    const id = registry.add({ keys, description, group, handler: (event) => handlerRef.current(event) });
+    const id = registry.add({
+      keys,
+      description,
+      group,
+      handler: (event) => handlerRef.current(event),
+      when: (event) => whenRef.current?.(event) ?? true,
+    });
     return () => registry.remove(id);
   }, [registry, keys, description, group, enabled]);
 }
