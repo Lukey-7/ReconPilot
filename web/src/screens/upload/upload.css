@@ -149,3 +149,143 @@
   flex-wrap: wrap;
   gap: 8px;
 }
+
+/* ===== Why the day cannot take files ===== */
+.up-order {
+  margin-bottom: 0;
+}
+.up-order svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.up-order > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.up-order-title {
+  font-weight: 600;
+}
+.up-order-act {
+  margin-top: 4px;
+}
+
+/* ===== The files, one row per file the engine reads ===== */
+.up-files th[scope="row"] {
+  font-weight: 400;
+  text-align: left;
+  white-space: nowrap;
+}
+.up-optional {
+  margin-inline-start: 6px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.up-missing th[scope="row"] .mono {
+  color: var(--ink-2);
+}
+.up-sha {
+  display: block;
+  font-size: 12px;
+}
+.up-res {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.up-res svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+.up-res-ok {
+  color: var(--pos);
+}
+.up-res-bad {
+  color: var(--neg);
+}
+.up-skipped svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+/* ===== Run progress ===== */
+.up-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.up-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.up-step {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-3);
+}
+.up-step svg {
+  width: 12px;
+  height: 12px;
+  flex: none;
+}
+.up-step-done {
+  color: var(--ink-2);
+}
+.up-step-done svg {
+  color: var(--pos);
+}
+.up-step-now {
+  color: var(--ink);
+  font-weight: 600;
+}
+.up-step-now svg {
+  color: var(--accent);
+}
+.up-retry {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.up-retry svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  margin-top: 2px;
+}
+.up-next-day a {
+  color: var(--accent);
+}
+
+/* ===== The day's runs ===== */
+.up-history {
+  border-top: 1px solid var(--rule);
+  padding-top: 10px;
+}
+.up-history summary {
+  cursor: pointer;
+  color: var(--ink-2);
+  margin-bottom: 6px;
+}
+.up-runs td {
+  vertical-align: top;
+  font-size: 13px;
+}
+.up-by {
+  display: block;
+  color: var(--ink-2);
+  font-size: 12px;
+}
+.up-rerun {
+  color: var(--ink-2);
+}
