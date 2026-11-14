@@ -91,7 +91,7 @@ function OverviewBody({ overview }: { overview: Overview }) {
         </div>
       )}
       <div className="ov-area-trend">
-        <TrendSection trend={overview.trend} asOf={overview.as_of} />
+        <TrendSection trend={overview.trend} asOf={overview.as_of} currency={currency} />
       </div>
     </div>
   );

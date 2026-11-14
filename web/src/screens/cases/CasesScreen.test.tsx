@@ -2,7 +2,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
-import type { CaseDetail, EngineCase, QueueCase, User } from "../../api/types";
+import type { CaseDay, CaseDetail, EngineCase, QueueCase, User } from "../../api/types";
 import { type MockApi, mockApi } from "../../test/mockApi";
 import { analyst, approver, dayRecord, location, releaseFor, renderApp, signedInRoutes } from "../../test/render";
 
@@ -90,6 +90,25 @@ function engineCase(q: QueueCase, overrides: Partial<EngineCase> = {}): EngineCa
   };
 }
 
+function dayOf(q: QueueCase, asOf: string, overrides: Partial<CaseDay> = {}): CaseDay {
+  return {
+    as_of: asOf,
+    day_status: "ready",
+    is_open: true,
+    status: q.status,
+    cause: q.final_category ?? q.category,
+    category: q.category,
+    age_days: q.age_days,
+    nav_impact: q.nav_impact,
+    nav_impact_bp: q.nav_impact_bp,
+    material: q.material,
+    escalated: q.escalated,
+    sla_breached: q.sla_breached,
+    reviewed_by: null,
+    ...overrides,
+  };
+}
+
 function detailOf(q: QueueCase, overrides: Partial<CaseDetail> = {}, caseOverrides: Partial<EngineCase> = {}): CaseDetail {
   return {
     ...q,
@@ -128,6 +147,7 @@ function detailOf(q: QueueCase, overrides: Partial<CaseDetail> = {}, caseOverrid
         payload: { case_id: q.case_id, model: "test-model", ai_category: q.ai_category, disagrees: !!q.ai_flag },
       },
     ],
+    days: [dayOf(q, DAY)],
     ...overrides,
   };
 }
@@ -417,6 +437,55 @@ describe("case workbench", () => {
     expect(window.localStorage.getItem("rp-evidence-pane")).toBe("collapsed");
     await user.click(screen.getByRole("button", { name: "Show the evidence" }));
     expect(screen.getByRole("table", { name: "Breaks in this case" })).toBeInTheDocument();
+  });
+
+  it("shows a carried case across the days it was run, each earlier day opening the case as it stood", async () => {
+    const days = [
+      dayOf(C2, "2026-11-06", {
+        age_days: 2,
+        status: "APPROVED",
+        reviewed_by: "analyst2",
+        day_status: "signed_off",
+        sla_breached: false,
+      }),
+      dayOf(C2, "2026-11-09", { age_days: 3, cause: "TIMING", nav_impact: 11000, day_status: "signed_off" }),
+      dayOf(C2, DAY),
+    ];
+    setup(analyst, { "GET /api/funds/GEF1/cases/C2": { body: detailOf(C2, { days }) } });
+    renderApp(`${BASE}&case=C2`);
+    await openCase("C2");
+    const section = screen.getByRole("region", { name: "Across days" });
+    expect(within(section).getByText("first seen Fri 6 Nov 2026, in 3 runs")).toBeInTheDocument();
+    const rows = within(section).getAllByRole("row").slice(1);
+    expect(rows).toHaveLength(3);
+    const [first, second, today] = rows as [HTMLElement, HTMLElement, HTMLElement];
+    expect(within(first).getByText("Approved")).toBeInTheDocument();
+    expect(within(first).getByText("by analyst2")).toBeInTheDocument();
+    expect(within(first).getByText("Price mismatch")).toBeInTheDocument();
+    expect(within(first).getByText("None")).toBeInTheDocument();
+    expect(within(second).getByText("Late settlement")).toBeInTheDocument();
+    expect(within(second).getByText("+11,000.00")).toBeInTheDocument();
+    expect(within(second).getByRole("link", { name: "Mon 9 Nov 2026" })).toHaveAttribute(
+      "href",
+      "/cases?fund=GEF1&day=2026-11-09&case=C2",
+    );
+    expect(today).toHaveAttribute("aria-current", "date");
+    expect(within(today).queryByRole("link")).toBeNull();
+    expect(within(today).getByText("Past SLA")).toBeInTheDocument();
+    expect(within(today).getByText("4 days")).toBeInTheDocument();
+  });
+
+  it("says when a case cleared, and leaves a one-day case without the section", async () => {
+    const days = [dayOf(C3, "2026-11-09"), dayOf(C3, DAY, { is_open: false })];
+    setup(analyst, { "GET /api/funds/GEF1/cases/C3": { body: detailOf(C3, { days }) } });
+    renderApp(`${BASE}&case=C1`);
+    await openCase("C1");
+    expect(screen.queryByRole("region", { name: "Across days" })).toBeNull();
+    await userEvent.click(within(queueRows()[2] as HTMLElement).getByText("C3"));
+    await openCase("C3");
+    const section = screen.getByRole("region", { name: "Across days" });
+    expect(within(section).getByText("first seen Mon 9 Nov 2026, cleared Tue 10 Nov 2026")).toBeInTheDocument();
+    expect(within(within(section).getAllByRole("row")[2] as HTMLElement).getByText("Cleared")).toBeInTheDocument();
   });
 
   it("says when the day has not been run yet", async () => {

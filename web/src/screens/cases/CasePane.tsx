@@ -1,17 +1,19 @@
 /**
  * Pane 2: the open case. What it is and what it costs, the rules' suggested cause beside the
  * AI's second opinion (with the disagreement flag), the AI's investigation steps, the draft
- * custodian query to copy, and the case's history from the audit log. The decision bar sits
- * at the foot of the pane, always in reach.
+ * custodian query to copy, the case across the days it has been open, and its history from
+ * the audit log. The decision bar sits at the foot of the pane, always in reach.
  */
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { Link } from "react-router";
 
-import type { CaseDetail, CaseHistoryEntry, RoleName } from "../../api/types";
+import type { CaseDay, CaseDetail, CaseHistoryEntry, RoleName } from "../../api/types";
 import { Icon } from "../../components/Icon";
 import { StatusLabel } from "../../components/Labels";
 import { ErrorLine } from "../../components/QueryState";
 import { bp, count, dayLabel, money, plural, timestamp } from "../../format";
-import { auditActionLabel, causeLabel, roleLabel } from "../../vocabulary";
+import { useWorkspace } from "../../shell/workspace";
+import { FLAGS, auditActionLabel, causeLabel, roleLabel } from "../../vocabulary";
 import { securityText } from "../overview/caseLinks";
 import { DecisionBar } from "./DecisionBar";
 import { FlagTag } from "./Flags";
@@ -235,6 +237,82 @@ function historyLine(entry: Extract<CaseHistoryEntry, { type: "audit" }>): { wha
   return { what, note };
 }
 
+function dayFlags(d: CaseDay): string {
+  const flags: string[] = [];
+  if (d.material) flags.push(FLAGS.material);
+  if (d.escalated) flags.push(FLAGS.escalated);
+  if (d.sla_breached) flags.push(FLAGS.sla);
+  return flags.join(", ");
+}
+
+/**
+ * The case at the end of every day it has been in a run, oldest first: its status, the
+ * cause read off it, its age, impact and flags. Each earlier day opens the case as it stood
+ * then. Shown only once the case has more than one day; for a new case the facts above say
+ * it all.
+ */
+function AcrossDays({ detail }: { detail: CaseDetail }) {
+  const { href } = useWorkspace();
+  const days = detail.days ?? [];
+  const first = days[0];
+  const last = days[days.length - 1];
+  if (days.length < 2 || !first || !last) return null;
+  const meta = last.is_open
+    ? `first seen ${dayLabel(first.as_of)}, in ${plural(days.length, "run")}`
+    : `first seen ${dayLabel(first.as_of)}, cleared ${dayLabel(last.as_of)}`;
+  return (
+    <Section title="Across days" meta={meta}>
+      <div className="table-wrap">
+        <table className="data-table wb-days">
+          <caption className="sr-only">{detail.case_id} at the end of each day it was in a run, oldest first</caption>
+          <thead>
+            <tr>
+              <th scope="col">Day</th>
+              <th scope="col">Status</th>
+              <th scope="col">Cause</th>
+              <th scope="col" className="num">
+                Age
+              </th>
+              <th scope="col" className="num">
+                NAV impact
+              </th>
+              <th scope="col">Flags</th>
+            </tr>
+          </thead>
+          <tbody>
+            {days.map((d) => (
+              <tr key={d.as_of} aria-current={d.as_of === detail.as_of ? "date" : undefined}>
+                <th scope="row">
+                  {d.as_of === detail.as_of ? (
+                    dayLabel(d.as_of)
+                  ) : (
+                    <Link
+                      to={href("/cases", { day: d.as_of, case: detail.case_id })}
+                      title={`Open ${detail.case_id} as it stood on ${dayLabel(d.as_of)}`}
+                    >
+                      {dayLabel(d.as_of)}
+                    </Link>
+                  )}
+                </th>
+                <td>
+                  <StatusLabel status={d.is_open ? d.status : "CLEARED"} />
+                  {d.reviewed_by && d.is_open && d.status !== "PENDING" && (
+                    <span className="wb-sub">by {d.reviewed_by}</span>
+                  )}
+                </td>
+                <td>{causeLabel(d.cause)}</td>
+                <td className="num">{plural(d.age_days, "day")}</td>
+                <td className="num fig">{money(d.nav_impact, { signed: true })}</td>
+                <td>{dayFlags(d) || <span className="faint">None</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Section>
+  );
+}
+
 const SYSTEM_ACTIONS = new Set(["AI_CALL", "CASE_ESCALATED", "SLA_BREACHED", "CASE_AUTO_CLEARED", "CASE_REOPENED"]);
 
 function History({ detail }: { detail: CaseDetail }) {
@@ -382,6 +460,7 @@ export function CasePane({
           </Section>
         )}
         <DraftQuery key={detail.case_id} detail={detail} />
+        <AcrossDays detail={detail} />
         <History detail={detail} />
       </div>
     );

@@ -151,6 +151,7 @@ function overview(overrides: Partial<Overview> = {}): Overview {
         sla_breaches_open: 0,
         aged_over_5: 0,
         open_nav_impact: -1000,
+        open_gross_impact: 3000,
         avg_days_to_resolve: null,
       },
       {
@@ -163,6 +164,7 @@ function overview(overrides: Partial<Overview> = {}): Overview {
         sla_breaches_open: 1,
         aged_over_5: 1,
         open_nav_impact: -36179.4,
+        open_gross_impact: 60179.4,
         avg_days_to_resolve: 1,
       },
     ],
@@ -327,6 +329,22 @@ describe("Morning overview", () => {
     expect(within(trend).getByText("Show the figures").closest("details")).not.toHaveAttribute("open");
     const today = within(trend).getByRole("row", { name: /Tue 10 Nov 2026/ });
     expect(today).toHaveAttribute("aria-current", "date");
+  });
+
+  it("gives each run day's open impact gross beside net, and opens an earlier day", async () => {
+    setup(overview());
+    renderApp(URL_DAY);
+    const trend = await section("Trend");
+    const first = within(trend).getByRole("row", { name: /Mon 9 Nov 2026/ });
+    expect(within(first).getByText("3,000.00")).toBeInTheDocument();
+    expect(within(first).getByText("−1,000.00")).toBeInTheDocument();
+    expect(within(first).getByRole("link", { name: "Mon 9 Nov 2026" })).toHaveAttribute(
+      "href",
+      "/overview?fund=GEF1&day=2026-11-09",
+    );
+    const today = within(trend).getByRole("row", { name: /Tue 10 Nov 2026/ });
+    expect(within(today).getByText("60,179.40")).toBeInTheDocument();
+    expect(within(today).queryByRole("link")).toBeNull();
   });
 
   it("explains a day that has not been run, and still shows the trend", async () => {

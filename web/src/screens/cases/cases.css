@@ -746,3 +746,17 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* The case across days: one compact row per run day, the day on show picked out. */
+.wb-days {
+  font-size: 12.5px;
+}
+.wb-days td .wb-sub {
+  margin-left: 6px;
+  color: var(--ink-2);
+}
+.wb-days tr[aria-current="date"] th,
+.wb-days tr[aria-current="date"] td {
+  color: var(--ink);
+  font-weight: 600;
+}

@@ -1,12 +1,14 @@
 /**
  * A small trend: open cases at the end of each run day (oldest first, up to the day being
  * viewed), as thin bars with the day being viewed picked out. Each bar names its day and
- * figures on hover; the figures for every day sit behind "Show the figures". The trend
- * carries no impact column: the engine records only the net impact per day, and net is
- * never shown alone.
+ * figures on hover; the figures for every day sit behind "Show the figures", with the open
+ * impact gross beside net (never net alone), and each earlier day opens that day's overview.
  */
+import { Link } from "react-router";
+
 import type { TrendDay } from "../../api/types";
-import { count, dayLabel, dayShort, plural } from "../../format";
+import { count, dayLabel, dayShort, money, plural } from "../../format";
+import { useWorkspace } from "../../shell/workspace";
 
 const HEIGHT = 56;
 const BAR = 14;
@@ -45,7 +47,8 @@ function Bars({ trend, asOf }: { trend: TrendDay[]; asOf: string }) {
   );
 }
 
-export function TrendSection({ trend, asOf }: { trend: TrendDay[]; asOf: string }) {
+export function TrendSection({ trend, asOf, currency }: { trend: TrendDay[]; asOf: string; currency: string }) {
+  const { href } = useWorkspace();
   const last = trend[trend.length - 1];
   const previous = trend[trend.length - 2];
   let headline: string | null = null;
@@ -75,7 +78,7 @@ export function TrendSection({ trend, asOf }: { trend: TrendDay[]; asOf: string 
             <summary>Show the figures</summary>
             <div className="table-wrap">
               <table className="data-table ov-trend-table">
-                <caption className="sr-only">Cases per run day, oldest first</caption>
+                <caption className="sr-only">Cases and open NAV impact in {currency} per run day, oldest first</caption>
                 <thead>
                   <tr>
                     <th scope="col">Day</th>
@@ -94,17 +97,33 @@ export function TrendSection({ trend, asOf }: { trend: TrendDay[]; asOf: string 
                     <th scope="col" className="num">
                       Material
                     </th>
+                    <th scope="col" className="num">
+                      Gross impact
+                    </th>
+                    <th scope="col" className="num">
+                      Net impact
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {trend.map((d) => (
                     <tr key={d.as_of} aria-current={d.as_of === asOf ? "date" : undefined}>
-                      <th scope="row">{dayLabel(d.as_of)}</th>
+                      <th scope="row">
+                        {d.as_of === asOf ? (
+                          dayLabel(d.as_of)
+                        ) : (
+                          <Link to={href("/overview", { day: d.as_of })} title={`Open the overview for ${dayLabel(d.as_of)}`}>
+                            {dayLabel(d.as_of)}
+                          </Link>
+                        )}
+                      </th>
                       <td className="num">{count(d.open_cases)}</td>
                       <td className="num">{count(d.new_cases)}</td>
                       <td className="num">{count(d.cleared_cases)}</td>
                       <td className="num">{count(d.sla_breaches_open)}</td>
                       <td className="num">{count(d.material_open)}</td>
+                      <td className="num">{money(d.open_gross_impact)}</td>
+                      <td className="num">{money(d.open_nav_impact, { signed: true })}</td>
                     </tr>
                   ))}
                 </tbody>
