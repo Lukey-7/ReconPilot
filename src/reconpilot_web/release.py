@@ -110,7 +110,8 @@ def compute_release(day_row: BusinessDay | None, cases: list[Case], checks: list
     escalated = escalated_needing_approver(open_cases)
     if escalated:
         reasons.append(Reason(ESCALATED_NEEDS_APPROVER,
-                              f"{_plural(len(escalated), 'escalated case')} need a decision by an approver.",
+                              f"{_plural(len(escalated), 'escalated case')} {'needs' if len(escalated) == 1 else 'need'} "
+                              "a decision by an approver.",
                               _ids(escalated)))
     for check in checks or []:
         if check.get("status") == FAIL and check.get("name") != ENGINE_RELEASE_CHECK:

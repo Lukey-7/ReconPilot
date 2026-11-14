@@ -105,6 +105,8 @@ def test_ready_only_when_all_conditions_met(ran, make_client):
     assert reasons[PENDING_DECISIONS]["case_ids"] == [c["case_id"] for c in cases]
     assert reasons[MATERIAL_NOT_APPROVED]["case_ids"] == material
     assert reasons[ESCALATED_NEEDS_APPROVER]["case_ids"] == escalated
+    verb = "needs" if len(escalated) == 1 else "need"
+    assert reasons[ESCALATED_NEEDS_APPROVER]["message"].endswith(f" {verb} a decision by an approver.")
 
     # The analyst decides everything: nothing is pending, but escalated cases still need an approver.
     for case in cases:
