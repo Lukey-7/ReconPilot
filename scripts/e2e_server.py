@@ -7,12 +7,18 @@ to upload through the browser (to either fund: they share a start date), then se
 with a worker thread, as ``reconpilot-web dev`` does. Nothing is shared with a developer's
 own ``.rp_data``.
 
-``stop`` ends a ``serve`` still running on ``--data-dir`` (its process id is kept in
+``serve-demo`` does the same for the public demo's journey: a fresh embedded database in
+``--data-dir`` served exactly as ``reconpilot-web serve --mode demo`` serves it (migrated in
+demo mode, the AI cache loaded, a worker and the cleanup job in-process), with no users or
+funds: visitors make their own.
+
+``stop`` ends a ``serve`` (or ``serve-demo``) still running on ``--data-dir`` (its process id is kept in
 ``<data-dir>/server.pid``), then stops its embedded PostgreSQL, which would otherwise be
 left running: Playwright ends its web server by killing it, so ``serve`` never gets to
 stop the database itself.
 
     python scripts/e2e_server.py serve --data-dir <dir> --port 8765
+    python scripts/e2e_server.py serve-demo --data-dir <dir> --port 8766
     python scripts/e2e_server.py stop --data-dir <dir>
 """
 
@@ -155,9 +161,47 @@ def serve(data_dir: Path, host: str, port: int) -> int:
     return 0
 
 
+def fresh_data_dir(data_dir: Path) -> Path:
+    """Stop anything an earlier, killed run left on ``data_dir``, then empty it."""
+    data_dir = data_dir.resolve()
+    stop_server(data_dir)
+    stop_database(data_dir)
+    if data_dir.exists():
+        shutil.rmtree(data_dir)
+    data_dir.mkdir(parents=True)
+    (data_dir / "server.pid").write_text(str(os.getpid()))
+    return data_dir
+
+
+def serve_demo(data_dir: Path, host: str, port: int) -> int:
+    from reconpilot_web import cli, devdb
+    from reconpilot_web.config import load_settings
+
+    dist = cli.web_dist()
+    if dist is None:
+        print("e2e: no built front end in web/dist; run 'npm run build' in web/ first.", file=sys.stderr)
+        return 1
+    data_dir = fresh_data_dir(data_dir)
+    uri = devdb.start(data_dir)
+    settings = load_settings({
+        "RP_DATABASE_URL": uri,
+        "RP_MIGRATION_DATABASE_URL": uri,
+        "RP_MODE": "demo",
+        "RP_DATA_DIR": str(data_dir),
+    })
+    print(f"e2e: demo instance on {data_dir}", flush=True)
+    try:
+        cli.serve_demo(settings, host, port, dist, poll_interval=0.25)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        devdb.stop(data_dir)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("command", choices=("serve", "stop"))
+    parser.add_argument("command", choices=("serve", "serve-demo", "stop"))
     parser.add_argument("--data-dir", type=Path, required=True)
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
@@ -167,6 +211,8 @@ def main(argv: list[str] | None = None) -> int:
         stop_server(args.data_dir)
         stop_database(args.data_dir)
         return 0
+    if args.command == "serve-demo":
+        return serve_demo(args.data_dir, args.host, args.port)
     return serve(args.data_dir, args.host, args.port)
 
 

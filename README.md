@@ -448,6 +448,8 @@ everything and decide nothing.
 |---|---|
 | `reconpilot-web dev [--host --port --start-date]` | Everything for development, as above |
 | `reconpilot-web serve [--host --port]` | The API, and the built front end from `web/dist` when it exists |
+| `reconpilot-web serve --mode demo` | The public demo in one process (see below) |
+| `reconpilot-web demo-cleanup` | Delete demo funds unused for 24 hours (the demo server also does this itself) |
 | `reconpilot-web worker [--once]` | Run queued day runs (retried up to three times) |
 | `reconpilot-web migrate` | Create or upgrade the schema and record the instance mode |
 | `reconpilot-web create-user --username --role [--admin]` | Add an account (password from `RP_NEW_PASSWORD` or a prompt) |
@@ -460,7 +462,9 @@ everything and decide nothing.
 | `RP_MODE` | `real` (default) or `demo`; a database is written for one mode only |
 | `RP_DATA_DIR` | Local state: the embedded database and AI cache (default `.rp_data`) |
 | `RP_COOKIE_SECURE` | `1` behind HTTPS |
-| `OPENAI_API_KEY` and the others | The AI provider, used only for funds with AI switched on |
+| `OPENAI_API_KEY` and the others | The AI provider, used only for funds with AI switched on (never by the demo) |
+| `RP_DEMO_MAX_FUNDS` | Demo: the most visitor funds alive at once (default 200) |
+| `RP_DEMO_CREATIONS_PER_HOUR` | Demo: how many demos one address may start in an hour (default 5) |
 
 `reconpilot-web migrate` creates an application role, `rp_app`, that can only
 insert into and read the audit log; production runs the API and worker as that
@@ -516,6 +520,79 @@ A run folder holds `run.json`, the hash-chained `audit.jsonl`, today's
 `cases.json`, one `exceptions_<date>.xlsx` per day, `mi.csv`, and
 `state/<date>/` with each day's case ledger and carried open items.
 
+### The public demo
+
+The demo is a separate instance with a database of its own, so demo and real
+data never meet: a database records its mode when it is first migrated, and an
+instance refuses to start against one of the other mode.
+
+```bash
+(cd web && npm run build)          # the front end the demo serves
+reconpilot-web serve --mode demo   # API, front end, worker and expiry cleanup in one process
+```
+
+With no `RP_DATABASE_URL` it runs on its own embedded database in
+`.rp_data/demo/` (never the development one beside it); on a host, point
+`RP_DATABASE_URL` at any PostgreSQL 15 or later. One Python process and
+PostgreSQL host the whole demo: on start it migrates (recording demo mode),
+loads the AI cache, and runs the API serving the built front end, a worker and
+the cleanup job. Behind a proxy, set uvicorn's `FORWARDED_ALLOW_IPS` so the
+rate limit sees each visitor's own address.
+
+The sign-in page offers **Try the demo** instead of a password, under a notice
+that every figure is synthetic, which stays on every screen. One click makes
+the visitor a fund of their own by running the engine's sequence generator from
+a fixed seed (seed 62, a hard-mode working week from Monday 9 November 2026,
+four new breaks a day). The week's files go through the same validation and
+runs as an upload; Monday to Thursday are then worked by the fund's own sandbox
+users through the real decision and sign-off code (the analyst decides the
+cases, one approver the escalated ones, the other signs off), and Friday waits
+for the visitor. The fund has four one-click users with no password, Priya Shah
+(analyst), Ann Lee and Tom Reed (approvers, to show four-eyes) and Vic Moss
+(viewer), and **Working as** in the top bar switches between them. Each is a
+real session checked by the server like any other, and sees its own fund and
+nothing else: other visitors' funds, cases, jobs and audit entries answer 404.
+Uploads are switched off on the server; instead, once the latest day is signed
+off, **Generate** on the upload screen loads the next business day of the same
+sequence (to Friday 20 November) and runs it, with Friday's breaks carried in.
+
+The AI's second opinions come from a cache, so the demo needs no API key and
+costs nothing to run: `src/reconpilot_web/demo_ai_cache.json` holds the real
+AI's responses (and nothing else) for every case of the sequence's ten days,
+and a visitor's fund never calls a provider; anything not cached falls back to
+the rules. `scripts/build_demo_ai_cache.py` rebuilds it by running the real AI
+through the web application's own code on a throwaway database, so the prompts
+match a visitor's exactly, and then checks that a fund built from the cache
+alone finds every answer (102 questions, all cached; the AI disagreed with the
+rules 29 times). A test fails if a change to the engine's prompts leaves any
+question unanswered, which is the cue to rebuild it:
+
+```bash
+source keys.env   # OPENAI_API_KEY, never committed
+python scripts/build_demo_ai_cache.py --provider openai
+```
+
+The browser keeps a cookie (its token stored only as a hash) so a visitor whose
+session has ended, or who signed out, can **carry on** with their own fund from
+the sign-in page for as long as it lives. A visitor's fund expires 24 hours
+after it was last used: every request moves the expiry on, and the cleanup job deletes expired funds with their days, cases,
+decisions, users and sessions every ten minutes (their audit entries stay, as
+the log is append-only). Starting a demo is limited to five an hour per address
+and the number of live demo funds is capped at 200, both configurable.
+
+The demo's browser journey is a recruiter's two-minute visit: try the demo,
+read the AI's opinion and the draft query on the top case, decide the pending
+cases, switch to an approver for the escalated ones and be stopped by
+four-eyes, switch to the other approver to sign off, generate and run the next
+day, read as the viewer and verify the audit chain, and check that a second
+visitor gets a fund of their own and cannot reach the first. It runs on its own
+throwaway demo server (`scripts/e2e_server.py serve-demo`, port 8766):
+
+```bash
+cd web
+npm run test:e2e:demo
+```
+
 ## Project layout
 
 ```
@@ -550,12 +627,16 @@ src/reconpilot_web/
   mi.py          MI across days and the audited Excel and mi.csv exports
   auditviewer.py the audit log viewer: filters, pages, chain check and CSV export
   auditlog.py    the hash-chained audit log in PostgreSQL
-  cli.py         reconpilot-web: dev, serve, worker, migrate, create-user, create-fund
-scripts/         the common-password list generator, the AI carried-case check and the browser-test server
+  aicache.py     the AI response cache in PostgreSQL, and the demo's cache-only client
+  demo.py        demo mode: visitor funds from the generator, one-click users, next day, expiry
+  demo_ai_cache.json  the demo's AI responses, built by scripts/build_demo_ai_cache.py
+  cli.py         reconpilot-web: dev, serve, worker, migrate, create-user, create-fund, demo-cleanup
+scripts/         the common-password list generator, the AI carried-case check, the demo's AI cache
+                 builder and the browser-test server
 tests/           unit and end-to-end tests; AI tests use a fake client, no network
 tests/web/       the web layer against an embedded PostgreSQL, including CLI equivalence
 web/src/         the front end: shell and NAV strip, upload and run, overview, cases, sign-off, MI, audit log
-web/e2e/         browser journeys (Playwright) with axe accessibility checks
+web/e2e/         browser journeys (Playwright) with axe accessibility checks; e2e/demo/ the demo's
 ```
 
 Run the tests with `pytest`. No API key is needed.

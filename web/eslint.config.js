@@ -29,7 +29,7 @@ export default tseslint.config(
     languageOptions: { sourceType: "script" },
   },
   {
-    files: ["vite.config.ts", "playwright.config.ts", "eslint.config.js", "e2e/**/*.ts"],
+    files: ["vite.config.ts", "playwright.config.ts", "playwright.demo.config.ts", "eslint.config.js", "e2e/**/*.ts"],
     languageOptions: { globals: { ...globals.node } },
   },
 );

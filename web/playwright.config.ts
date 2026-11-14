@@ -25,6 +25,7 @@ process.env.RP_E2E_DATA_DIR = dataDir;
 
 export default defineConfig({
   testDir: "./e2e",
+  testIgnore: ["demo/**"], // the demo's journey has its own server: playwright.demo.config.ts
   fullyParallel: false,
   workers: 1,
   retries: 0,
