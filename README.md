@@ -375,6 +375,7 @@ for case in analyst.get(f"/api/funds/{fund}/days/{day}/cases").json():   # large
 
 signer.get(f"/api/funds/{fund}/days/{day}/release?for_user=me").json()  # ready, reasons, signable_by_me
 signer.post(f"/api/funds/{fund}/days/{day}/signoff").json()["status"]  # 'signed_off'
+signer.get(f"/api/funds/{fund}/days/{day}/audit").json()["chain_ok"]   # the day's audit trail: True
 ```
 
 Whoever signs off must not have decided any of the day's open cases, so
