@@ -1,9 +1,9 @@
 """The whole application for the browser tests (Playwright), on a throwaway embedded database.
 
-``serve`` wipes ``--data-dir``, starts an embedded PostgreSQL in it, migrates, creates one
-fund and the four standard users with a known test password, writes generated business
+``serve`` wipes ``--data-dir``, starts an embedded PostgreSQL in it, migrates, creates two
+funds and the four standard users with a known test password, writes generated business
 days (the engine's own sequence generator) to ``<data-dir>/days/<as_of>/`` for the tests
-to upload through the browser, then serves the API and the built front end (``web/dist``)
+to upload through the browser (to either fund: they share a start date), then serves the API and the built front end (``web/dist``)
 with a worker thread, as ``reconpilot-web dev`` does. Nothing is shared with a developer's
 own ``.rp_data``.
 
@@ -31,6 +31,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 FUND_CODE = "E2E1"
 FUND_NAME = "End-to-End Test Fund"
+# A second fund, for switching funds and for the upload screen's own journeys.
+SECOND_FUND_CODE = "E2E2"
+SECOND_FUND_NAME = "Second Test Fund"
 START_DATE = date(2026, 11, 9)  # a Monday
 DAYS = 2
 BREAKS_PER_DAY = 5
@@ -124,12 +127,14 @@ def serve(data_dir: Path, host: str, port: int) -> int:
     try:
         with db.SessionLocal(bind=engine) as session, session.begin():
             funds.create_fund(session, FUND_CODE, FUND_NAME, START_DATE)
+            funds.create_fund(session, SECOND_FUND_CODE, SECOND_FUND_NAME, START_DATE)
             for username, role, display_name in USERS:
                 auth.create_user(session, username, password, role, display_name=display_name)
     finally:
         engine.dispose()
     written = write_days(data_dir / "days")
-    print(f"e2e: fund {FUND_CODE}, {len(USERS)} users, days in {written[0].parent}", flush=True)
+    print(f"e2e: funds {FUND_CODE} and {SECOND_FUND_CODE}, {len(USERS)} users, days in {written[0].parent}",
+          flush=True)
 
     stop = threading.Event()
     worker = threading.Thread(target=run_worker, args=(settings,), kwargs={"stop": stop, "poll_interval": 0.25},

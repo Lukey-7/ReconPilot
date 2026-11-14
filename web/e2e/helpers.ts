@@ -8,8 +8,9 @@ import path from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { type Page, expect } from "@playwright/test";
 
-/** The fund and users scripts/e2e_server.py creates. */
+/** The funds and users scripts/e2e_server.py creates. */
 export const FUND = "E2E1";
+export const SECOND_FUND = "E2E2";
 export const PASSWORD = process.env.RP_E2E_PASSWORD ?? "Ledger-Walrus-4817";
 export const DAY_ONE = "2026-11-09";
 export const DAY_TWO = "2026-11-10";
