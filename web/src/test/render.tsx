@@ -8,7 +8,7 @@ import type { ReactElement } from "react";
 import { MemoryRouter, useLocation } from "react-router";
 
 import { AppProviders, AppRoutes } from "../app/App";
-import type { Day, DaysList, FundSummary, ReleaseForMe, User } from "../api/types";
+import type { Day, DaysList, FundDetail, FundSummary, Intake, ReleaseForMe, User } from "../api/types";
 import type { RouteAnswer } from "./mockApi";
 
 export function testQueryClient(): QueryClient {
@@ -134,10 +134,63 @@ export function releaseFor(fund: string, asOf: string, overrides: Partial<Releas
   };
 }
 
+/** The files the engine reads for a day, as `GET .../intake` lists them. */
+export const EXPECTED_FILES: Intake["expected_files"] = [
+  { kind: "securities", filename: "securities.csv", required: true },
+  { kind: "fx", filename: "fx_rates.csv", required: true },
+  { kind: "trades", filename: "book_trades.csv", required: true },
+  { kind: "positions", filename: "book_positions.csv", required: true },
+  { kind: "holdings", filename: "custodian_holdings.csv", required: true },
+  { kind: "cash", filename: "custodian_cash.csv", required: true },
+  { kind: "fund", filename: "fund.csv", required: true },
+  { kind: "prior_prices", filename: "prior_prices.csv", required: false },
+];
+
+export function intakeFor(fund: string, asOf: string, overrides: Partial<Intake> = {}): Intake {
+  return {
+    fund,
+    as_of: asOf,
+    open: true,
+    blocked: null,
+    day_status: null,
+    previous_business_day: null,
+    previous_status: null,
+    following_day: "2026-11-11",
+    expected_files: EXPECTED_FILES,
+    max_file_bytes: 5 * 1024 * 1024,
+    max_rows: 200_000,
+    ...overrides,
+  };
+}
+
+export function fundDetail(summary: FundSummary, overrides: Partial<FundDetail> = {}): FundDetail {
+  return {
+    ...summary,
+    non_business_dates: [],
+    settings: {
+      materiality_bp: 1,
+      escalate_after_days: 5,
+      sla_days_material: 2,
+      sla_days_other: 5,
+      ai_enabled: false,
+      check_settings: {},
+    },
+    checks_in_force: {
+      max_price_age_days: 1,
+      movement_threshold: 0.02,
+      cash_tolerance: 1,
+      price_move_limits: { EQUITY: 0.1, BOND: 0.02 },
+    },
+    ...overrides,
+  };
+}
+
 /** The routes a signed-in session needs for one fund with one ready day. */
 export function signedInRoutes(user: User = analyst): Record<string, RouteAnswer> {
   return {
     "GET /api/auth/me": { body: user },
+    "GET /api/auth/me/preferences": { body: { fund: null } },
+    "PUT /api/auth/me/preferences": (request) => ({ body: request.body }),
     "GET /api/funds": { body: [fundA, fundB] },
     "GET /api/funds/GEF1/days": {
       body: daysList("GEF1", [

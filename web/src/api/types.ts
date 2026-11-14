@@ -25,6 +25,97 @@ export interface FundSummary {
   latest_status: string | null;
 }
 
+/** `GET /api/funds/{code}`: the fund with its settings and business calendar. */
+export interface FundDetail extends FundSummary {
+  non_business_dates: string[];
+  settings: {
+    materiality_bp: number;
+    escalate_after_days: number;
+    sla_days_material: number;
+    sla_days_other: number;
+    ai_enabled: boolean;
+    /** The fund's own overrides of the release checks' settings (empty: the engine's defaults). */
+    check_settings: Record<string, unknown>;
+  };
+  /** The release checks' settings the engine applies for this fund: its defaults with the fund's overrides. */
+  checks_in_force: {
+    max_price_age_days: number;
+    movement_threshold: number;
+    cash_tolerance: number;
+    price_move_limits: Record<string, number>;
+  };
+}
+
+/** `GET` / `PUT /api/auth/me/preferences`: the fund the user last chose to work. */
+export interface Preferences {
+  fund: string | null;
+}
+
+/** One file the engine reads for a day. */
+export interface ExpectedFile {
+  kind: string;
+  filename: string;
+  required: boolean;
+}
+
+/** Why a day cannot take files now. `day` is the date the reason is about; `day_status` that day's status. */
+export interface IntakeBlock {
+  /** UPLOADS_OFF, BEFORE_START, NOT_BUSINESS_DAY, PREVIOUS_NOT_LOADED, PREVIOUS_NOT_SIGNED_OFF, SIGNED_OFF or RUNNING. */
+  code: string;
+  message: string;
+  day: string | null;
+  day_status: string | null;
+}
+
+/** `GET /api/funds/{code}/days/{as_of}/intake`: whether the day can take files now, and which it expects. */
+export interface Intake {
+  fund: string;
+  as_of: string;
+  open: boolean;
+  blocked: IntakeBlock | null;
+  day_status: string | null;
+  previous_business_day: string | null;
+  previous_status: string | null;
+  /** The business day after this one: what opens once this day is signed off. */
+  following_day: string;
+  expected_files: ExpectedFile[];
+  max_file_bytes: number;
+  max_rows: number;
+}
+
+/** One run of a day, as `GET /api/funds/{code}/days/{as_of}/runs` lists it (newest first). */
+export interface DayRun {
+  job_id: number;
+  status: string;
+  attempts: number;
+  max_attempts: number;
+  started_by: string | null;
+  rerun: boolean;
+  queued_at: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  duration_seconds: number | null;
+  error: string | null;
+  outcome: {
+    open_cases: number | null;
+    new_cases: number | null;
+    carried_cases: number | null;
+    cleared_today: number;
+    breaks: number | null;
+    matches: number | null;
+    decisions_reapplied: number;
+    decisions_voided: number;
+    cases_withdrawn: number;
+  } | null;
+  skipped: string | null;
+}
+
+export interface DayRuns {
+  fund: string;
+  as_of: string;
+  runs: DayRun[];
+}
+
 export interface DayListItem {
   as_of: string;
   status: string;

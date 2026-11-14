@@ -12,11 +12,15 @@ import type {
   CaseDetail,
   Day,
   DayAudit,
+  DayRuns,
   DaysList,
   DecisionRequest,
+  FundDetail,
   FundSummary,
+  Intake,
   Job,
   Overview,
+  Preferences,
   QueueCase,
   ReleaseForMe,
   RunStarted,
@@ -25,12 +29,16 @@ import type {
 
 export const queryKeys = {
   me: ["me"] as const,
+  preferences: ["me", "preferences"] as const,
   funds: ["funds"] as const,
+  fund: (fund: string) => ["funds", fund, "detail"] as const,
   days: (fund: string) => ["funds", fund, "days"] as const,
   day: (fund: string, asOf: string) => ["funds", fund, "day", asOf] as const,
   release: (fund: string, asOf: string) => ["funds", fund, "day", asOf, "release"] as const,
   overview: (fund: string, asOf: string) => ["funds", fund, "day", asOf, "overview"] as const,
   audit: (fund: string, asOf: string) => ["funds", fund, "day", asOf, "audit"] as const,
+  intake: (fund: string, asOf: string) => ["funds", fund, "day", asOf, "intake"] as const,
+  runs: (fund: string, asOf: string) => ["funds", fund, "day", asOf, "runs"] as const,
   cases: (fund: string, asOf: string, filters?: Record<string, unknown>) =>
     filters ? (["funds", fund, "day", asOf, "cases", filters] as const) : (["funds", fund, "day", asOf, "cases"] as const),
   case: (fund: string, caseId: string, asOf?: string) => ["funds", fund, "case", caseId, asOf ?? null] as const,
@@ -39,9 +47,11 @@ export const queryKeys = {
 
 export const paths = {
   me: "/api/auth/me",
+  preferences: "/api/auth/me/preferences",
   login: "/api/auth/login",
   logout: "/api/auth/logout",
   funds: "/api/funds",
+  fund: (fund: string) => `/api/funds/${seg(fund)}`,
   days: (fund: string) => `/api/funds/${seg(fund)}/days`,
   day: (fund: string, asOf: string) => `/api/funds/${seg(fund)}/days/${seg(asOf)}`,
   release: (fund: string, asOf: string) => `/api/funds/${seg(fund)}/days/${seg(asOf)}/release`,
@@ -53,6 +63,8 @@ export const paths = {
   decision: (fund: string, caseId: string) => `/api/funds/${seg(fund)}/cases/${seg(caseId)}/decision`,
   files: (fund: string, asOf: string) => `/api/funds/${seg(fund)}/days/${seg(asOf)}/files`,
   run: (fund: string, asOf: string) => `/api/funds/${seg(fund)}/days/${seg(asOf)}/run`,
+  intake: (fund: string, asOf: string) => `/api/funds/${seg(fund)}/days/${seg(asOf)}/intake`,
+  runs: (fund: string, asOf: string) => `/api/funds/${seg(fund)}/days/${seg(asOf)}/runs`,
   job: (id: number) => `/api/jobs/${seg(String(id))}`,
 };
 
@@ -76,6 +88,42 @@ export function useFunds() {
   return useQuery({
     queryKey: queryKeys.funds,
     queryFn: ({ signal }) => api.get<FundSummary[]>(paths.funds, undefined, signal),
+  });
+}
+
+/** One fund with its settings, the release checks in force and its business calendar. */
+export function useFund(fund: string | null) {
+  return useQuery({
+    queryKey: queryKeys.fund(fund ?? ""),
+    queryFn: ({ signal }) => api.get<FundDetail>(paths.fund(fund ?? ""), undefined, signal),
+    enabled: !!fund,
+  });
+}
+
+/** The signed-in user's stored preferences: the fund they last chose. */
+export function usePreferences() {
+  return useQuery({
+    queryKey: queryKeys.preferences,
+    queryFn: ({ signal }) => api.get<Preferences>(paths.preferences, undefined, signal),
+    staleTime: Infinity,
+  });
+}
+
+/**
+ * Store the fund the user chose, so it follows them to another browser. The cached
+ * preferences change at once; the server's answer then replaces them. A failure leaves
+ * the choice in the address only, which is harmless, so it is not shown as an error.
+ */
+export function useSetPreferredFund() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (fund: string | null) => api.put<Preferences>(paths.preferences, { fund }),
+    onMutate: (fund) => {
+      client.setQueryData<Preferences>(queryKeys.preferences, { fund });
+    },
+    onSuccess: (preferences) => {
+      client.setQueryData(queryKeys.preferences, preferences);
+    },
   });
 }
 
@@ -137,6 +185,31 @@ export function useDayAudit(fund: string | null, asOf: string | null) {
     queryKey: queryKeys.audit(fund ?? "", asOf ?? ""),
     queryFn: ({ signal }) => api.get<DayAudit>(paths.audit(fund ?? "", asOf ?? ""), undefined, signal),
     enabled: !!fund && !!asOf,
+  });
+}
+
+/**
+ * Whether the day can take files now, why not if it cannot, and the files it expects. Asked
+ * again while the day is being run, so the drop zone returns when the run ends.
+ */
+export function useIntake(fund: string | null, asOf: string | null) {
+  return useQuery({
+    queryKey: queryKeys.intake(fund ?? "", asOf ?? ""),
+    queryFn: ({ signal }) => api.get<Intake>(paths.intake(fund ?? "", asOf ?? ""), undefined, signal),
+    enabled: !!fund && !!asOf,
+    staleTime: 0,
+  });
+}
+
+/** The day's runs, newest first; asked again every few seconds while one is queued or running. */
+export function useDayRuns(fund: string | null, asOf: string | null, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.runs(fund ?? "", asOf ?? ""),
+    queryFn: ({ signal }) => api.get<DayRuns>(paths.runs(fund ?? "", asOf ?? ""), undefined, signal),
+    enabled: enabled && !!fund && !!asOf,
+    staleTime: 0,
+    refetchInterval: (q) =>
+      q.state.data?.runs.some((r) => !FINISHED_JOB_STATUSES.has(r.status)) ? RUNNING_POLL_MS : false,
   });
 }
 
