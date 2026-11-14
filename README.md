@@ -388,7 +388,33 @@ History runs across days. A case in the workbench shows **Across days**: its
 status, cause, age, impact and flags at the end of every day it was run, from
 the day it was first seen to the day it cleared, each earlier day opening the
 case as it stood then. The overview's trend gives each run day's open impact,
-gross above net, and opens any earlier day. The same steps through the API:
+gross above net, and opens any earlier day.
+
+The desk works from the keyboard. **Ctrl+K** (Cmd+K on a Mac), or **Search**
+in the top bar, opens the command palette: type part of a case id, a security,
+a screen, a fund or a day and press Enter to go there, or run an action. The
+palette offers only what the person may do now, by role and by the day's
+state (the server still checks every request): approve, reject or reclassify
+the open case on the workbench, run the day on upload, verify the chain or
+export on the audit log, the two exports on MI, the theme, sign out, and in
+the demo "Work as" another user. "Sign off the NAV…" opens the same
+confirmation as the button and never signs off by itself. The shortcuts:
+
+| Keys | Does |
+|---|---|
+| `g` then `o` `u` `q` `s` `m` `l` (`f`) | Overview, upload, cases, sign-off, MI, audit log (funds) |
+| `j` `k`, arrows, `Enter` | Move through the queue and open the case |
+| `a` `r` `c` | Approve, reject (to the note), reclassify (to the cause) |
+| `/` | Search the queue; on the audit log, filter by case |
+| `Ctrl+K` | The command palette, even from inside a field |
+| `?` | Every shortcut on the screen in view |
+| `Esc` | Leave a field, or close the dialog |
+
+Shortcuts never fire while you type. Motion only explains a change: figures
+ease to a new value, the release status pulses once when it moves from
+blocked to ready, rows arrive in the queue, panes swap in under 200 ms; all
+of it is off when the system asks for reduced motion. The same steps through
+the API:
 
 ```bash
 reconpilot generate --as-of 2026-11-09 --days 2 --breaks 4 --hard --out data

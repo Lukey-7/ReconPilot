@@ -84,14 +84,18 @@ decorative statistics:
 
 - **Top bar**: screen links without key hints (the shortcut is in the tooltip, the help
   dialog and the palette); one search button for the palette; shortcuts as an icon.
-- **Overview**: sections on the page rather than seven boxed panels; the impact totals are
-  gross, net and material (gross exposure is the case's own figure, in the workbench); no
-  legend; ageing without bars; the run's counts and the checks on demand.
-- **Workbench**: flags on one line in the queue; the evidence pane no longer repeats the
-  case's impact figures; secondary advice behind the decision's own line.
-- **Sign-off**: the action first; the audit trail's entries behind its verdict.
-- **Upload**: once the files are valid, the file list folds behind its verdict.
-- **Audit log**: the dates and who behind "More filters" unless set.
+- **Overview**: five panels instead of seven, in two columns that stack without gaps:
+  release status, open breaks and, in one quiet panel, the trend with what cleared today
+  on the left; the day's account and, in one panel, ageing with SLA breaches and
+  escalations on the right. Each section keeps its own heading and region. The impact
+  totals are gross, net and material (gross exposure is each case's own figure, in the
+  workbench); no legend; ageing without its bars.
+- **Workbench**: the evidence pane no longer repeats the case's NAV impact (the case
+  pane's headline); the FX rate it was converted at stays under the breaks.
+- **Upload**: once the day has run, the file list folds behind one line.
+- **Sign-off, MI, audit log, funds**: looked at and left as they are: each already leads
+  with its one job (the conditions and the action; the matrix and exports; the log and its
+  check; the funds and settings). Only the audit log's two demo actions gain their words.
 
 ### Tests
 
