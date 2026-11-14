@@ -1,7 +1,7 @@
 /**
  * Pane 3: the evidence. The book against the custodian for the case's security, the breaks
- * the matcher found (book, custodian and the difference), the NAV impact if the custodian
- * is right, and the records behind the case from the day's files on demand.
+ * the matcher found (book, custodian and the difference), and the records behind the case
+ * from the day's files on demand. The case's NAV impact is the case pane's, not repeated here.
  *
  * The pane collapses to a rail (more room for the case and long AI text) or widens (more
  * room for the figures); the choice is the viewer's own and is remembered in this browser.
@@ -10,7 +10,7 @@ import type { ReactNode } from "react";
 
 import type { CaseDetail } from "../../api/types";
 import { Icon } from "../../components/Icon";
-import { MISSING, bp, count, dayLabel, money } from "../../format";
+import { MISSING, count, dayLabel, money } from "../../format";
 import { breakKindLabel } from "../../vocabulary";
 
 export type EvidenceMode = "normal" | "wide" | "collapsed";
@@ -311,27 +311,13 @@ export function EvidencePane({
             >
               <Position detail={detail} />
             </Section>
+            {/* The case's NAV impact is the case pane's headline; it is not repeated here. */}
             <Section id="wb-h-breaks" title="Breaks" meta={`${count(detail.breaks.length)} on this case`}>
               <Breaks detail={detail} currency={currency} />
-            </Section>
-            <Section id="wb-h-impact" title="NAV impact" meta="if the custodian is right">
-              <dl className="wb-impact">
-                <div>
-                  <dt>Net</dt>
-                  <dd className="fig">{money(detail.nav_impact, { signed: true })}</dd>
-                </div>
-                <div>
-                  <dt>Of NAV</dt>
-                  <dd className="fig">{bp(detail.nav_impact_bp)}</dd>
-                </div>
-                <div>
-                  <dt>Gross</dt>
-                  <dd className="fig">{money(detail.gross_exposure)}</dd>
-                </div>
-              </dl>
               {detail.fx_rate != null && detail.security && detail.security.currency !== currency && (
                 <p className="wb-note">
-                  {detail.security.currency} to {currency} at {money(detail.fx_rate, { decimals: 6 })}.
+                  NAV impact converted from {detail.security.currency} to {currency} at{" "}
+                  {money(detail.fx_rate, { decimals: 6 })}.
                 </p>
               )}
             </Section>
