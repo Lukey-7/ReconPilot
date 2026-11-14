@@ -104,6 +104,13 @@
 .al-table td,
 .al-table th {
   vertical-align: top;
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+/* The entry number reads as the first column, not as a second header band. */
+.al-table th[scope="row"] {
+  background: transparent;
+  padding-top: 4px;
 }
 .al-seq {
   display: inline-flex;
@@ -182,7 +189,7 @@
 }
 .al-fields {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 6px 18px;
   margin: 0;
 }

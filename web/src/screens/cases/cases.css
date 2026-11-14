@@ -752,7 +752,8 @@
   font-size: 12.5px;
 }
 .wb-days td .wb-sub {
-  margin-left: 6px;
+  display: block;
+  margin-top: 2px;
   color: var(--ink-2);
 }
 .wb-days tr[aria-current="date"] th,

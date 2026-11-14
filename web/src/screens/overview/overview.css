@@ -449,6 +449,24 @@
   background: none;
   color: var(--ink-2);
 }
+/* Seven columns in a narrow area: tighter cells, so the impact column is never cut off. */
+.ov-trend-table th,
+.ov-trend-table td {
+  padding: 0 5px;
+  font-size: 12px;
+}
+.ov-trend-table th:first-child,
+.ov-trend-table td:first-child {
+  padding-left: 0;
+}
+.ov-trend-impact span {
+  display: block;
+  line-height: 1.3;
+}
+.ov-trend-net {
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
 
 /* ===== Not run ===== */
 .ov-notrun p {

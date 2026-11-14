@@ -2,7 +2,8 @@
  * A small trend: open cases at the end of each run day (oldest first, up to the day being
  * viewed), as thin bars with the day being viewed picked out. Each bar names its day and
  * figures on hover; the figures for every day sit behind "Show the figures", with the open
- * impact gross beside net (never net alone), and each earlier day opens that day's overview.
+ * impact gross and, beneath it, net (never net alone), and each earlier day opens that day's
+ * overview.
  */
 import { Link } from "react-router";
 
@@ -98,10 +99,7 @@ export function TrendSection({ trend, asOf, currency }: { trend: TrendDay[]; asO
                       Material
                     </th>
                     <th scope="col" className="num">
-                      Gross impact
-                    </th>
-                    <th scope="col" className="num">
-                      Net impact
+                      Open impact
                     </th>
                   </tr>
                 </thead>
@@ -122,8 +120,10 @@ export function TrendSection({ trend, asOf, currency }: { trend: TrendDay[]; asO
                       <td className="num">{count(d.cleared_cases)}</td>
                       <td className="num">{count(d.sla_breaches_open)}</td>
                       <td className="num">{count(d.material_open)}</td>
-                      <td className="num">{money(d.open_gross_impact)}</td>
-                      <td className="num">{money(d.open_nav_impact, { signed: true })}</td>
+                      <td className="num ov-trend-impact">
+                        <span>{money(d.open_gross_impact)}</span>
+                        <span className="ov-trend-net">net {money(d.open_nav_impact, { signed: true })}</span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

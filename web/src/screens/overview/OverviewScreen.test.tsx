@@ -337,7 +337,7 @@ describe("Morning overview", () => {
     const trend = await section("Trend");
     const first = within(trend).getByRole("row", { name: /Mon 9 Nov 2026/ });
     expect(within(first).getByText("3,000.00")).toBeInTheDocument();
-    expect(within(first).getByText("−1,000.00")).toBeInTheDocument();
+    expect(within(first).getByText("net −1,000.00")).toBeInTheDocument();
     expect(within(first).getByRole("link", { name: "Mon 9 Nov 2026" })).toHaveAttribute(
       "href",
       "/overview?fund=GEF1&day=2026-11-09",
