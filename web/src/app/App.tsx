@@ -12,7 +12,7 @@ import { AuthProvider } from "../auth/AuthContext";
 import { RequireAuth } from "../auth/RequireAuth";
 import { SignInScreen } from "../auth/SignInScreen";
 import { KeyboardProvider } from "../keyboard/KeyboardProvider";
-import { CasesScreen } from "../screens/CasesScreen";
+import { CasesScreen } from "../screens/cases/CasesScreen";
 import { NotFoundScreen } from "../screens/NotFoundScreen";
 import { OverviewScreen } from "../screens/overview/OverviewScreen";
 import { SignOffScreen } from "../screens/SignOffScreen";
