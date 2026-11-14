@@ -507,6 +507,42 @@ describe("case workbench", () => {
     expect(api.calls("POST /api/funds/GEF1/cases/C1/decision")[0]?.body).toEqual({ decision: "approve", note: "", version: 3 });
   });
 
+  it("decides the case the palette action names even when the queue cursor is on another row", async () => {
+    const api = setup();
+    api.set("POST /api/funds/GEF1/cases/C1/decision", {
+      body: detailOf({ ...C1, status: "APPROVED", version: 4 }, {}, { reviewed_by: "analyst1", reviewed_role: "analyst" }),
+    });
+    renderApp(`${BASE}&case=C1`);
+    await openCase("C1");
+    fireEvent.keyDown(document.body, { key: "j" });
+    await waitFor(() => expect(queueRows()[1]).toHaveFocus());
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "j" });
+    await waitFor(() => expect(queueRows()[2]).toHaveFocus());
+    const user = userEvent.setup();
+    await user.keyboard("{Control>}k{/Control}");
+    await screen.findByRole("dialog", { name: "Command palette" });
+    await user.keyboard("approve c1{Enter}");
+    expect(await screen.findByText("Approved C1. Recorded in the audit log.")).toBeInTheDocument();
+    expect(api.calls("POST /api/funds/GEF1/cases/C1/decision")[0]?.body).toEqual({ decision: "approve", note: "", version: 3 });
+    expect(api.calls("POST /api/funds/GEF1/cases/C3/decision")).toHaveLength(0);
+    expect(location()).toContain("case=C1");
+    expect(screen.queryByText(/Press the key again/)).not.toBeInTheDocument();
+  });
+
+  it("moves to the open case's note from the palette's Reject even when the cursor is elsewhere", async () => {
+    setup();
+    renderApp(`${BASE}&case=C1`);
+    await openCase("C1");
+    fireEvent.keyDown(document.body, { key: "j" });
+    await waitFor(() => expect(queueRows()[1]).toHaveFocus());
+    const user = userEvent.setup();
+    await user.keyboard("{Control>}k{/Control}");
+    await screen.findByRole("dialog", { name: "Command palette" });
+    await user.keyboard("reject c1{Enter}");
+    await waitFor(() => expect(screen.getByLabelText(/^Note/)).toHaveFocus());
+    expect(location()).toContain("case=C1");
+  });
+
   it("rejecting from the palette moves to the note, as r does", async () => {
     setup();
     renderApp(`${BASE}&case=C1`);

@@ -15,7 +15,7 @@ import type { CaseDetail, DecisionRequest, RoleName } from "../../api/types";
 import { Icon } from "../../components/Icon";
 import { Kbd } from "../../components/Kbd";
 import { StatusLabel } from "../../components/Labels";
-import { useShortcut } from "../../keyboard/KeyboardProvider";
+import { useCommand, useShortcut } from "../../keyboard/KeyboardProvider";
 import { CAUSES, CAUSE_LABELS, causeLabel, roleLabel, statusLabel } from "../../vocabulary";
 
 type Armed = "reject" | "reclassify" | null;
@@ -162,39 +162,48 @@ export function DecisionBar({ detail, fund, asOf, role, signedOffBy, beforeShort
     }
   };
 
+  /** r: reject at once when the note is written, otherwise move to the note. */
+  const startReject = () => {
+    if (note.trim()) reject();
+    else {
+      setArmed("reject");
+      noteRef.current?.focus();
+    }
+  };
+
+  /** c: move to the cause. */
+  const startReclassify = () => {
+    setArmed("reclassify");
+    causeRef.current?.focus();
+  };
+
+  // The keys act on the queue's cursor (opening that case first if it is not the open one);
+  // the palette's actions name the open case, so they act on it whatever the cursor is on.
   const shortcutOptions = { group: "Cases", enabled: canAct };
   useShortcut(
     "a",
     () => {
       if (!beforeShortcut()) approve();
     },
-    { ...shortcutOptions, description: "Approve the open case", palette: `Approve ${detail.case_id}` },
+    { ...shortcutOptions, description: "Approve the open case" },
   );
   useShortcut(
     "r",
     () => {
-      if (beforeShortcut()) return;
-      if (note.trim()) reject();
-      else {
-        setArmed("reject");
-        noteRef.current?.focus();
-      }
+      if (!beforeShortcut()) startReject();
     },
-    { ...shortcutOptions, description: "Reject the open case (moves to the note)", palette: `Reject ${detail.case_id}…` },
+    { ...shortcutOptions, description: "Reject the open case (moves to the note)" },
   );
   useShortcut(
     "c",
     () => {
-      if (beforeShortcut()) return;
-      setArmed("reclassify");
-      causeRef.current?.focus();
+      if (!beforeShortcut()) startReclassify();
     },
-    {
-      ...shortcutOptions,
-      description: "Reclassify the open case (moves to the cause)",
-      palette: `Reclassify ${detail.case_id}…`,
-    },
+    { ...shortcutOptions, description: "Reclassify the open case (moves to the cause)" },
   );
+  useCommand(`Approve ${detail.case_id}`, approve, { ...shortcutOptions, keys: "a" });
+  useCommand(`Reject ${detail.case_id}…`, startReject, { ...shortcutOptions, keys: "r" });
+  useCommand(`Reclassify ${detail.case_id}…`, startReclassify, { ...shortcutOptions, keys: "c" });
 
   const decided = c.status !== "PENDING";
   const outcomeLine =
