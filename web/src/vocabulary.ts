@@ -91,6 +91,23 @@ export function releaseReasonLabel(code: string): string {
   return code in RELEASE_REASONS ? RELEASE_REASONS[code as ReleaseReasonCode] : code;
 }
 
+/**
+ * The release conditions as the sign-off screen lists them, each named for what must be
+ * true. A condition is unmet exactly when the server gives the reason with the same code.
+ */
+export const RELEASE_CONDITIONS: Record<ReleaseReasonCode, string> = {
+  NOT_RUN: "The day has run",
+  PENDING_DECISIONS: "Every open case decided",
+  MATERIAL_NOT_APPROVED: "Material cases approved or reclassified",
+  ESCALATED_NEEDS_APPROVER: "Escalated cases decided by an approver",
+  CHECK_FAILED: "No release check failed",
+  FOUR_EYES: "Four-eyes: the signer decided no case today",
+};
+
+export function releaseConditionLabel(code: string): string {
+  return code in RELEASE_CONDITIONS ? RELEASE_CONDITIONS[code as ReleaseReasonCode] : releaseReasonLabel(code);
+}
+
 export const RELEASE_LABELS = {
   ready: "Ready to sign off",
   blocked: "Blocked",

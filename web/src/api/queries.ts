@@ -10,6 +10,7 @@ import { ApiError, api, seg } from "./client";
 import type {
   CaseDetail,
   Day,
+  DayAudit,
   DaysList,
   DecisionRequest,
   FundSummary,
@@ -25,6 +26,7 @@ export const queryKeys = {
   day: (fund: string, asOf: string) => ["funds", fund, "day", asOf] as const,
   release: (fund: string, asOf: string) => ["funds", fund, "day", asOf, "release"] as const,
   overview: (fund: string, asOf: string) => ["funds", fund, "day", asOf, "overview"] as const,
+  audit: (fund: string, asOf: string) => ["funds", fund, "day", asOf, "audit"] as const,
   cases: (fund: string, asOf: string, filters?: Record<string, unknown>) =>
     filters ? (["funds", fund, "day", asOf, "cases", filters] as const) : (["funds", fund, "day", asOf, "cases"] as const),
   case: (fund: string, caseId: string, asOf?: string) => ["funds", fund, "case", caseId, asOf ?? null] as const,
@@ -40,6 +42,7 @@ export const paths = {
   release: (fund: string, asOf: string) => `/api/funds/${seg(fund)}/days/${seg(asOf)}/release`,
   overview: (fund: string, asOf: string) => `/api/funds/${seg(fund)}/days/${seg(asOf)}/overview`,
   signoff: (fund: string, asOf: string) => `/api/funds/${seg(fund)}/days/${seg(asOf)}/signoff`,
+  audit: (fund: string, asOf: string) => `/api/funds/${seg(fund)}/days/${seg(asOf)}/audit`,
   cases: (fund: string, asOf: string) => `/api/funds/${seg(fund)}/days/${seg(asOf)}/cases`,
   case: (fund: string, caseId: string) => `/api/funds/${seg(fund)}/cases/${seg(caseId)}`,
   decision: (fund: string, caseId: string) => `/api/funds/${seg(fund)}/cases/${seg(caseId)}/decision`,
@@ -99,6 +102,15 @@ export function useOverview(fund: string | null, asOf: string | null) {
   return useQuery({
     queryKey: queryKeys.overview(fund ?? "", asOf ?? ""),
     queryFn: ({ signal }) => api.get<Overview>(paths.overview(fund ?? "", asOf ?? ""), undefined, signal),
+    enabled: !!fund && !!asOf,
+  });
+}
+
+/** The day's audit trail, oldest first, and whether the whole hash chain still verifies. */
+export function useDayAudit(fund: string | null, asOf: string | null) {
+  return useQuery({
+    queryKey: queryKeys.audit(fund ?? "", asOf ?? ""),
+    queryFn: ({ signal }) => api.get<DayAudit>(paths.audit(fund ?? "", asOf ?? ""), undefined, signal),
     enabled: !!fund && !!asOf,
   });
 }
@@ -164,6 +176,27 @@ export function useDecision(fund: string, asOf: string) {
       api.post<CaseDetail>(paths.decision(fund, caseId), request),
     onSuccess: async (detail, { caseId }) => {
       client.setQueryData(queryKeys.case(fund, caseId, asOf), detail);
+      await invalidateDay(client, fund, asOf);
+    },
+    onError: async () => {
+      await invalidateDay(client, fund, asOf);
+    },
+  });
+}
+
+/**
+ * Sign off the day's NAV (approvers only). The answer is the signed-off day; it replaces
+ * the cached day and everything about the day is refetched (the strip, the release, the
+ * day list with the next business day, the audit trail). A refusal (409 with reasons, or
+ * 403 for a role that may not sign off) refetches the day too, so the screen shows what
+ * is true now.
+ */
+export function useSignOff(fund: string, asOf: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<Day>(paths.signoff(fund, asOf)),
+    onSuccess: async (day) => {
+      client.setQueryData(queryKeys.day(fund, asOf), day);
       await invalidateDay(client, fund, asOf);
     },
     onError: async () => {

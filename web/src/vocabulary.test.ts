@@ -13,6 +13,9 @@ import {
   causeLabel,
   checkLabel,
   dayStatusLabel,
+  RELEASE_CONDITIONS,
+  RELEASE_REASONS,
+  releaseConditionLabel,
   releaseReasonLabel,
   roleLabel,
   statusLabel,
@@ -67,5 +70,11 @@ describe("vocabulary", () => {
     expect(auditActionLabel("CASE_AUTO_CLEARED")).toBe("Cleared automatically");
     expect(auditActionLabel("AI_CALL")).toBe("AI second opinion");
     expect(auditActionLabel("SOMETHING_NEW")).toBe("SOMETHING_NEW");
+  });
+
+  it("names a release condition for every release reason", () => {
+    expect(Object.keys(RELEASE_CONDITIONS).sort()).toEqual(Object.keys(RELEASE_REASONS).sort());
+    expect(releaseConditionLabel("PENDING_DECISIONS")).toBe("Every open case decided");
+    expect(releaseConditionLabel("SOMETHING_NEW")).toBe("SOMETHING_NEW");
   });
 });

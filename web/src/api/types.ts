@@ -411,3 +411,26 @@ export interface DecisionRequest {
   note: string;
   version: number;
 }
+
+/** One entry of the hash-chained audit log, as the day's audit trail lists it. */
+export interface AuditEntry {
+  seq: number;
+  ts: string;
+  actor: string;
+  role: string;
+  action: string;
+  case_id: string | null;
+  payload: Record<string, unknown>;
+  prev_hash: string;
+  hash: string;
+}
+
+/** `GET /api/funds/{code}/days/{as_of}/audit`: the day's entries, oldest first, and the whole chain re-checked. */
+export interface DayAudit {
+  fund: string;
+  as_of: string;
+  entries: AuditEntry[];
+  chain_ok: boolean;
+  /** The first entry that does not fit the chain, when it is broken. */
+  broken_at: number | null;
+}
