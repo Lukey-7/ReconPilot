@@ -4,13 +4,16 @@
  * latest entries show; the earlier ones wait behind an expander, so the trail stays calm
  * on a busy day. Each entry says who did what, as whom, when, and to which case.
  */
+import { Link } from "react-router";
+
 import { ApiError } from "../../api/client";
 import { useDayAudit } from "../../api/queries";
 import type { AuditEntry } from "../../api/types";
 import { Icon } from "../../components/Icon";
 import { ErrorLine, Loading } from "../../components/QueryState";
 import { count, plural, timestamp } from "../../format";
-import { auditActionLabel, causeLabel, releaseReasonLabel, roleLabel } from "../../vocabulary";
+import { EXPORT_NAMES, auditActionLabel, causeLabel, releaseReasonLabel, roleLabel } from "../../vocabulary";
+import { useWorkspace } from "../../shell/workspace";
 import { CaseLink } from "../overview/caseLinks";
 
 /** How many of the latest entries show before the rest go behind "Show earlier entries". */
@@ -92,6 +95,28 @@ export function entryDetail(entry: AuditEntry): string {
       return text(p.attempted) ? `tried to ${text(p.attempted)}` : "";
     case "RUN_FAILED":
       return text(p.error);
+    case "EXPORT_DOWNLOADED": {
+      const name = EXPORT_NAMES[text(p.export)] ?? text(p.export);
+      const rows = num(p.rows);
+      const file = text(p.filename);
+      return [name, file, rows != null ? plural(rows, "entry", "entries") : ""].filter(Boolean).join(", ");
+    }
+    case "AUDIT_CHAIN_VERIFIED": {
+      const entries = num(p.entries);
+      if (p.intact === true) return entries != null ? `intact, ${plural(entries, "entry", "entries")} checked` : "intact";
+      const at = num(p.broken_at);
+      return at != null ? `broken at entry #${at}` : "broken";
+    }
+    case "SIGN_IN_FAILED":
+      return text(p.reason);
+    case "ACCOUNT_LOCKED": {
+      const failed = num(p.failed_logins);
+      return failed != null ? `after ${plural(failed, "failed sign-in")}` : "";
+    }
+    case "USER_CREATED":
+      return [text(p.username), text(p.role) ? roleLabel(text(p.role)).toLowerCase() : ""].filter(Boolean).join(", ");
+    case "FUND_CREATED":
+      return [text(p.code), text(p.name)].filter(Boolean).join(", ");
     default:
       return "";
   }
@@ -144,6 +169,7 @@ function ChainLine({ ok, brokenAt }: { ok: boolean; brokenAt: number | null }) {
 }
 
 export function AuditTrail({ fund, asOf }: { fund: string; asOf: string }) {
+  const { href } = useWorkspace();
   const query = useDayAudit(fund, asOf);
   const audit = query.data;
 
@@ -190,6 +216,9 @@ export function AuditTrail({ fund, asOf }: { fund: string; asOf: string }) {
       <div className="so-block-head">
         <h2 id="so-h-audit">Audit trail</h2>
         {audit && <span className="faint">{plural(audit.entries.length, "entry", "entries")} for this day</span>}
+        <Link className="so-log-link" to={href("/audit", { only_day: "1" })}>
+          Open in the audit log
+        </Link>
       </div>
       {body}
     </section>

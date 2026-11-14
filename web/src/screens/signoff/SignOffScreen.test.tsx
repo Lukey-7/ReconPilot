@@ -227,6 +227,16 @@ describe("Sign-off screen", () => {
     expect(within(items[3] as HTMLElement).getByRole("link", { name: "C2" })).toBeInTheDocument();
   });
 
+  it("opens the day's entries in the whole audit log", async () => {
+    mockApi(routes(analyst));
+    renderApp(URL_DAY);
+    const trail = await screen.findByRole("region", { name: "Audit trail" });
+    expect(within(trail).getByRole("link", { name: "Open in the audit log" })).toHaveAttribute(
+      "href",
+      "/audit?fund=GEF1&day=2026-11-10&only_day=1",
+    );
+  });
+
   it("keeps earlier entries behind an expander and warns of a broken chain", async () => {
     const many = Array.from({ length: 14 }, (_, i) => entry(i + 1, "AI_CALL", { payload: { model: "m1" } }));
     mockApi(routes(analyst, { trail: audit(many, { chain_ok: false, broken_at: 7 }) }));
@@ -420,5 +430,29 @@ describe("audit entry details", () => {
     expect(entryDetail(entry(3, "CASE_REJECTED", { payload: { note: "Book is right" } }))).toBe("“Book is right”");
     expect(entryDetail(entry(4, "AI_CALL", { payload: { model: "m1", fallback_used: true } }))).toBe("m1, the rules stand");
     expect(entryDetail(entry(5, "SOMETHING_NEW", { payload: { x: 1 } }))).toBe("");
+  });
+
+  it("words the entries the whole audit log adds: exports, chain checks, sign-ins, users and funds", () => {
+    const exported = entry(6, "EXPORT_DOWNLOADED", {
+      payload: { export: "audit_csv", filename: "audit_GEF1_2026-11-14.csv", rows: 12 },
+    });
+    expect(entryDetail(exported)).toBe("Audit log, audit_GEF1_2026-11-14.csv, 12 entries");
+    expect(entryDetail(entry(7, "EXPORT_DOWNLOADED", { payload: { export: "mi_csv", filename: "mi.csv" } }))).toBe(
+      "MI data, mi.csv",
+    );
+    expect(entryDetail(entry(8, "AUDIT_CHAIN_VERIFIED", { payload: { intact: true, entries: 57 } }))).toBe(
+      "intact, 57 entries checked",
+    );
+    expect(entryDetail(entry(9, "AUDIT_CHAIN_VERIFIED", { payload: { intact: false, broken_at: 4 } }))).toBe(
+      "broken at entry #4",
+    );
+    expect(entryDetail(entry(10, "SIGN_IN_FAILED", { payload: { reason: "wrong password" } }))).toBe("wrong password");
+    expect(entryDetail(entry(11, "ACCOUNT_LOCKED", { payload: { failed_logins: 5 } }))).toBe("after 5 failed sign-ins");
+    expect(entryDetail(entry(12, "USER_CREATED", { payload: { username: "ann", role: "approver" } }))).toBe(
+      "ann, approver",
+    );
+    expect(entryDetail(entry(13, "FUND_CREATED", { payload: { code: "INC2", name: "Income Fund" } }))).toBe(
+      "INC2, Income Fund",
+    );
   });
 });

@@ -223,6 +223,10 @@ export const AUDIT_ACTIONS = {
   SIGN_IN_FAILED: "Sign-in failed",
   SIGN_OUT: "Signed out",
   EXPORT_DOWNLOADED: "Export downloaded",
+  AUDIT_CHAIN_VERIFIED: "Chain verified",
+  USER_CREATED: "User created",
+  FUND_CREATED: "Fund created",
+  ACCOUNT_LOCKED: "Account locked",
 } as const;
 export type AuditAction = keyof typeof AUDIT_ACTIONS;
 
@@ -284,6 +288,16 @@ export const EXPORT_FORMATS = {
   report: "Excel",
   mi_csv: "CSV",
 } as const;
+
+/** The audit log's own export (`EXPORT_DOWNLOADED`'s `export` is `audit_csv`), as its button names it. */
+export const AUDIT_EXPORT = "Export CSV";
+
+/** What an `EXPORT_DOWNLOADED` entry's `export` was, in words. */
+export const EXPORT_NAMES: Record<string, string> = {
+  exception_report: "Exception report",
+  mi_csv: "MI data",
+  audit_csv: "Audit log",
+};
 
 /** The trend's per-day measures (`reconpilot.mi.DaySummary`), as the MI screen names them. */
 export const TREND_MEASURES = {

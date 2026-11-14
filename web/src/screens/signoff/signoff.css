@@ -67,6 +67,10 @@
 .so-block-head .faint {
   font-size: 12.5px;
 }
+.so-block-head .so-log-link {
+  margin-left: auto;
+  font-size: 12.5px;
+}
 
 /* ===== Release conditions ===== */
 .so-conds {

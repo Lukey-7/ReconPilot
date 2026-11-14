@@ -74,6 +74,13 @@ describe("vocabulary", () => {
     expect(auditActionLabel("SOMETHING_NEW")).toBe("SOMETHING_NEW");
   });
 
+  it("words the actions the audit log viewer shows beyond a day's trail", () => {
+    expect(auditActionLabel("AUDIT_CHAIN_VERIFIED")).toBe("Chain verified");
+    expect(auditActionLabel("USER_CREATED")).toBe("User created");
+    expect(auditActionLabel("FUND_CREATED")).toBe("Fund created");
+    expect(auditActionLabel("ACCOUNT_LOCKED")).toBe("Account locked");
+  });
+
   it("names a release condition for every release reason", () => {
     expect(Object.keys(RELEASE_CONDITIONS).sort()).toEqual(Object.keys(RELEASE_REASONS).sort());
     expect(releaseConditionLabel("PENDING_DECISIONS")).toBe("Every open case decided");
