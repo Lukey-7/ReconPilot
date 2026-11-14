@@ -135,6 +135,33 @@ describe("UploadScreen", () => {
     expect(api.calls("GET /api/jobs/7").length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: "Work the cases" })).toHaveAttribute("href", "/cases?fund=INC2&day=2026-11-10");
     expect(screen.getByRole("button", { name: "Run again" })).toBeInTheDocument();
+    // Once the day has run, the file list folds away behind one line.
+    const held = screen.getByText("Show the 1 file held for Tue 10 Nov 2026").closest("details");
+    expect(held).not.toHaveAttribute("open");
+    expect(held).toContainElement(screen.getByRole("table", { name: /Files held for Tue 10 Nov 2026/, hidden: true }));
+  });
+
+  it("runs the day from the command palette, for those who may run it", async () => {
+    const api = mockApi({
+      ...signedInRoutes(),
+      "GET /api/funds/INC2/days": {
+        body: daysList("INC2", [
+          { as_of: "2026-11-10", status: "validated" },
+          { as_of: "2026-11-09", status: "signed_off" },
+        ]),
+      },
+      [`GET ${DAY}`]: { body: loadedDay({}) },
+      [`GET ${DAY}/release`]: { body: { ready: false, reasons: [], checks: [], signable_by_me: false, blocking_for_me: [] } },
+      [`POST ${DAY}/run`]: { status: 202, body: { job_id: 7 } },
+      "GET /api/jobs/7": { body: job("running") },
+    });
+    const user = userEvent.setup();
+    renderApp("/upload?fund=INC2&day=2026-11-10");
+    await screen.findByText("The files are valid.");
+    await user.keyboard("{Control>}k{/Control}");
+    await screen.findByRole("dialog", { name: "Command palette" });
+    await user.keyboard("run tue{Enter}");
+    await waitFor(() => expect(api.calls(`POST ${DAY}/run`)).toHaveLength(1));
   });
 
   it("shows the server's refusal in its own words", async () => {

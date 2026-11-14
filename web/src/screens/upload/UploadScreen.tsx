@@ -22,7 +22,7 @@ import { useUser } from "../../auth/AuthContext";
 import { Icon } from "../../components/Icon";
 import { Empty, ErrorLine, Loading } from "../../components/QueryState";
 import { ScreenHeader } from "../../components/ScreenHeader";
-import { dayLabel } from "../../format";
+import { dayLabel, plural } from "../../format";
 import { useWorkspace } from "../../shell/workspace";
 import { dayStatusLabel } from "../../vocabulary";
 import { GenerateDay } from "../../demo/GenerateDay";
@@ -54,6 +54,9 @@ function DayPanel({ fund, asOf, user }: { fund: FundSummary; asOf: string; user:
   const mayUpload = canAct(user) && !locked && !running && !orderBlocked;
   const dropFirst = !day || status === "uploaded";
   const dropZone = <DropZone state={drop} maxFileBytes={intake?.max_file_bytes ?? null} />;
+  // Once the day has run, the files are settled: their list folds away behind its verdict.
+  const settled = !!day && (status === "ready" || status === "running" || status === "signed_off");
+  const checklist = <FileChecklist asOf={asOf} day={day} expected={expected} />;
 
   return (
     <div className="up-grid">
@@ -79,7 +82,17 @@ function DayPanel({ fund, asOf, user }: { fund: FundSummary; asOf: string; user:
         {/* Until the files are valid, getting them in is the job, so the drop zone comes first. */}
         {mayUpload && dropFirst && dropZone}
         {day && <Validation day={day} expected={expected} />}
-        {(day || !orderBlocked) && <FileChecklist asOf={asOf} day={day} expected={expected} />}
+        {(day || !orderBlocked) &&
+          (settled && day ? (
+            <details className="up-held">
+              <summary>
+                Show the {plural(day.files.length, "file")} held for {dayLabel(asOf)}
+              </summary>
+              {checklist}
+            </details>
+          ) : (
+            checklist
+          ))}
         {mayUpload && !dropFirst && dropZone}
         {!canAct(user) && !demo && (
           <p className="faint">Viewers can follow the day but cannot upload files or run it.</p>

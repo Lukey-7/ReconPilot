@@ -316,3 +316,16 @@
   color: var(--ink-2);
   overflow-wrap: anywhere;
 }
+
+/* Once the day has run, its files fold away behind one line. */
+.up-held {
+  margin-top: 10px;
+}
+.up-held > summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 13px;
+}
+.up-held[open] > summary {
+  margin-bottom: 8px;
+}
