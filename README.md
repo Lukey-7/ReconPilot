@@ -368,7 +368,27 @@ days to resolve by cause, the five largest open breaks and every SLA breach.
 Two buttons export the day's **exception report** (the engine's Excel workbook,
 MI sheet included) and **mi.csv** in the engine's tidy form for a BI tool; both
 are the files the command line writes for the same days, and every download is
-recorded in the audit log with the file's SHA-256. The same steps through the API:
+recorded in the audit log with the file's SHA-256.
+
+The **Audit log** (`g l`) is the whole hash-chained log, newest first, for the
+fund being worked or for every fund with the system's own entries (sign-ins,
+new users and funds). It filters by business day, by when an entry was
+recorded, by who, by action and by case, all kept in the address so a view can
+be shared, and pages through a long history without losing its place. Each
+entry opens to its full record: the payload, both hashes and the server's check
+that its hash recomputes and that it names the entry before it. **Verify
+chain** re-checks every hash on the server and names the first entry that does
+not fit if the log has been altered; the check is itself recorded. **Export
+CSV** downloads the matching entries in chain order with their stored payloads
+and hashes, so anyone can recompute every hash with `reconpilot.audit.record_hash`
+and re-verify an unfiltered export end to end; the download is audited like the
+others. The sign-off screen's audit trail opens the same day in the log.
+
+History runs across days. A case in the workbench shows **Across days**: its
+status, cause, age, impact and flags at the end of every day it was run, from
+the day it was first seen to the day it cleared, each earlier day opening the
+case as it stood then. The overview's trend gives each run day's open impact,
+gross above net, and opens any earlier day. The same steps through the API:
 
 ```bash
 reconpilot generate --as-of 2026-11-09 --days 2 --breaks 4 --hard --out data
@@ -411,6 +431,13 @@ analyst.put("/api/auth/me/preferences", json={"fund": fund}).json()     # the fu
 analyst.get(f"/api/funds/{fund}/days/{day}/mi").json()["by_cause_age"]   # MI: open breaks by cause and age
 Path("report.xlsx").write_bytes(analyst.get(f"/api/funds/{fund}/days/{day}/exports/report.xlsx").content)
 Path("mi.csv").write_bytes(analyst.get(f"/api/funds/{fund}/days/{day}/exports/mi.csv").content)  # both audited
+
+analyst.get("/api/audit", params={"fund": fund, "action": "CASE_APPROVED"}).json()["entries"]  # newest first
+analyst.get("/api/audit/entries/1").json()["hash_ok"]                    # one entry, checked on the server
+analyst.post("/api/audit/verify").json()                                # {'chain_ok': True, 'broken_at': None, ...}
+Path("audit.csv").write_bytes(analyst.get("/api/audit/export.csv", params={"fund": fund}).content)  # audited
+case_id = analyst.get(f"/api/funds/{fund}/days/{day}/cases").json()[0]["case_id"]
+analyst.get(f"/api/funds/{fund}/cases/{case_id}").json()["days"]         # the case at the end of each day
 ```
 
 Whoever signs off must not have decided any of the day's open cases, so
@@ -466,7 +493,10 @@ day's files in two goes, seeing per file what is missing; runs the day and sees
 it in the day's runs; and is told in plain words that the next day waits for
 the first day's sign-off, which the server confirms. Then a viewer opens MI,
 switches the trend's measure, downloads both exports and finds the downloads
-in the day's audit trail.
+in the day's audit trail. Last, on the first fund's two days, the analyst
+follows a carried case across days and opens it as it stood the day before,
+and a viewer filters the audit log to one case's approval, opens the entry with
+the server's check of it, verifies the chain and exports the log as CSV.
 
 ## Input files
 
@@ -518,12 +548,13 @@ src/reconpilot_web/
   release.py     release status and four-eyes sign-off
   overview.py    the morning overview
   mi.py          MI across days and the audited Excel and mi.csv exports
+  auditviewer.py the audit log viewer: filters, pages, chain check and CSV export
   auditlog.py    the hash-chained audit log in PostgreSQL
   cli.py         reconpilot-web: dev, serve, worker, migrate, create-user, create-fund
 scripts/         the common-password list generator, the AI carried-case check and the browser-test server
 tests/           unit and end-to-end tests; AI tests use a fake client, no network
 tests/web/       the web layer against an embedded PostgreSQL, including CLI equivalence
-web/src/         the front end: shell and NAV strip, upload and run, overview, cases, sign-off, MI
+web/src/         the front end: shell and NAV strip, upload and run, overview, cases, sign-off, MI, audit log
 web/e2e/         browser journeys (Playwright) with axe accessibility checks
 ```
 
