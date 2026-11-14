@@ -14,7 +14,7 @@ import { SignInScreen } from "../auth/SignInScreen";
 import { KeyboardProvider } from "../keyboard/KeyboardProvider";
 import { CasesScreen } from "../screens/CasesScreen";
 import { NotFoundScreen } from "../screens/NotFoundScreen";
-import { OverviewScreen } from "../screens/OverviewScreen";
+import { OverviewScreen } from "../screens/overview/OverviewScreen";
 import { SignOffScreen } from "../screens/SignOffScreen";
 import { AppShell } from "../shell/AppShell";
 import { ThemeProvider } from "../theme/ThemeProvider";
