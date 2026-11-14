@@ -102,7 +102,8 @@ def test_entries_newest_first_with_fund_codes(ran, make_client):  # noqa: F811
     assert body["total"] == len(seqs) and body["next_before"] is None and body["newer"] == 0
     assert body["has_newer"] is False and body["newer_before"] is None
     entry = body["entries"][0]
-    assert set(entry) == {"seq", "ts", "actor", "role", "action", "fund", "case_id", "payload", "prev_hash", "hash"}
+    assert set(entry) == {"seq", "ts", "actor", "role", "action", "fund", "case_id", "case_as_of", "payload",
+                          "prev_hash", "hash"}
     by_action = {e["action"]: e for e in body["entries"]}
     assert by_action["RUN_FINISHED"]["fund"] == FUND_CODE
     assert by_action["SIGN_IN"]["fund"] is None  # a system entry, in the log all the same
@@ -174,6 +175,8 @@ def test_actor_action_and_case_filters(ran, make_client):  # noqa: F811
     case_id = sorted(cases)[0]
     history = every(ran, case=case_id.lower())
     assert history and {e["case_id"] for e in history} == {case_id}
+    assert {e["case_as_of"] for e in history} == {str(DAY1)}  # where the workbench opens the case
+    assert all(e["case_as_of"] is None for e in every(ran, action="RUN_FINISHED"))
     assert "CASE_APPROVED" in actions(history)
 
     combined = every(ran, fund=FUND_CODE, actor="approver1", action="CASE_APPROVED")

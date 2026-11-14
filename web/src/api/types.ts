@@ -647,6 +647,8 @@ export interface Mi {
 /** One entry of the whole audit log, with the code of the fund it concerns (null for system entries). */
 export interface AuditLogEntry extends AuditEntry {
   fund: string | null;
+  /** For an entry about a case: the latest day the case was in a run, where the workbench opens it. */
+  case_as_of: string | null;
 }
 
 /** `GET /api/audit`: one page of matching entries, newest first. */

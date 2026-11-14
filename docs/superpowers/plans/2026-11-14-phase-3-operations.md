@@ -300,7 +300,7 @@ verifications) are part of the log too.
 ```json
 {
   "entries": [{"seq": 41, "ts": "...", "actor": "approver2", "role": "approver",
-               "action": "DAY_SIGNED_OFF", "fund": "GEF1", "case_id": null,
+               "action": "DAY_SIGNED_OFF", "fund": "GEF1", "case_id": null, "case_as_of": null,
                "payload": {"cases": 6}, "prev_hash": "...", "hash": "..."}],
   "total": 41, "newer": 0, "has_newer": false, "newer_before": null, "next_before": null,
   "latest_seq": 57
@@ -311,8 +311,10 @@ verifications) are part of the log too.
 says "51 to 100 of 1,234"); `next_before` is the cursor for the next older page (null on
 the last page) and `newer_before` the cursor for the next newer page (null when that page
 is the first; `has_newer` false when there is none). `latest_seq` is the whole log's
-newest entry. Entries carry their payload (the screens word it from the vocabulary) and
-`fund` is the fund's code (null for system entries, or for a fund since removed).
+newest entry. Entries carry their payload (the screens word it from the vocabulary);
+`fund` is the fund's code (null for system entries, or for a fund since removed) and
+`case_as_of`, for an entry about a case, the latest day the case was in a run, so the
+screen opens the case where it stands.
 
 **`GET /api/audit/facets`** (optional `fund`): `{"actors": [...], "actions": [...]}`, the
 distinct values present, sorted, for the filter menus.

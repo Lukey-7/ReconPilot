@@ -26,6 +26,9 @@ and records that it did, with what it found, as ``AUDIT_CHAIN_VERIFIED``. The CS
 holds every matching entry in chain order with its stored payload and hashes, so each
 row's hash recomputes with the engine's ``record_hash`` and an unfiltered export
 re-verifies end to end; each download is audited as ``EXPORT_DOWNLOADED``.
+
+Listed entries name their fund by code and, for an entry about a case, ``case_as_of``:
+the latest day the case was in a run, where the workbench can open it.
 """
 
 from __future__ import annotations
@@ -50,7 +53,7 @@ from reconpilot_web.auth import current_user, get_db
 from reconpilot_web.days import parse_as_of
 from reconpilot_web.daytrail import day_window
 from reconpilot_web.funds import get_fund
-from reconpilot_web.models import AuditEntry, Fund, User
+from reconpilot_web.models import AuditEntry, CaseRow, Fund, User
 from reconpilot_web.mi import CSV_MEDIA_TYPE, EXPORT_ACTION
 
 VERIFY_ACTION = "AUDIT_CHAIN_VERIFIED"
@@ -190,7 +193,21 @@ def _fund_codes(db: Session, entries: list[AuditEntry]) -> dict[int, str]:
     return dict(db.execute(select(Fund.id, Fund.code).where(Fund.id.in_(ids))).all())
 
 
-def entry_payload(entry: AuditEntry, codes: dict[int, str]) -> dict[str, Any]:
+def _case_days(db: Session, entries: list[AuditEntry]) -> dict[tuple[int, str], date]:
+    """The latest day each entry's case was in a run, so a screen can open the case where it stands."""
+    keys = {(e.fund_id, e.case_id) for e in entries if e.fund_id is not None and e.case_id}
+    if not keys:
+        return {}
+    rows = db.execute(
+        select(CaseRow.fund_id, CaseRow.case_id, CaseRow.last_as_of).where(
+            CaseRow.fund_id.in_({f for f, _ in keys}), CaseRow.case_id.in_({c for _, c in keys}))
+    ).all()
+    return {(f, c): d for f, c, d in rows}
+
+
+def entry_payload(entry: AuditEntry, codes: dict[int, str],
+                  case_days: dict[tuple[int, str], date] | None = None) -> dict[str, Any]:
+    case_day = (case_days or {}).get((entry.fund_id, entry.case_id)) if entry.case_id else None
     return {
         "seq": entry.seq,
         "ts": entry.ts,
@@ -199,6 +216,7 @@ def entry_payload(entry: AuditEntry, codes: dict[int, str]) -> dict[str, Any]:
         "action": entry.action,
         "fund": codes.get(entry.fund_id) if entry.fund_id is not None else None,
         "case_id": entry.case_id,
+        "case_as_of": str(case_day) if case_day else None,
         "payload": entry.payload,
         "prev_hash": entry.prev_hash,
         "hash": entry.hash,
@@ -238,9 +256,9 @@ def page_payload(db: Session, filters: AuditFilters, limit: int, before: int | N
             select(AuditEntry.seq).where(*where, AuditEntry.seq >= before)
             .order_by(AuditEntry.seq).offset(limit).limit(1)
         ).scalar_one()
-    codes = _fund_codes(db, entries)
+    codes, case_days = _fund_codes(db, entries), _case_days(db, entries)
     return {
-        "entries": [entry_payload(e, codes) for e in entries],
+        "entries": [entry_payload(e, codes, case_days) for e in entries],
         "total": _count(db, where),
         "newer": newer,
         "has_newer": newer > 0,
@@ -319,7 +337,7 @@ def read_entry(seq: int, user: User = Depends(current_user), db: Session = Depen
     else:
         expected_prev = db.execute(select(AuditEntry.hash).where(AuditEntry.seq == seq - 1)).scalar_one_or_none()
     return {
-        **entry_payload(entry, _fund_codes(db, [entry])),
+        **entry_payload(entry, _fund_codes(db, [entry]), _case_days(db, [entry])),
         "hash_ok": record_hash(_record(entry)) == entry.hash,
         "linked": expected_prev is not None and entry.prev_hash == expected_prev,
     }
