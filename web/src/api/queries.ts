@@ -19,9 +19,11 @@ import type {
   DayAudit,
   DayRuns,
   DaysList,
+  DemoNextDay,
   DecisionRequest,
   FundDetail,
   FundSummary,
+  Instance,
   Intake,
   Job,
   Mi,
@@ -34,6 +36,7 @@ import type {
 } from "./types";
 
 export const queryKeys = {
+  instance: ["instance"] as const,
   me: ["me"] as const,
   preferences: ["me", "preferences"] as const,
   funds: ["funds"] as const,
@@ -59,6 +62,11 @@ export const queryKeys = {
 };
 
 export const paths = {
+  instance: "/api/instance",
+  demo: "/api/demo",
+  demoResume: "/api/demo/resume",
+  demoSwitch: "/api/demo/switch",
+  demoNextDay: "/api/demo/next-day",
   me: "/api/auth/me",
   preferences: "/api/auth/me/preferences",
   login: "/api/auth/login",
@@ -102,6 +110,18 @@ export function makeQueryClient(): QueryClient {
       queries: { retry, staleTime: 15_000, refetchOnWindowFocus: true },
       mutations: { retry: false },
     },
+  });
+}
+
+/**
+ * Whether this instance is real or the public demo (asked before anyone signs in). If it
+ * cannot be read the sign-in page simply offers the ordinary sign-in.
+ */
+export function useInstance() {
+  return useQuery({
+    queryKey: queryKeys.instance,
+    queryFn: ({ signal }) => api.get<Instance>(paths.instance, undefined, signal),
+    staleTime: Infinity,
   });
 }
 
@@ -388,6 +408,22 @@ export function useStartRun(fund: string, asOf: string) {
     mutationFn: () => api.post<RunStarted>(paths.run(fund, asOf)),
     onSettled: async () => {
       await invalidateDay(client, fund, asOf);
+    },
+  });
+}
+
+/**
+ * Demo only: generate the fund's next business day from the demo's synthetic sequence.
+ * The server stores and validates its files as an upload would and queues its run; the
+ * fund's days are refetched so the new day can be opened at once.
+ */
+export function useGenerateNextDay(fund: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<DemoNextDay>(paths.demoNextDay),
+    onSettled: async (result) => {
+      await client.invalidateQueries({ queryKey: queryKeys.days(fund) });
+      if (result) await invalidateDay(client, fund, result.as_of);
     },
   });
 }

@@ -9,6 +9,7 @@ import { useRelease } from "../api/queries";
 import { useAuth, useUser } from "../auth/AuthContext";
 import { Icon } from "../components/Icon";
 import { Kbd } from "../components/Kbd";
+import { RoleSwitcher } from "../demo/RoleSwitcher";
 import { count, dayLabel } from "../format";
 import { ThemeToggle } from "../theme/ThemeProvider";
 import { dayStatusLabel, roleLabel } from "../vocabulary";
@@ -127,6 +128,7 @@ function UserMenu() {
 
 export function TopBar({ onShowHelp }: { onShowHelp: () => void }) {
   const { href } = useWorkspace();
+  const user = useUser();
   return (
     <header className="topbar">
       <div className="brand">
@@ -146,6 +148,7 @@ export function TopBar({ onShowHelp }: { onShowHelp: () => void }) {
         <DaySelect />
       </div>
       <div className="tools">
+        {user.demo && <RoleSwitcher user={user} />}
         <ThemeToggle />
         <button type="button" className="btn ghost" onClick={onShowHelp} aria-haspopup="dialog">
           <Icon name="key" /> Shortcuts

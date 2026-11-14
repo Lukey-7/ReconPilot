@@ -12,6 +12,7 @@
  */
 import * as Dialog from "@radix-ui/react-dialog";
 import { useId, useState } from "react";
+import { Link } from "react-router";
 
 import { ApiError } from "../../api/client";
 import { useSignOff } from "../../api/queries";
@@ -25,11 +26,23 @@ import { CaseIdList } from "./CaseIdList";
 
 type Refusal = { message: string; reasons: Reason[] };
 
-function NextDay({ asOf }: { asOf: string }) {
-  const { days, setDay } = useWorkspace();
+function NextDay({ asOf, demo }: { asOf: string; demo: boolean }) {
+  const { days, setDay, href } = useWorkspace();
   if (!days) return null;
   const next = days.next_day;
   const later = days.latest_day && days.latest_day > asOf ? days.latest_day : null;
+  if (next && next > asOf && demo) {
+    return (
+      <div className="so-next">
+        <p>
+          The next business day, <strong>{dayLabel(next)}</strong>, can now be generated from the demo’s synthetic data.
+        </p>
+        <Link className="btn" to={href("/upload", { day: next })}>
+          Generate {dayLabel(next)}
+        </Link>
+      </div>
+    );
+  }
   if (next && next > asOf) {
     return (
       <div className="so-next">
@@ -218,7 +231,7 @@ export function SignOffBox({
           {day?.signed_off_at ? `, ${timestamp(day.signed_off_at)}` : ""}. The day is locked: its files, cases and
           decisions can no longer change.
         </p>
-        <NextDay asOf={asOf} />
+        <NextDay asOf={asOf} demo={!!user.demo} />
       </>
     );
   } else {

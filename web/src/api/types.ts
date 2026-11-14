@@ -10,10 +10,52 @@ export interface User {
   display_name: string;
   role: RoleName;
   is_admin: boolean;
+  /** Only for a demo visitor's one-click users: their fund, its expiry and its users. */
+  demo?: DemoInfo | null;
 }
 
 export interface LoginResponse {
   user: User;
+}
+
+/** One of a demo fund's one-click users, for the role switcher. */
+export interface DemoMember {
+  username: string;
+  display_name: string;
+  role: RoleName;
+}
+
+export interface DemoInfo {
+  fund: string;
+  fund_name: string;
+  /** When the fund is deleted unless it is used again (moved on by every request). */
+  expires_at: string | null;
+  users: DemoMember[];
+}
+
+/** `GET /api/instance`: whether this is a real instance or the public demo. */
+export interface Instance {
+  mode: "real" | "demo";
+  demo?: {
+    expires_after_hours: number;
+    week: string[];
+    last_day: string;
+    /** The visitor's own fund, when this browser can return to it. */
+    resume: { fund: string; expires_at: string } | null;
+  };
+}
+
+/** `POST /api/demo`: the visitor's new fund, signed in as its analyst. */
+export interface DemoStarted {
+  user: User;
+  fund: string;
+}
+
+/** `POST /api/demo/next-day`: the generated day and the job running it. */
+export interface DemoNextDay {
+  fund: string;
+  as_of: string;
+  job_id: number;
 }
 
 export interface FundSummary {

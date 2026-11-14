@@ -1,0 +1,51 @@
+/* The public demo: its permanent notice, the way in, the role switcher and generated days. */
+
+.demo-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px var(--gutter);
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--signal-wash);
+  border-bottom: 1px solid color-mix(in srgb, var(--signal) 45%, transparent);
+}
+.demo-banner svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--signal);
+}
+.demo-banner p {
+  margin: 0;
+}
+.signin-page .demo-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding-right: 120px; /* clear of the theme toggle */
+}
+
+.demo-points {
+  margin: 0 0 18px;
+  padding-left: 18px;
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+.demo-points li + li {
+  margin-top: 6px;
+}
+
+.role-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.role-switch-error {
+  color: var(--neg);
+  font-size: 12.5px;
+}
+
+.signin-submit + .signin-submit {
+  margin-top: 8px;
+}

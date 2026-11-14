@@ -2,12 +2,18 @@
  * Sign-in with a built-in account. The server decides everything (lockout after five
  * failures, 423 while locked); this screen shows its answer in plain words and returns the
  * person to the page they were going to.
+ *
+ * On the public demo (`GET /api/instance`) there are no accounts to sign in to: the screen
+ * offers "Try the demo" instead, under the permanent notice that the data is synthetic.
  */
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
 
 import { ApiError } from "../api/client";
+import { useInstance } from "../api/queries";
 import { Icon } from "../components/Icon";
+import { DemoBanner } from "../demo/DemoBanner";
+import { TryDemo } from "../demo/TryDemo";
 import { ThemeToggle } from "../theme/ThemeProvider";
 import { useAuth } from "./AuthContext";
 import type { SignInState } from "./RequireAuth";
@@ -30,12 +36,34 @@ export function SignInScreen() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const errorRef = useRef<HTMLParagraphElement>(null);
+  const instance = useInstance();
+  const demo = instance.data?.mode === "demo" ? instance.data : null;
 
   useEffect(() => {
     if (error) errorRef.current?.focus();
   }, [error]);
 
   if (state.status === "signedIn" && !busy) return <Navigate to={safeDestination(nav.from)} replace />;
+
+  if (demo) {
+    return (
+      <div className="signin-page">
+        <DemoBanner hours={demo.demo?.expires_after_hours} />
+        <div className="signin-theme">
+          <ThemeToggle />
+        </div>
+        <main className="signin-card" aria-labelledby="signin-title">
+          <p className="signin-brand">ReconPilot</p>
+          {nav.expired && (
+            <p className="notice" role="status">
+              <Icon name="clock" /> Your demo session ended. Start a new demo to carry on.
+            </p>
+          )}
+          <TryDemo instance={demo} onBusy={setBusy} />
+        </main>
+      </div>
+    );
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();

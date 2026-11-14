@@ -25,6 +25,7 @@ import { ScreenHeader } from "../../components/ScreenHeader";
 import { dayLabel } from "../../format";
 import { useWorkspace } from "../../shell/workspace";
 import { dayStatusLabel } from "../../vocabulary";
+import { GenerateDay } from "../../demo/GenerateDay";
 import { DropZone, useDropZone } from "./DropZone";
 import { FileChecklist, Validation } from "./FileChecklist";
 import { ORDER_BLOCKS, OrderNotice } from "./OrderNotice";
@@ -47,6 +48,8 @@ function DayPanel({ fund, asOf, user }: { fund: FundSummary; asOf: string; user:
   const locked = status === "signed_off";
   const running = status === "running";
   const orderBlocked = !!intake?.blocked && ORDER_BLOCKS.has(intake.blocked.code);
+  // The demo takes no uploads: its days are generated from the same synthetic sequence.
+  const demo = intake?.blocked?.code === "UPLOADS_OFF";
   const nextDay = days?.next_day ?? null;
   const mayUpload = canAct(user) && !locked && !running && !orderBlocked;
   const dropFirst = !day || status === "uploaded";
@@ -59,7 +62,7 @@ function DayPanel({ fund, asOf, user }: { fund: FundSummary; asOf: string; user:
           <h2 id="up-h-files">Files</h2>
           <span className="tag">{dayStatusLabel(status)}</span>
         </div>
-        {intake && <OrderNotice intake={intake} fundCode={fund.code} />}
+        {demo ? <GenerateDay fund={fund} user={user} /> : intake && <OrderNotice intake={intake} fundCode={fund.code} />}
         {locked && (
           <div className="up-locked">
             <p>
@@ -72,13 +75,15 @@ function DayPanel({ fund, asOf, user }: { fund: FundSummary; asOf: string; user:
             )}
           </div>
         )}
-        {!day && !orderBlocked && <p className="muted">No files have been uploaded for {dayLabel(asOf)} yet.</p>}
+        {!day && !orderBlocked && !demo && <p className="muted">No files have been uploaded for {dayLabel(asOf)} yet.</p>}
         {/* Until the files are valid, getting them in is the job, so the drop zone comes first. */}
         {mayUpload && dropFirst && dropZone}
         {day && <Validation day={day} expected={expected} />}
         {(day || !orderBlocked) && <FileChecklist asOf={asOf} day={day} expected={expected} />}
         {mayUpload && !dropFirst && dropZone}
-        {!canAct(user) && <p className="faint">Viewers can follow the day but cannot upload files or run it.</p>}
+        {!canAct(user) && !demo && (
+          <p className="faint">Viewers can follow the day but cannot upload files or run it.</p>
+        )}
       </section>
       {day && <RunBlock fund={fund} day={day} user={user} followingDay={intake?.following_day ?? null} />}
     </div>

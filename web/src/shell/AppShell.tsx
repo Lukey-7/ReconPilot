@@ -5,7 +5,9 @@
 import { useState } from "react";
 import { Outlet, useNavigate } from "react-router";
 
+import { useUser } from "../auth/AuthContext";
 import { ErrorLine, Loading } from "../components/QueryState";
+import { DemoBanner } from "../demo/DemoBanner";
 import { useShortcut } from "../keyboard/KeyboardProvider";
 import { HelpDialog } from "./HelpDialog";
 import { NavStrip } from "./NavStrip";
@@ -47,11 +49,13 @@ function Body() {
 
 export function AppShell() {
   const [helpOpen, setHelpOpen] = useState(false);
+  const user = useUser();
   return (
     <WorkspaceProvider>
       <a className="skip-link" href="#main">
         Skip to the screen
       </a>
+      {user.demo && <DemoBanner />}
       <div className="chrome">
         <TopBar onShowHelp={() => setHelpOpen(true)} />
         <NavStrip />
