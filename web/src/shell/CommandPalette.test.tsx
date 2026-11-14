@@ -2,10 +2,10 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
-import type { QueueCase, User } from "../api/types";
+import type { CaseDetail, QueueCase, User } from "../api/types";
 import { mockApi } from "../test/mockApi";
 import { location, renderApp, signedInRoutes } from "../test/render";
-import { matches, visibleGroups } from "./CommandPalette";
+import { caseIdToLookUp, matches, moreText, visibleGroups } from "./CommandPalette";
 
 const DAY = "2026-11-10";
 const BASE = `/overview?fund=GEF1&day=${DAY}`;
@@ -182,6 +182,44 @@ describe("command palette", () => {
     expect(within(dialog).getByText(/Nothing matches/)).toBeInTheDocument();
   });
 
+  it("says how many more cases match under a capped group, in good grammar", async () => {
+    const api = setup();
+    api.set(`GET /api/funds/GEF1/days/${DAY}/cases`, {
+      body: Array.from({ length: 7 }, (_, i) => row(`EX-${i + 1}`)),
+    });
+    const { dialog } = await openPalette();
+    const cases = await within(dialog).findByRole("group", { name: /^Cases/ });
+    expect(cases.firstElementChild?.textContent).toBe("Cases · 2 more match; keep typing");
+  });
+
+  it("looks up a case id that is not in the day's queue and opens it on the last day it was in a run", async () => {
+    const api = setup();
+    const earlier = {
+      ...row("EX-20261105-004", { security_name: "Kestrel Mining", category: "PRICE_MISMATCH", status: "APPROVED" }),
+      as_of: "2026-11-06",
+      is_open: false,
+    } as unknown as CaseDetail;
+    api.set("GET /api/funds/GEF1/cases/EX-20261105-004", { body: earlier });
+    const { user, dialog } = await openPalette();
+    await within(dialog).findByText("EX-1");
+    await user.keyboard("ex-20261105-004");
+    const option = await within(dialog).findByRole("option", { name: /EX-20261105-004/ });
+    expect(option).toHaveTextContent(/Kestrel Mining · Price mismatch · .* · Approved · cleared Fri 6 Nov 2026/);
+    // Looked up on its latest day: no as_of is sent.
+    expect(api.calls("GET /api/funds/GEF1/cases/EX-20261105-004")[0]?.url).toBe("/api/funds/GEF1/cases/EX-20261105-004");
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(location()).toBe("/cases?fund=GEF1&day=2026-11-06&case=EX-20261105-004"));
+  });
+
+  it("says when a typed case id is not a case in the fund", async () => {
+    setup();
+    const { user, dialog } = await openPalette();
+    await within(dialog).findByText("EX-1");
+    await user.keyboard("EX-20261105-999");
+    expect(await within(dialog).findByText("No case EX-20261105-999 in GEF1.")).toBeInTheDocument();
+    expect(within(dialog).queryAllByRole("option")).toHaveLength(0);
+  });
+
   it("offers the demo's other users to a demo visitor", async () => {
     const demoUser: User = {
       username: "priya.x",
@@ -210,6 +248,20 @@ describe("command palette", () => {
     const { dialog } = await openPalette();
     const actions = within(dialog).getByRole("group", { name: /^Actions/ });
     expect(within(actions).queryByText(/Approve|Reject|Reclassify|Run|Sign off/)).not.toBeInTheDocument();
+  });
+});
+
+describe("palette helpers", () => {
+  it("words the overflow note for one and for many", () => {
+    expect(moreText(1)).toBe("1 more matches; keep typing");
+    expect(moreText(7)).toBe("7 more match; keep typing");
+  });
+
+  it("looks up only a full case id that is not already listed", () => {
+    expect(caseIdToLookUp(" ex-20261111-001 ", [])).toBe("EX-20261111-001");
+    expect(caseIdToLookUp("EX-20261111-001", [{ id: "case-EX-20261111-001" }])).toBeNull();
+    expect(caseIdToLookUp("EX-2026", [])).toBeNull();
+    expect(caseIdToLookUp("granite", [])).toBeNull();
   });
 });
 

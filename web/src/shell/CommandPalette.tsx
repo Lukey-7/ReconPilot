@@ -5,7 +5,9 @@
  * Actions come from the keyboard registry (`useCommand`, and shortcuts registered with
  * `palette`), which holds only what the role and the day's state allow; the server still
  * checks every request. Cases come from the day's queue (`GET .../cases`, the same query
- * the workbench uses), so every figure is the server's. Typing narrows every group: each
+ * the workbench uses), so every figure is the server's. A case id typed in full that is not
+ * in the day's queue (one that cleared earlier, say) is looked up on the last day it was in
+ * a run (`GET .../cases/{id}`) and opens on that day. Typing narrows every group: each
  * word must appear in an item's name or details. Arrows move, Enter runs, Esc closes. The
  * action runs once the dialog has closed, so focus lands where the action puts it.
  */
@@ -13,8 +15,9 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { type KeyboardEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 
-import { useCases } from "../api/queries";
-import type { QueueCase } from "../api/types";
+import { ApiError } from "../api/client";
+import { useCaseLatest, useCases } from "../api/queries";
+import type { CaseDetail, QueueCase } from "../api/types";
 import { Icon } from "../components/Icon";
 import { Kbd } from "../components/Kbd";
 import { dayLabel, money, plural } from "../format";
@@ -48,6 +51,28 @@ export const PALETTE_GROUPS = [
 export function matches(item: Pick<PaletteItem, "text">, query: string): boolean {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   return words.every((w) => item.text.includes(w));
+}
+
+/** The note under a capped group: how many more items match. */
+export function moreText(n: number): string {
+  return `${plural(n, "more matches", "more match")}; keep typing`;
+}
+
+const CASE_ID = /^ex-\d{8}-\d+$/i;
+
+/** The case id the query names in full, if it names one that is not among the listed items. */
+export function caseIdToLookUp(query: string, items: Pick<PaletteItem, "id">[]): string | null {
+  const q = query.trim();
+  if (!CASE_ID.test(q)) return null;
+  const id = q.toUpperCase();
+  return items.some((i) => i.id === `case-${id}`) ? null : id;
+}
+
+/** A case from outside the day's queue, opening on the last day it was in a run. */
+function lookedUpItem(c: CaseDetail, open: (id: string, day: string) => void): PaletteItem {
+  const base = caseItem(c, () => {});
+  const when = c.is_open ? `open on ${dayLabel(c.as_of)}` : `cleared ${dayLabel(c.as_of)}`;
+  return { ...base, id: `lookup-${c.case_id}`, detail: `${base.detail} · ${when}`, run: () => open(c.case_id, c.as_of) };
 }
 
 function textOf(...parts: (string | null | undefined)[]): string {
@@ -143,8 +168,28 @@ export function visibleGroups(items: PaletteItem[], query: string): { name: stri
 }
 
 function PaletteBody({ close, dismiss }: { close: (run: () => void) => void; dismiss: () => void }) {
-  const items = useItems(close);
+  const listed = useItems(close);
   const [query, setQuery] = useState("");
+  const navigate = useNavigate();
+  const { fund, href } = useWorkspace();
+  const lookupId = caseIdToLookUp(query, listed);
+  const lookup = useCaseLatest(fund?.code ?? null, lookupId);
+  const found = lookupId && lookup.data?.case_id === lookupId ? lookup.data : null;
+  const items = useMemo(
+    () =>
+      found
+        ? [...listed, lookedUpItem(found, (id, day) => close(() => navigate(href("/cases", { case: id, day }))))]
+        : listed,
+    [listed, found, close, navigate, href],
+  );
+  const lookupNote =
+    !lookupId || found
+      ? null
+      : lookup.isPending
+        ? `Looking up ${lookupId}…`
+        : lookup.error instanceof ApiError && lookup.error.status === 404
+          ? `No case ${lookupId} in ${fund?.code ?? "this fund"}.`
+          : `${lookupId} could not be looked up just now.`;
   const [active, setActive] = useState(0);
   const ids = useId();
   const listId = `${ids}-list`;
@@ -211,7 +256,7 @@ function PaletteBody({ close, dismiss }: { close: (run: () => void) => void; dis
           <div key={g.name} role="group" aria-labelledby={`${ids}-g-${g.name}`} className="pal-group">
             <div className="pal-group-name" id={`${ids}-g-${g.name}`} role="presentation">
               {g.name}
-              {g.more > 0 && <span className="faint"> · {plural(g.more, "more")} match; keep typing</span>}
+              {g.more > 0 && <span className="faint"> · {moreText(g.more)}</span>}
             </div>
             {g.items.map((item) => {
               const index = position++;
@@ -244,7 +289,9 @@ function PaletteBody({ close, dismiss }: { close: (run: () => void) => void; dis
             })}
           </div>
         ))}
-        {!flat.length && <p className="pal-empty muted">Nothing matches &ldquo;{query.trim()}&rdquo;.</p>}
+        {!flat.length && (
+          <p className="pal-empty muted">{lookupNote ?? <>Nothing matches &ldquo;{query.trim()}&rdquo;.</>}</p>
+        )}
       </div>
       <p className="sr-only" role="status" aria-live="polite">
         {query.trim() ? plural(flat.length, "result") : ""}

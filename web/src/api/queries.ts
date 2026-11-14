@@ -335,6 +335,18 @@ export function useCase(fund: string | null, caseId: string | null, asOf: string
 }
 
 /**
+ * A case on the last day it was in a run (no `as_of`), for finding a case that is not in
+ * the day being worked: one that cleared on an earlier day, say.
+ */
+export function useCaseLatest(fund: string | null, caseId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.case(fund ?? "", caseId ?? ""),
+    queryFn: ({ signal }) => api.get<CaseDetail>(paths.case(fund ?? "", caseId ?? ""), {}, signal),
+    enabled: !!fund && !!caseId,
+  });
+}
+
+/**
  * Approve, reject or reclassify a case. On success the answer (the updated case) replaces
  * the cached case and everything about the day is refetched, so the strip, the queue and
  * the overview agree. On a refusal (409: someone else decided first, the day is locked)
