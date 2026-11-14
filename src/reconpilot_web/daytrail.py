@@ -19,7 +19,7 @@ from datetime import date
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.orm import Session
 
 from reconpilot_web.auditlog import verify_chain
@@ -43,26 +43,34 @@ def _entry(e: AuditEntry) -> dict[str, Any]:
     }
 
 
-def day_entries(db: Session, fund: Fund, as_of: date) -> list[AuditEntry]:
-    """The fund's audit entries for ``as_of`` in chain order (see module doc)."""
+def day_window(db: Session, fund: Fund, as_of: date) -> list[ColumnElement[bool]] | None:
+    """Conditions selecting the fund's audit entries for ``as_of`` (see module doc), or None if it has none."""
     day = str(as_of)
     named = AuditEntry.payload["as_of"].astext
     start = db.execute(
         select(func.min(AuditEntry.seq)).where(AuditEntry.fund_id == fund.id, named == day)
     ).scalar_one_or_none()
     if start is None:
-        return []
+        return None
     end = db.execute(
         select(func.min(AuditEntry.seq)).where(AuditEntry.fund_id == fund.id, AuditEntry.seq > start, named > day)
     ).scalar_one_or_none()
-    query = select(AuditEntry).where(
+    conditions = [
         AuditEntry.fund_id == fund.id,
         AuditEntry.seq >= start,
         or_(named.is_(None), named == day),
-    )
+    ]
     if end is not None:
-        query = query.where(AuditEntry.seq < end)
-    return list(db.execute(query.order_by(AuditEntry.seq)).scalars())
+        conditions.append(AuditEntry.seq < end)
+    return conditions
+
+
+def day_entries(db: Session, fund: Fund, as_of: date) -> list[AuditEntry]:
+    """The fund's audit entries for ``as_of`` in chain order (see module doc)."""
+    conditions = day_window(db, fund, as_of)
+    if conditions is None:
+        return []
+    return list(db.execute(select(AuditEntry).where(*conditions).order_by(AuditEntry.seq)).scalars())
 
 
 router = APIRouter(prefix="/api/funds/{code}/days", tags=["audit"])
