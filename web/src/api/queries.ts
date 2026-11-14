@@ -9,7 +9,12 @@ import { useEffect, useRef } from "react";
 
 import { ApiError, api, download, seg } from "./client";
 import type {
+  AuditEntryCheck,
+  AuditFacets,
+  AuditFilters,
+  AuditPage,
   CaseDetail,
+  ChainCheck,
   Day,
   DayAudit,
   DayRuns,
@@ -45,6 +50,12 @@ export const queryKeys = {
     filters ? (["funds", fund, "day", asOf, "cases", filters] as const) : (["funds", fund, "day", asOf, "cases"] as const),
   case: (fund: string, caseId: string, asOf?: string) => ["funds", fund, "case", caseId, asOf ?? null] as const,
   job: (id: number) => ["jobs", id] as const,
+  /** Everything read from the whole audit log (the list, its facets and single entries). */
+  auditAll: ["audit"] as const,
+  auditLog: (filters: AuditFilters, before: number | null, limit: number) =>
+    ["audit", "log", { ...filters }, before, limit] as const,
+  auditFacets: (fund: string | null) => ["audit", "facets", fund] as const,
+  auditEntry: (seq: number) => ["audit", "entry", seq] as const,
 };
 
 export const paths = {
@@ -71,6 +82,11 @@ export const paths = {
   exportReport: (fund: string, asOf: string) => `/api/funds/${seg(fund)}/days/${seg(asOf)}/exports/report.xlsx`,
   exportMiCsv: (fund: string, asOf: string) => `/api/funds/${seg(fund)}/days/${seg(asOf)}/exports/mi.csv`,
   job: (id: number) => `/api/jobs/${seg(String(id))}`,
+  auditLog: "/api/audit",
+  auditFacets: "/api/audit/facets",
+  auditEntry: (seq: number) => `/api/audit/entries/${seg(String(seq))}`,
+  auditVerify: "/api/audit/verify",
+  auditExport: "/api/audit/export.csv",
 };
 
 /** Don't retry answers that will not change on a retry (signed out, forbidden, missing, refused). */
@@ -241,7 +257,10 @@ export function useExport(fund: string, asOf: string) {
     mutationFn: (kind: ExportKind) =>
       download(kind === "report" ? paths.exportReport(fund, asOf) : paths.exportMiCsv(fund, asOf)),
     onSettled: async () => {
-      await client.invalidateQueries({ queryKey: queryKeys.audit(fund, asOf) });
+      await Promise.all([
+        client.invalidateQueries({ queryKey: queryKeys.audit(fund, asOf) }),
+        client.invalidateQueries({ queryKey: queryKeys.auditAll }),
+      ]);
     },
   });
 }
@@ -253,6 +272,7 @@ export async function invalidateDay(client: QueryClient, fund: string, asOf: str
     client.invalidateQueries({ queryKey: queryKeys.days(fund) }),
     client.invalidateQueries({ queryKey: ["funds", fund, "case"] }),
     client.invalidateQueries({ queryKey: queryKeys.funds }),
+    client.invalidateQueries({ queryKey: queryKeys.auditAll }),
   ]);
 }
 
@@ -382,6 +402,82 @@ export function useJob(id: number | null) {
     refetchInterval: (query) => {
       const status = query.state.data?.status;
       return status && FINISHED_JOB_STATUSES.has(status) ? false : JOB_POLL_MS;
+    },
+  });
+}
+
+/** How many audit entries one page of the audit log holds. */
+export const AUDIT_PAGE_SIZE = 50;
+
+/** The filters as a query string's values, leaving out the ones not set. */
+function auditQuery(filters: AuditFilters): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(filters)) if (value) out[key] = value;
+  return out;
+}
+
+/**
+ * One page of the whole audit log, newest first, filtered by the server. `before` is the
+ * page's cursor (null for the newest page). The last page stays on screen while the next
+ * one loads, so the table never flashes empty.
+ */
+export function useAuditLog(filters: AuditFilters, before: number | null, limit = AUDIT_PAGE_SIZE) {
+  return useQuery({
+    queryKey: queryKeys.auditLog(filters, before, limit),
+    queryFn: ({ signal }) =>
+      api.get<AuditPage>(paths.auditLog, { ...auditQuery(filters), before, limit }, signal),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** The actors and actions present in the log (or one fund's part of it), for the filter menus. */
+export function useAuditFacets(fund: string | null) {
+  return useQuery({
+    queryKey: queryKeys.auditFacets(fund),
+    queryFn: ({ signal }) => api.get<AuditFacets>(paths.auditFacets, { fund }, signal),
+  });
+}
+
+/** One audit entry with the server's check of its hash and its link to the entry before. */
+export function useAuditEntry(seq: number | null) {
+  return useQuery({
+    queryKey: queryKeys.auditEntry(seq ?? 0),
+    queryFn: ({ signal }) => api.get<AuditEntryCheck>(paths.auditEntry(seq ?? 0), undefined, signal),
+    enabled: seq != null,
+    staleTime: 0,
+  });
+}
+
+/**
+ * Re-check every hash in the chain on the server. The server records the check in the log
+ * itself, so the log is refetched afterwards.
+ */
+export function useVerifyChain() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<ChainCheck>(paths.auditVerify),
+    onSettled: async () => {
+      await client.invalidateQueries({ queryKey: queryKeys.auditAll });
+    },
+  });
+}
+
+/**
+ * Download the matching entries as CSV in chain order. The server records the download in
+ * the log, so the log and any day's audit trail are refetched afterwards.
+ */
+export function useAuditExport() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (filters: AuditFilters) => {
+      const qs = new URLSearchParams(auditQuery(filters)).toString();
+      return download(qs ? `${paths.auditExport}?${qs}` : paths.auditExport);
+    },
+    onSettled: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: queryKeys.auditAll }),
+        client.invalidateQueries({ predicate: (q) => q.queryKey[0] === "funds" && q.queryKey[4] === "audit" }),
+      ]);
     },
   });
 }

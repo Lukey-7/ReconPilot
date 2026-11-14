@@ -298,7 +298,10 @@ export interface TrendDay {
   escalated_open: number;
   sla_breaches_open: number;
   aged_over_5: number;
+  /** Net NAV impact of the cases open at the end of the day. */
   open_nav_impact: number;
+  /** Gross: their absolute impacts added up, so offsetting breaks cannot hide. */
+  open_gross_impact: number;
   avg_days_to_resolve: number | null;
 }
 
@@ -515,6 +518,28 @@ export interface CaseDetail extends QueueCase {
   carried_items: CarriedItem[];
   fx_rate: number | null;
   history: CaseHistoryEntry[];
+  /** The case at the end of every day it was in a run, oldest first. */
+  days: CaseDay[];
+}
+
+/** A case as it stood at the end of one day it was in a run (its ledger snapshot). */
+export interface CaseDay {
+  as_of: string;
+  day_status: string;
+  /** False on the day the case cleared. */
+  is_open: boolean;
+  status: string;
+  /** The cause a person read off the case that day (resolved, reclassified, accepted AI, else the rules'). */
+  cause: string;
+  /** The rules' cause. */
+  category: string;
+  age_days: number;
+  nav_impact: number;
+  nav_impact_bp: number;
+  material: boolean;
+  escalated: boolean;
+  sla_breached: boolean;
+  reviewed_by: string | null;
 }
 
 /** `POST /api/funds/{code}/cases/{case_id}/decision`. */
@@ -617,4 +642,63 @@ export interface Mi {
   sla_breaches: MiSlaCase[];
   trend: MiTrendDay[];
   exports: { report: string; mi_csv: string } | null;
+}
+
+/** One entry of the whole audit log, with the code of the fund it concerns (null for system entries). */
+export interface AuditLogEntry extends AuditEntry {
+  fund: string | null;
+}
+
+/** `GET /api/audit`: one page of matching entries, newest first. */
+export interface AuditPage {
+  entries: AuditLogEntry[];
+  /** Every matching entry. */
+  total: number;
+  /** How many matching entries sit above this page. */
+  newer: number;
+  has_newer: boolean;
+  /** The cursor for the next newer page; null when that page is the first. */
+  newer_before: number | null;
+  /** The cursor for the next older page; null on the last page. */
+  next_before: number | null;
+  /** The newest entry in the whole log. */
+  latest_seq: number;
+}
+
+/** `GET /api/audit/facets`: the actors and actions present, for the filter menus. */
+export interface AuditFacets {
+  actors: string[];
+  actions: string[];
+}
+
+/** `GET /api/audit/entries/{seq}`: one entry with the server's check of it. */
+export interface AuditEntryCheck extends AuditLogEntry {
+  /** Its hash recomputes from its fields. */
+  hash_ok: boolean;
+  /** Its previous hash is the hash of the entry before it. */
+  linked: boolean;
+}
+
+/** `POST /api/audit/verify`: the whole chain re-checked on the server. */
+export interface ChainCheck {
+  chain_ok: boolean;
+  broken_at: number | null;
+  entries: number;
+  last_seq: number | null;
+  last_hash: string | null;
+  verified_at: string;
+  verified_by: string;
+  /** The entry recording this check. */
+  seq: number;
+}
+
+/** The audit log's filters, named as the API names them. Absent means "any". */
+export interface AuditFilters {
+  fund?: string;
+  as_of?: string;
+  from?: string;
+  to?: string;
+  actor?: string;
+  action?: string;
+  case?: string;
 }
