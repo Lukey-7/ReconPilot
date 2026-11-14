@@ -63,40 +63,49 @@ function OverviewBody({ overview }: { overview: Overview }) {
   const currency = overview.fund.base_currency;
   const { accounted, impact } = overview;
   const ran = overview.has_run && accounted !== null && impact !== null;
-  return (
-    <div className={ran ? "ov-grid" : "ov-grid ov-grid-notrun"}>
-      <div className="ov-area-release">
-        <ReleaseSection overview={overview} />
-      </div>
-      {ran && accounted && impact ? (
-        <>
-          <div className="ov-area-account">
-            <AccountedSection accounted={accounted} run={overview.run} />
+  const trend = <TrendSection trend={overview.trend} asOf={overview.as_of} currency={currency} />;
+  if (!ran || !accounted || !impact) {
+    return (
+      <div className="ov-grid ov-grid-notrun">
+        <div className="ov-col ov-col-main">
+          <div className="ov-area-release">
+            <ReleaseSection overview={overview} />
           </div>
-          <div className="ov-area-impact">
-            <ImpactSection impact={impact} currency={currency} materialityBp={overview.fund.materiality_bp} />
-          </div>
-          {/* One panel for how long the open cases have waited, and which are overdue or escalated. */}
-          <div className="ov-area-age ov-panel">
-            <AgeingSection ageing={overview.ageing} currency={currency} />
-            <AttentionSection slaBreaches={overview.sla_breaches} escalations={overview.escalations} />
-          </div>
-          {/* One panel for the days so far, and what this day's run cleared. */}
-          <div className="ov-area-trend ov-panel">
-            <TrendSection trend={overview.trend} asOf={overview.as_of} currency={currency} />
-            <ClearedSection cleared={overview.cleared_today} currency={currency} />
-          </div>
-        </>
-      ) : (
-        <>
+        </div>
+        <div className="ov-col ov-col-side">
           <div className="ov-area-account">
             <NotRun overview={overview} />
           </div>
-          <div className="ov-area-trend">
-            <TrendSection trend={overview.trend} asOf={overview.as_of} currency={currency} />
-          </div>
-        </>
-      )}
+          <div className="ov-area-trend">{trend}</div>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="ov-grid">
+      <div className="ov-col ov-col-main">
+        <div className="ov-area-release">
+          <ReleaseSection overview={overview} />
+        </div>
+        <div className="ov-area-impact">
+          <ImpactSection impact={impact} currency={currency} materialityBp={overview.fund.materiality_bp} />
+        </div>
+        {/* One panel for the days so far, and what this day's run cleared. */}
+        <div className="ov-area-trend ov-panel">
+          {trend}
+          <ClearedSection cleared={overview.cleared_today} currency={currency} />
+        </div>
+      </div>
+      <div className="ov-col ov-col-side">
+        <div className="ov-area-account">
+          <AccountedSection accounted={accounted} run={overview.run} />
+        </div>
+        {/* One panel for how long the open cases have waited, and which are overdue or escalated. */}
+        <div className="ov-area-age ov-panel">
+          <AgeingSection ageing={overview.ageing} currency={currency} />
+          <AttentionSection slaBreaches={overview.sla_breaches} escalations={overview.escalations} />
+        </div>
+      </div>
     </div>
   );
 }

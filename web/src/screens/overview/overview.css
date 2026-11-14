@@ -2,8 +2,9 @@
  * The morning overview. Few panels and plenty of space between groups: the release status
  * first, then the open breaks and the day's account; the rest is a glance away, two
  * sections to a quiet panel.
- * Wide screens use two columns (the work on the left, the day's shape on the right);
- * narrow screens stack the sections in reading order.
+ * Wide screens use two columns, each stacking its own sections without gaps: the work on
+ * the left (release, open breaks, the days so far), the day's shape on the right (the
+ * account, age and attention); narrow screens stack every section in reading order.
  */
 
 .ov-run-line {
@@ -11,47 +12,43 @@
 }
 
 .ov-grid {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 18px;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-areas:
-    "release"
-    "account"
-    "impact"
-    "age"
-    "trend";
-  align-items: start;
+}
+.ov-col {
+  display: contents;
+}
+.ov-grid > .ov-col > div {
+  min-width: 0;
+}
+.ov-area-release {
+  order: 1;
+}
+.ov-area-account {
+  order: 2;
+}
+.ov-area-impact {
+  order: 3;
+}
+.ov-area-age {
+  order: 4;
+}
+.ov-area-trend {
+  order: 5;
 }
 @media (min-width: 1100px) {
   .ov-grid {
+    display: grid;
     grid-template-columns: minmax(0, 1.75fr) minmax(300px, 1fr);
-    grid-template-areas:
-      "release account"
-      "impact  account"
-      "impact  age"
-      "impact  trend";
-    grid-template-rows: auto auto auto 1fr;
+    align-items: start;
   }
-  .ov-grid-notrun {
-    grid-template-areas:
-      "release account"
-      "trend   trend";
+  .ov-col {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    min-width: 0;
   }
-}
-.ov-area-release {
-  grid-area: release;
-}
-.ov-area-account {
-  grid-area: account;
-}
-.ov-area-impact {
-  grid-area: impact;
-}
-.ov-area-age {
-  grid-area: age;
-}
-.ov-area-trend {
-  grid-area: trend;
 }
 
 /* ===== Two sections sharing one quiet panel, divided by a rule ===== */
@@ -125,6 +122,7 @@
   font-family: var(--font-fig);
   font-size: 12.5px;
   font-weight: 500;
+  white-space: nowrap; /* a case id reads as one word */
 }
 
 /* Tables scroll inside their block on narrow screens; visually hidden header text stays inside too. */
