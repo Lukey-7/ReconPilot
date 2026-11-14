@@ -184,3 +184,18 @@ def test_second_day_cleared_today_and_trend(ran, make_client, factory, day_files
     assert trend[1]["new_cases"] == summary["new_cases"]
     # Day 1's view of the trend stops at day 1.
     assert [t["as_of"] for t in overview(ran, DAY1)["trend"]] == [str(DAY1)]
+
+
+def test_trend_carries_net_and_gross_open_impact_across_days(ran, make_client, factory, day_files):  # noqa: F811
+    from .test_mi import DAY3, three_days
+
+    three_days(ran, make_client, factory, day_files)
+    trend = overview(ran, DAY3)["trend"]
+    assert [t["as_of"] for t in trend] == [str(DAY1), str(DAY2), str(DAY3)]
+    for row, as_of in zip(trend, (DAY1, DAY2, DAY3)):
+        impact = overview(ran, as_of)["impact"]
+        assert row["open_cases"] == len(impact["cases"])
+        assert row["open_nav_impact"] == impact["net"]
+        assert row["open_gross_impact"] == impact["gross"]
+        assert row["open_gross_impact"] >= abs(row["open_nav_impact"])
+    assert list(trend[0]).index("open_gross_impact") == list(trend[0]).index("open_nav_impact") + 1

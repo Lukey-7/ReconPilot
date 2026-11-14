@@ -120,8 +120,19 @@ def ledger_history(db: Session, fund: Fund, as_of: date, days: int | None = None
 
 
 def trend_rows(history: dict[str, list[Case]]) -> list[dict[str, Any]]:
-    """The engine's ``summarise_day`` for each day of ``history``, oldest first."""
-    return [asdict(summarise_day(d, history[d])) for d in sorted(history)]
+    """The engine's ``summarise_day`` for each day of ``history``, oldest first, with the gross open impact.
+
+    ``open_gross_impact`` (the sum of the open cases' absolute impacts) sits beside the
+    engine's net ``open_nav_impact``, so offsetting breaks cannot hide.
+    """
+    rows = []
+    for d in sorted(history):
+        row = asdict(summarise_day(d, history[d]))
+        row["open_gross_impact"] = round(sum(abs(c.nav_impact) for c in history[d] if not c.cleared_on), 2)
+        # Keep the engine's field order with the gross figure beside the net one.
+        row["avg_days_to_resolve"] = row.pop("avg_days_to_resolve")
+        rows.append(row)
+    return rows
 
 
 # --------------------------------------------------------------------------- the MI payload
@@ -200,11 +211,6 @@ def mi_payload(db: Session, fund: Fund, day: BusinessDay) -> dict[str, Any]:
     ledger = history.get(as_of, []) if ran else []
     mi = build_mi(as_of, ledger, history, trend_days=TREND_DAYS) if ran else None
     trend = trend_rows(dict(list(history.items())[-TREND_DAYS:]))
-    for row in trend:
-        row["open_gross_impact"] = round(sum(abs(c.nav_impact) for c in history[row["as_of"]]
-                                             if not c.cleared_on), 2)
-        # Keep the engine's field order with the gross figure beside the net one.
-        row["avg_days_to_resolve"] = row.pop("avg_days_to_resolve")
 
     open_cases = sorted((c for c in ledger if not c.cleared_on), key=_by_impact)
     names = _names(db, day) if ledger else {}

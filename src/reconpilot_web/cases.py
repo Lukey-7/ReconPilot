@@ -7,7 +7,8 @@ Reading
     decision must quote. A case's detail adds the evidence behind it from the
     day's stored files: its breaks, the book position and custodian holding, the
     book trades and custodian cash lines that concern it, and its history (every
-    decision and audit entry for the case, oldest first).
+    decision and audit entry for the case, oldest first) and the case across days
+    (how it stood at the end of every day it was in a run, from ``case_snapshots``).
 
 Deciding
     Analysts and approvers approve, reject (with a note) or reclassify (with a
@@ -40,7 +41,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from reconpilot.ledger import BUCKETS
+from reconpilot.ledger import BUCKETS, current_category
 from reconpilot.models import Case, Category, DayData
 from reconpilot.review import PermissionDenied, ReviewError, ReviewSession
 from reconpilot.storage import case_from_dict, case_to_dict, trade_to_dict
@@ -237,6 +238,40 @@ def case_history(db: Session, fund: Fund, case_id: str) -> list[dict[str, Any]]:
     return [e[3] for e in events]
 
 
+def case_days(db: Session, fund: Fund, case_id: str) -> list[dict[str, Any]]:
+    """The case at the end of every day it was in a run (its ledger snapshots), oldest first.
+
+    ``cause`` is the cause a person read off the case that day (``ledger.current_category``:
+    resolved, else reclassified, else the accepted AI cause, else the rules'); ``category``
+    is the rules' cause; ``is_open`` is false on the day it cleared.
+    """
+    rows = db.execute(
+        select(CaseSnapshot.as_of, CaseSnapshot.is_open, CaseSnapshot.data, BusinessDay.status)
+        .join(BusinessDay, BusinessDay.id == CaseSnapshot.business_day_id)
+        .where(CaseSnapshot.fund_id == fund.id, CaseSnapshot.case_id == case_id)
+        .order_by(CaseSnapshot.as_of)
+    ).all()
+    out = []
+    for as_of, is_open, data, day_status in rows:
+        case = case_from_dict(data)
+        out.append({
+            "as_of": str(as_of),
+            "day_status": day_status,
+            "is_open": is_open,
+            "status": case.status,
+            "cause": current_category(case).value,
+            "category": case.category.value,
+            "age_days": case.age_days,
+            "nav_impact": case.nav_impact,
+            "nav_impact_bp": case.nav_impact_bp,
+            "material": case.material,
+            "escalated": case.escalated,
+            "sla_breached": case.sla_breached,
+            "reviewed_by": case.reviewed_by or None,
+        })
+    return out
+
+
 def case_evidence(db: Session, fund: Fund, day: BusinessDay, case: Case) -> dict[str, Any]:
     """The breaks and the stored-file records behind a case on ``day``."""
     break_rows = db.execute(
@@ -382,6 +417,7 @@ def case_detail(db: Session, fund: Fund, row: CaseRow, case: Case, day: Business
         "case": case_to_dict(case),
         **evidence,
         "history": case_history(db, fund, case.case_id),
+        "days": case_days(db, fund, case.case_id),
     }
 
 

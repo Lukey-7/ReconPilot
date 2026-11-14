@@ -298,3 +298,47 @@ def test_decision_carries_to_the_next_day(ran, factory, day_files, db_session, f
     for case in carried:
         if day2[case["case_id"]]["category"] == case["category"]:
             assert day2[case["case_id"]]["status"] == "APPROVED"
+
+
+# --------------------------------------------------------------------------- the case across days
+
+
+def test_case_across_days(ran, make_client, factory, day_files, db_session, fund):
+    """The detail lists the case at the end of every day it was in a run, oldest first."""
+    from .test_mi import DAY3, three_days
+
+    three_days(ran, make_client, factory, day_files)
+    day3 = {c["case_id"] for c in ran.get(f"/api/funds/{FUND_CODE}/days/{DAY3}/cases").json()}
+    day1 = ran.get(QUEUE).json()
+    carried = [c["case_id"] for c in day1 if c["case_id"] in day3]
+    assert carried, "the generated days carry a case from day 1 to day 3"
+
+    detail = ran.get(f"/api/funds/{FUND_CODE}/cases/{carried[0]}").json()
+    days = detail["days"]
+    assert [d["as_of"] for d in days] == [str(DAY1), str(DAY2), str(DAY3)]
+    assert [d["age_days"] for d in days] == sorted(d["age_days"] for d in days)
+    assert days[0]["age_days"] < days[-1]["age_days"]
+    assert all(d["is_open"] for d in days)
+    assert [d["day_status"] for d in days] == ["signed_off", "signed_off", "ready"]
+    assert days[0]["status"] == "APPROVED" and days[0]["reviewed_by"] in ("analyst1", "approver1")
+    assert set(days[0]) == {"as_of", "day_status", "is_open", "status", "cause", "category", "age_days",
+                            "nav_impact", "nav_impact_bp", "material", "escalated", "sla_breached",
+                            "reviewed_by"}
+    assert days[-1]["nav_impact"] == detail["nav_impact"] and days[-1]["status"] == detail["status"]
+    # The same list whichever day the case is read as of.
+    assert ran.get(f"/api/funds/{FUND_CODE}/cases/{carried[0]}", params={"as_of": str(DAY1)}).json()["days"] == days
+
+    # A case that cleared: open on the days before, not open on the day it cleared.
+    db_session.expire_all()
+    cleared = db_session.execute(select(CaseRow).where(CaseRow.cleared_on.is_not(None))).scalars().first()
+    assert cleared is not None, "the generated days clear at least one case"
+    days = ran.get(f"/api/funds/{FUND_CODE}/cases/{cleared.case_id}").json()["days"]
+    assert days[-1]["as_of"] == str(cleared.cleared_on) and days[-1]["is_open"] is False
+    assert all(d["is_open"] for d in days[:-1])
+    assert days[0]["as_of"] == str(cleared.first_seen)
+
+    # A case raised today has one day.
+    new = [c for c in ran.get(f"/api/funds/{FUND_CODE}/days/{DAY3}/cases").json() if c["age_days"] == 0]
+    if new:
+        days = ran.get(f"/api/funds/{FUND_CODE}/cases/{new[0]['case_id']}").json()["days"]
+        assert [d["as_of"] for d in days] == [str(DAY3)]

@@ -152,9 +152,9 @@ def test_mi_matches_the_engine_across_days(ran, make_client, factory, day_files,
     for t in body["trend"]:
         assert t["open_gross_impact"] >= abs(t["open_nav_impact"])
 
-    # The overview's trend is the same series (without the gross figure).
+    # The overview's trend is the same series, gross figure included.
     overview_trend = ran.get(f"{DAYS_URL}/{DAY3}/overview").json()["trend"]
-    assert overview_trend == [{k: v for k, v in t.items() if k != "open_gross_impact"} for t in body["trend"]]
+    assert overview_trend == body["trend"]
     # An earlier day's MI stops at that day.
     assert [t["as_of"] for t in mi(ran, DAY2)["trend"]] == [str(DAY1), str(DAY2)]
 
