@@ -4,10 +4,19 @@
  * Keys are hierarchical so one fund-and-day prefix invalidates everything about that day
  * after a decision or a sign-off: `invalidateDay(queryClient, fund, asOf)`.
  */
-import { QueryClient, useQuery } from "@tanstack/react-query";
+import { QueryClient, keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ApiError, api, seg } from "./client";
-import type { Day, DaysList, FundSummary, Overview, ReleaseForMe } from "./types";
+import type {
+  CaseDetail,
+  Day,
+  DaysList,
+  DecisionRequest,
+  FundSummary,
+  Overview,
+  QueueCase,
+  ReleaseForMe,
+} from "./types";
 
 export const queryKeys = {
   me: ["me"] as const,
@@ -104,3 +113,61 @@ export async function invalidateDay(client: QueryClient, fund: string, asOf: str
   ]);
 }
 
+
+/**
+ * The case queue's filters, named as the API names them (`GET .../cases?status=&category=...`).
+ * Absent means "any".
+ */
+export interface CaseFilters {
+  status?: string;
+  category?: string;
+  material?: boolean;
+  escalated?: boolean;
+  sla?: boolean;
+  age?: string;
+  ai_disagrees?: boolean;
+  q?: string;
+}
+
+/** The day's open cases, largest absolute NAV impact first, filtered by the server. */
+export function useCases(fund: string | null, asOf: string | null, filters: CaseFilters = {}) {
+  return useQuery({
+    queryKey: queryKeys.cases(fund ?? "", asOf ?? "", { ...filters }),
+    queryFn: ({ signal }) =>
+      api.get<QueueCase[]>(paths.cases(fund ?? "", asOf ?? ""), { ...filters }, signal),
+    enabled: !!fund && !!asOf,
+    // Keep the last list on screen while a new filter loads, so the queue never flashes empty.
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** One case as it stood at the end of `asOf`, with its evidence and history. */
+export function useCase(fund: string | null, caseId: string | null, asOf: string | null) {
+  return useQuery({
+    queryKey: queryKeys.case(fund ?? "", caseId ?? "", asOf ?? undefined),
+    queryFn: ({ signal }) =>
+      api.get<CaseDetail>(paths.case(fund ?? "", caseId ?? ""), { as_of: asOf }, signal),
+    enabled: !!fund && !!caseId && !!asOf,
+  });
+}
+
+/**
+ * Approve, reject or reclassify a case. On success the answer (the updated case) replaces
+ * the cached case and everything about the day is refetched, so the strip, the queue and
+ * the overview agree. On a refusal (409: someone else decided first, the day is locked)
+ * the day is refetched too, so the screen shows what is true now.
+ */
+export function useDecision(fund: string, asOf: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ caseId, request }: { caseId: string; request: DecisionRequest }) =>
+      api.post<CaseDetail>(paths.decision(fund, caseId), request),
+    onSuccess: async (detail, { caseId }) => {
+      client.setQueryData(queryKeys.case(fund, caseId, asOf), detail);
+      await invalidateDay(client, fund, asOf);
+    },
+    onError: async () => {
+      await invalidateDay(client, fund, asOf);
+    },
+  });
+}

@@ -163,3 +163,52 @@ export const DECISIONS = {
   reclassify: "Reclassify",
 } as const;
 export type DecisionKind = keyof typeof DECISIONS;
+
+/** What the matcher found wrong (`reconpilot.models.BreakKind`). */
+export const BREAK_KINDS = {
+  QUANTITY: "Quantity",
+  PRICE: "Price",
+  CASH_AMOUNT: "Cash amount",
+  CASH_MISSING_AT_CUSTODIAN: "Cash not at custodian",
+  CASH_MISSING_IN_BOOK: "Cash not in book",
+} as const;
+export type BreakKindCode = keyof typeof BREAK_KINDS;
+
+export function breakKindLabel(kind: string): string {
+  return kind in BREAK_KINDS ? BREAK_KINDS[kind as BreakKindCode] : kind;
+}
+
+/** Audit-log actions, as a case's history and the audit trail name them. */
+export const AUDIT_ACTIONS = {
+  AI_CALL: "AI second opinion",
+  AI_UNAVAILABLE: "AI unavailable",
+  CASES_RAISED: "Cases raised",
+  CASE_APPROVED: "Approved",
+  CASE_REJECTED: "Rejected",
+  CASE_RECLASSIFIED: "Reclassified",
+  CASE_PENDING: "Returned to pending",
+  CASE_ESCALATED: "Escalated",
+  SLA_BREACHED: "Past SLA",
+  CASE_AUTO_CLEARED: "Cleared automatically",
+  CASE_REOPENED: "Reopened with a new cause",
+  CASE_WITHDRAWN_BY_RERUN: "Withdrawn by a re-run",
+  DECISION_VOIDED_BY_RERUN: "Decision voided by a re-run",
+  PERMISSION_DENIED: "Permission denied",
+  RUN_STARTED: "Run started",
+  RUN_FINISHED: "Run finished",
+  RUN_FAILED: "Run failed",
+  FILES_UPLOADED: "Files uploaded",
+  VALIDATION_PASSED: "Files validated",
+  VALIDATION_FAILED: "Files failed validation",
+  SIGN_OFF_BLOCKED: "Sign-off refused",
+  DAY_SIGNED_OFF: "NAV signed off",
+  SIGN_IN: "Signed in",
+  SIGN_IN_FAILED: "Sign-in failed",
+  SIGN_OUT: "Signed out",
+} as const;
+export type AuditAction = keyof typeof AUDIT_ACTIONS;
+
+/** The words for an audit action; an action added later reads as its own code rather than vanishing. */
+export function auditActionLabel(action: string): string {
+  return action in AUDIT_ACTIONS ? AUDIT_ACTIONS[action as AuditAction] : action;
+}

@@ -242,3 +242,172 @@ export interface Overview {
   cleared_today: ClearedCase[];
   trend: TrendDay[];
 }
+
+/** The engine's full case (`reconpilot.models.Case`), as `case` in a case's detail. */
+export interface EngineCase {
+  case_id: string;
+  security_id: string;
+  category: string;
+  confidence: number;
+  explanation: string;
+  query_draft: string;
+  break_ids: string[];
+  status: string;
+  final_category: string | null;
+  reviewed_by: string;
+  review_note: string;
+  ai_category: string | null;
+  ai_confidence: number | null;
+  ai_explanation: string;
+  ai_steps: string[];
+  ai_query: string;
+  ai_model: string;
+  /** "" (no AI for this case), "ACCEPTED" (passed the guardrails) or "FALLBACK" (the rules stand). */
+  ai_status: string;
+  ai_flag: string;
+  ai_fallback_reason: string;
+  nav_impact: number;
+  nav_impact_bp: number;
+  gross_exposure: number;
+  material: boolean;
+  break_kinds: string[];
+  first_seen: string;
+  age_days: number;
+  age_bucket: string;
+  escalated: boolean;
+  /** Recorded when the case was escalated: label it "at escalation", not today's impact. */
+  escalation_reason: string;
+  sla_days: number;
+  sla_breached: boolean;
+  cleared_on: string;
+  clear_reason: string;
+  resolved_category: string | null;
+  reviewed_role: string;
+}
+
+export interface CaseBreak {
+  break_id: string;
+  kind: string;
+  security_id: string;
+  book_value: number | null;
+  custodian_value: number | null;
+  difference: number;
+  reference: string;
+  note: string;
+}
+
+export interface SecurityRecord {
+  security_id: string;
+  name: string;
+  currency: string;
+  asset_class: string;
+}
+
+export interface BookPosition {
+  security_id: string;
+  quantity: number;
+  price: number;
+  price_date: string;
+  currency: string;
+}
+
+export interface CustodianHolding {
+  security_id: string;
+  quantity: number;
+  price: number;
+  currency: string;
+}
+
+export interface BookTrade {
+  trade_id: string;
+  trade_date: string;
+  settle_date: string;
+  security_id: string;
+  side: string;
+  quantity: number;
+  price: number;
+  currency: string;
+  fx_rate: number;
+  fees: number;
+}
+
+export interface BookCashEntry {
+  reference: string;
+  value_date: string;
+  security_id: string;
+  description: string;
+  amount: number;
+}
+
+export interface CustodianCashLine {
+  entry_id: string;
+  value_date: string;
+  security_id: string;
+  reference: string;
+  description: string;
+  amount: number;
+}
+
+/** An item carried from the previous day: a book item or a custodian cash line. */
+export interface CarriedItem {
+  side: string;
+  reference?: string;
+  security_id?: string;
+  amount?: number;
+  origin_date?: string;
+  value_date?: string;
+  description?: string;
+  entry_id?: string;
+}
+
+/** One entry in a case's history: an audit-log entry or a recorded decision, oldest first. */
+export type CaseHistoryEntry =
+  | {
+      type: "audit";
+      at: string;
+      seq: number;
+      actor: string;
+      role: string;
+      action: string;
+      payload: Record<string, unknown>;
+    }
+  | {
+      type: "decision";
+      at: string;
+      decision_id: number;
+      user: string | null;
+      role: string;
+      decision: string;
+      category: string | null;
+      final_category: string | null;
+      note: string;
+      case_version: number;
+      voided_at: string | null;
+      void_reason: string | null;
+    };
+
+/** `GET /api/funds/{code}/cases/{case_id}?as_of=`: the case as it stood that day, with its evidence. */
+export interface CaseDetail extends QueueCase {
+  as_of: string;
+  day_status: string;
+  is_open: boolean;
+  case: EngineCase;
+  security: SecurityRecord | null;
+  breaks: CaseBreak[];
+  book_position: BookPosition | null;
+  custodian_holding: CustodianHolding | null;
+  book_trades: BookTrade[];
+  book_cash: BookCashEntry[];
+  custodian_cash: CustodianCashLine[];
+  carried_items: CarriedItem[];
+  fx_rate: number | null;
+  history: CaseHistoryEntry[];
+}
+
+/** `POST /api/funds/{code}/cases/{case_id}/decision`. */
+export interface DecisionRequest {
+  decision: "approve" | "reject" | "reclassify";
+  category?: string;
+  note: string;
+  version: number;
+}

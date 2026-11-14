@@ -7,6 +7,8 @@ import {
   STATUS_LABELS,
   STATUS_TONES,
   ageBucketLabel,
+  auditActionLabel,
+  breakKindLabel,
   caseStatus,
   causeLabel,
   checkLabel,
@@ -58,5 +60,12 @@ describe("vocabulary", () => {
     expect(dayStatusLabel(null)).toBe("No files yet");
     expect(roleLabel("approver")).toBe("Approver");
     expect(ageBucketLabel(">5")).toBe("Over 5 days");
+  });
+
+  it("words break kinds and audit actions, keeping an unknown action's own code", () => {
+    expect(breakKindLabel("CASH_MISSING_IN_BOOK")).toBe("Cash not in book");
+    expect(auditActionLabel("CASE_AUTO_CLEARED")).toBe("Cleared automatically");
+    expect(auditActionLabel("AI_CALL")).toBe("AI second opinion");
+    expect(auditActionLabel("SOMETHING_NEW")).toBe("SOMETHING_NEW");
   });
 });
