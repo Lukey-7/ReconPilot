@@ -5,7 +5,14 @@
  */
 import { vi } from "vitest";
 
-export type RouteAnswer = { status?: number; body?: unknown } | ((request: RecordedRequest) => { status?: number; body?: unknown });
+export interface Answer {
+  status?: number;
+  body?: unknown;
+  /** Extra response headers (a download's Content-Disposition, say). */
+  headers?: Record<string, string>;
+}
+
+export type RouteAnswer = Answer | ((request: RecordedRequest) => Answer);
 
 export interface RecordedRequest {
   method: string;
@@ -66,11 +73,11 @@ export function mockApi(routes: Record<string, RouteAnswer> = {}): MockApi {
       if (!answer) {
         return new Response(JSON.stringify({ detail: `No mock for ${method} ${url}` }), { status: 404 });
       }
-      const { status = 200, body: payload } = typeof answer === "function" ? answer(request) : answer;
+      const { status = 200, body: payload, headers = {} } = typeof answer === "function" ? answer(request) : answer;
       if (status === 204) return new Response(null, { status });
-      return new Response(JSON.stringify(payload ?? null), {
+      return new Response(typeof payload === "string" && headers["Content-Type"] ? payload : JSON.stringify(payload ?? null), {
         status,
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...headers },
       });
     }),
   );

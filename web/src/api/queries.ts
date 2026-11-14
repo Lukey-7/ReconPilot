@@ -7,7 +7,7 @@
 import { QueryClient, keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 
-import { ApiError, api, seg } from "./client";
+import { ApiError, api, download, seg } from "./client";
 import type {
   CaseDetail,
   Day,
@@ -19,6 +19,7 @@ import type {
   FundSummary,
   Intake,
   Job,
+  Mi,
   Overview,
   Preferences,
   QueueCase,
@@ -39,6 +40,7 @@ export const queryKeys = {
   audit: (fund: string, asOf: string) => ["funds", fund, "day", asOf, "audit"] as const,
   intake: (fund: string, asOf: string) => ["funds", fund, "day", asOf, "intake"] as const,
   runs: (fund: string, asOf: string) => ["funds", fund, "day", asOf, "runs"] as const,
+  mi: (fund: string, asOf: string) => ["funds", fund, "day", asOf, "mi"] as const,
   cases: (fund: string, asOf: string, filters?: Record<string, unknown>) =>
     filters ? (["funds", fund, "day", asOf, "cases", filters] as const) : (["funds", fund, "day", asOf, "cases"] as const),
   case: (fund: string, caseId: string, asOf?: string) => ["funds", fund, "case", caseId, asOf ?? null] as const,
@@ -65,6 +67,9 @@ export const paths = {
   run: (fund: string, asOf: string) => `/api/funds/${seg(fund)}/days/${seg(asOf)}/run`,
   intake: (fund: string, asOf: string) => `/api/funds/${seg(fund)}/days/${seg(asOf)}/intake`,
   runs: (fund: string, asOf: string) => `/api/funds/${seg(fund)}/days/${seg(asOf)}/runs`,
+  mi: (fund: string, asOf: string) => `/api/funds/${seg(fund)}/days/${seg(asOf)}/mi`,
+  exportReport: (fund: string, asOf: string) => `/api/funds/${seg(fund)}/days/${seg(asOf)}/exports/report.xlsx`,
+  exportMiCsv: (fund: string, asOf: string) => `/api/funds/${seg(fund)}/days/${seg(asOf)}/exports/mi.csv`,
   job: (id: number) => `/api/jobs/${seg(String(id))}`,
 };
 
@@ -210,6 +215,34 @@ export function useDayRuns(fund: string | null, asOf: string | null, enabled = t
     staleTime: 0,
     refetchInterval: (q) =>
       q.state.data?.runs.some((r) => !FINISHED_JOB_STATUSES.has(r.status)) ? RUNNING_POLL_MS : false,
+  });
+}
+
+/** Management information for the fund up to the day: breaks by cause and age, time to resolve, trend and more. */
+export function useMi(fund: string | null, asOf: string | null) {
+  return useQuery({
+    queryKey: queryKeys.mi(fund ?? "", asOf ?? ""),
+    queryFn: ({ signal }) => api.get<Mi>(paths.mi(fund ?? "", asOf ?? ""), undefined, signal),
+    enabled: !!fund && !!asOf,
+    refetchInterval: (q) => (q.state.data?.day_status === "running" ? RUNNING_POLL_MS : false),
+  });
+}
+
+/** Which export to download for a day. */
+export type ExportKind = "report" | "mi_csv";
+
+/**
+ * Download one of the day's exports (the server writes each download to the audit log, so
+ * the day's audit trail is refetched afterwards). Answers with the saved file's name.
+ */
+export function useExport(fund: string, asOf: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (kind: ExportKind) =>
+      download(kind === "report" ? paths.exportReport(fund, asOf) : paths.exportMiCsv(fund, asOf)),
+    onSettled: async () => {
+      await client.invalidateQueries({ queryKey: queryKeys.audit(fund, asOf) });
+    },
   });
 }
 

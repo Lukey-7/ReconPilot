@@ -222,6 +222,7 @@ export const AUDIT_ACTIONS = {
   SIGN_IN: "Signed in",
   SIGN_IN_FAILED: "Sign-in failed",
   SIGN_OUT: "Signed out",
+  EXPORT_DOWNLOADED: "Export downloaded",
 } as const;
 export type AuditAction = keyof typeof AUDIT_ACTIONS;
 
@@ -271,3 +272,26 @@ export function dayStatusPhrase(status: string | null | undefined): string {
   if (status == null) return "without files";
   return status in DAY_STATUS_PHRASES ? DAY_STATUS_PHRASES[status as DayStatus] : dayStatusLabel(status).toLowerCase();
 }
+
+/** The day's exports (`EXPORT_DOWNLOADED`'s `export`), as the MI screen's buttons name them. */
+export const EXPORTS = {
+  report: "Exception report",
+  mi_csv: "MI data",
+} as const;
+
+/** What each export holds, said once beside its button. */
+export const EXPORT_FORMATS = {
+  report: "Excel",
+  mi_csv: "CSV",
+} as const;
+
+/** The trend's per-day measures (`reconpilot.mi.DaySummary`), as the MI screen names them. */
+export const TREND_MEASURES = {
+  open_cases: "Open",
+  new_cases: "New",
+  cleared_cases: "Cleared",
+  material_open: "Material",
+  escalated_open: "Escalated",
+  sla_breaches_open: "Past SLA",
+} as const;
+export type TrendMeasure = keyof typeof TREND_MEASURES;

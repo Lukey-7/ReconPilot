@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   CAUSES,
   CAUSE_LABELS,
+  EXPORTS,
   STATUSES,
   STATUS_LABELS,
   STATUS_TONES,
+  TREND_MEASURES,
   ageBucketLabel,
   auditActionLabel,
   breakKindLabel,
@@ -76,5 +78,11 @@ describe("vocabulary", () => {
     expect(Object.keys(RELEASE_CONDITIONS).sort()).toEqual(Object.keys(RELEASE_REASONS).sort());
     expect(releaseConditionLabel("PENDING_DECISIONS")).toBe("Every open case decided");
     expect(releaseConditionLabel("SOMETHING_NEW")).toBe("SOMETHING_NEW");
+  });
+
+  it("names the exports and the trend's measures", () => {
+    expect(auditActionLabel("EXPORT_DOWNLOADED")).toBe("Export downloaded");
+    expect(Object.values(EXPORTS)).toEqual(["Exception report", "MI data"]);
+    expect(Object.values(TREND_MEASURES)).toEqual(["Open", "New", "Cleared", "Material", "Escalated", "Past SLA"]);
   });
 });

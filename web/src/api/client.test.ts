@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { mockApi } from "../test/mockApi";
-import { ApiError, api, apiFetch, csrfToken, setUnauthorisedHandler } from "./client";
+import { ApiError, api, apiFetch, attachmentName, csrfToken, download, setUnauthorisedHandler } from "./client";
 
 afterEach(() => setUnauthorisedHandler(null));
 
@@ -86,6 +86,41 @@ describe("apiFetch", () => {
     await expect(api.get("/api/auth/me")).rejects.toMatchObject({ status: 401 });
     expect(handler).not.toHaveBeenCalled();
     await expect(apiFetch("/api/funds")).rejects.toMatchObject({ status: 401 });
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("download", () => {
+  it("reads the file name the server gives", () => {
+    expect(attachmentName('attachment; filename="mi_GEF1_2026-11-10.csv"')).toBe("mi_GEF1_2026-11-10.csv");
+    expect(attachmentName("attachment; filename=report.xlsx")).toBe("report.xlsx");
+    expect(attachmentName("attachment")).toBeNull();
+    expect(attachmentName(null)).toBeNull();
+  });
+
+  it("hands the file to the browser, falling back to the path's last part for a name", async () => {
+    mockApi({ "GET /api/x/mi.csv": { body: "a,b\r\n", headers: { "Content-Type": "text/csv" } } });
+    vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: vi.fn(() => "blob:test"), revokeObjectURL: vi.fn() }));
+    const names: string[] = [];
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      names.push(this.download);
+    });
+    await expect(download("/api/x/mi.csv")).resolves.toEqual({ filename: "mi.csv", bytes: 5 });
+    expect(names).toEqual(["mi.csv"]);
+    expect(document.querySelector("a[download]")).toBeNull();
+    click.mockRestore();
+  });
+
+  it("turns a refusal into an ApiError and ends the session on 401", async () => {
+    mockApi({
+      "GET /api/x/report.xlsx": { status: 409, body: { detail: "Run the day first." } },
+      "GET /api/y/report.xlsx": { status: 401, body: { detail: "Not signed in." } },
+    });
+    const handler = vi.fn();
+    setUnauthorisedHandler(handler);
+    await expect(download("/api/x/report.xlsx")).rejects.toMatchObject({ status: 409, message: "Run the day first." });
+    expect(handler).not.toHaveBeenCalled();
+    await expect(download("/api/y/report.xlsx")).rejects.toBeInstanceOf(ApiError);
     expect(handler).toHaveBeenCalledTimes(1);
   });
 });

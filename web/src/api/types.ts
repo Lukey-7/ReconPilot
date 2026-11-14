@@ -547,3 +547,74 @@ export interface DayAudit {
   /** The first entry that does not fit the chain, when it is broken. */
   broken_at: number | null;
 }
+
+/** Counts and impact of a set of open cases: net, and gross (absolute impacts added up). */
+export interface MiFigures {
+  count: number;
+  net: number;
+  gross: number;
+}
+
+export interface MiBucketCell extends MiFigures {
+  bucket: string;
+}
+
+/** A cause's (or the total's) open cases, overall and per age bucket. */
+export interface MiBlock extends MiFigures {
+  cells: MiBucketCell[];
+}
+
+export interface MiCauseRow extends MiBlock {
+  cause: string;
+}
+
+/** One of the open cases with the largest absolute NAV impact. */
+export interface MiTopCase {
+  case_id: string;
+  security_id: string;
+  security_name: string;
+  /** The cause a person reads off the case now (resolved, reclassified, accepted AI, else the rules'). */
+  cause: string;
+  nav_impact: number;
+  nav_impact_bp: number;
+  age_days: number;
+  material: boolean;
+  escalated: boolean;
+  sla_breached: boolean;
+  status: string;
+}
+
+/** A case that went past its SLA up to the day; `cleared_on` once it has since cleared. */
+export interface MiSlaCase {
+  case_id: string;
+  security_id: string;
+  security_name: string;
+  cause: string;
+  age_days: number;
+  sla_days: number;
+  material: boolean;
+  status: string;
+  cleared_on: string | null;
+}
+
+export interface MiTrendDay extends TrendDay {
+  open_gross_impact: number;
+}
+
+/** `GET /api/funds/{code}/days/{as_of}/mi`. */
+export interface Mi {
+  fund: { code: string; name: string; base_currency: string; materiality_bp: number };
+  as_of: string;
+  day_status: string;
+  has_run: boolean;
+  run_days: number;
+  by_cause_age: { buckets: string[]; rows: MiCauseRow[]; total: MiBlock };
+  time_to_resolve: {
+    rows: { cause: string; cleared: number; avg_days: number | null }[];
+    all: { cleared: number; avg_days: number | null };
+  };
+  top_open: MiTopCase[];
+  sla_breaches: MiSlaCase[];
+  trend: MiTrendDay[];
+  exports: { report: string; mi_csv: string } | null;
+}

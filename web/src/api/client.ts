@@ -97,6 +97,18 @@ function withQuery(path: string, query: RequestOptions["query"]): string {
   return qs ? `${path}?${qs}` : path;
 }
 
+/** The `ApiError` for a refused request, with FastAPI's `detail` when the body has one. */
+async function errorOf(response: Response): Promise<ApiError> {
+  let detail: ErrorDetail = null;
+  try {
+    const payload = (await response.json()) as { detail?: ErrorDetail };
+    detail = payload?.detail ?? null;
+  } catch {
+    detail = null;
+  }
+  return new ApiError(response.status, detail);
+}
+
 /** Call the API and return its JSON body (or `undefined` for 204). Throws `ApiError`. */
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const method = (options.method ?? (options.json !== undefined || options.body ? "POST" : "GET")).toUpperCase();
@@ -126,16 +138,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   }
 
   if (response.status === 401 && !NO_SESSION_ROUTES.has(path)) onUnauthorised?.();
-  if (!response.ok) {
-    let detail: ErrorDetail = null;
-    try {
-      const payload = (await response.json()) as { detail?: ErrorDetail };
-      detail = payload?.detail ?? null;
-    } catch {
-      detail = null;
-    }
-    throw new ApiError(response.status, detail);
-  }
+  if (!response.ok) throw await errorOf(response);
   if (response.status === 204) return undefined as T;
   const text = await response.text();
   return (text ? JSON.parse(text) : undefined) as T;
@@ -149,6 +152,45 @@ export const api = {
   /** Send files as `multipart/form-data` (the browser sets the boundary). */
   upload: <T>(path: string, form: FormData) => apiFetch<T>(path, { method: "POST", body: form }),
 };
+
+/** The file name in a `Content-Disposition: attachment; filename="..."` header, if any. */
+export function attachmentName(header: string | null): string | null {
+  const match = header ? /filename="?([^";]+)"?/i.exec(header) : null;
+  return match?.[1]?.trim() || null;
+}
+
+/** How long a downloaded file's object URL is kept, so the browser has taken it before it goes. */
+const OBJECT_URL_LIFETIME_MS = 30_000;
+
+/**
+ * Download a file the API produces (an export) and hand it to the browser to save, under
+ * the name the server gave it. Fetched rather than linked so a refusal (409: the day has
+ * not run; 401: signed out) becomes an `ApiError` to show in plain words, never a saved
+ * error page. Answers with the file's name and size.
+ */
+export async function download(path: string): Promise<{ filename: string; bytes: number }> {
+  let response: Response;
+  try {
+    response = await fetch(path, { method: "GET", credentials: "include" });
+  } catch {
+    throw new ApiError(0, null);
+  }
+  if (response.status === 401) onUnauthorised?.();
+  if (!response.ok) throw await errorOf(response);
+  const blob = await response.blob();
+  const filename = attachmentName(response.headers.get("Content-Disposition")) ?? path.split("/").pop() ?? "download";
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.rel = "noopener";
+  link.hidden = true;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), OBJECT_URL_LIFETIME_MS);
+  return { filename, bytes: blob.size };
+}
 
 /** A URL path segment, escaped. */
 export function seg(value: string): string {
