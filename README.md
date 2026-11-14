@@ -341,14 +341,24 @@ server, build the front end once (`npm run build` in `web/`) and
 `reconpilot-web serve` serves it from `web/dist` beside the API.
 
 A whole day is worked in the browser, in the same order as on the command line:
-**Upload** the day's files (validated per file and row before anything runs)
-and run the day; read the **Overview** (release status and its reasons, every
+**Upload** the day's files (several at once; each expected file shown as held
+or missing with what the checks found, and every problem by file and row,
+before anything runs), run the day and follow its progress, with the day's
+runs listed beneath; read the **Overview** (release status and its reasons, every
 break accounted for, open breaks by NAV impact, ageing, escalations, what
 cleared); work the **Cases** queue (approve, reject with a note, reclassify;
 escalated cases need an approver); and **Sign-off**, where a second approver
 releases the NAV and the day locks. Days go strictly in order, so the next
-business day can be uploaded only once the previous one is signed off. The
-same steps through the API:
+business day can be uploaded only once the previous one is signed off; the
+upload screen says so in plain words before anyone tries, and leads to the day
+that is holding things up.
+
+Several funds are worked side by side. The fund selector in the top bar
+switches between them and remembers each user's choice on the server, so it
+follows them to another browser; **Funds** (`g f`) lists every fund with its
+latest day and shows the chosen fund's settings read-only: materiality,
+escalation and SLA days, the AI second opinion, the release checks in force
+and the business calendar. The same steps through the API:
 
 ```bash
 reconpilot generate --as-of 2026-11-09 --days 2 --breaks 4 --hard --out data
@@ -383,6 +393,10 @@ for case in analyst.get(f"/api/funds/{fund}/days/{day}/cases").json():   # large
 signer.get(f"/api/funds/{fund}/days/{day}/release?for_user=me").json()  # ready, reasons, signable_by_me
 signer.post(f"/api/funds/{fund}/days/{day}/signoff").json()["status"]  # 'signed_off'
 signer.get(f"/api/funds/{fund}/days/{day}/audit").json()["chain_ok"]   # the day's audit trail: True
+
+analyst.get(f"/api/funds/{fund}/days/{day}/runs").json()["runs"]          # the day's runs, newest first
+analyst.get(f"/api/funds/{fund}/days/2026-11-10/intake").json()["open"]   # True once the day before is signed off
+analyst.put("/api/auth/me/preferences", json={"fund": fund}).json()     # the fund this user works
 ```
 
 Whoever signs off must not have decided any of the day's open cases, so
@@ -426,13 +440,17 @@ npm run test:e2e                   # builds web/dist, then runs the journeys
 
 `scripts/e2e_server.py` starts that server: it wipes its data folder (the
 system temp folder's `reconpilot-e2e` unless `RP_E2E_DATA_DIR` says otherwise),
-creates the fund `E2E1` and the four users with a test password, generates two
+creates the funds `E2E1` and `E2E2` and the four users with a test password, generates two
 business days and serves on port 8765. The journeys: the analyst uploads and
 runs the first day, opens a case from the overview and works the queue; an
 approver decides the escalated case and is then kept from signing off by the
 four-eyes rule; a second approver signs off; the analyst uploads and runs the
 next day, with the open cases carried into it; a viewer reads every screen and
-can act on none.
+can act on none. On the second fund: the analyst reads every fund's settings,
+switches fund and finds the choice again in a new session; loads the first
+day's files in two goes, seeing per file what is missing; runs the day and sees
+it in the day's runs; and is told in plain words that the next day waits for
+the first day's sign-off, which the server confirms.
 
 ## Input files
 
