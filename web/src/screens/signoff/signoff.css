@@ -1,0 +1,317 @@
+/*
+ * NAV sign-off. Wide screens: the conditions and who decided what on the left, the
+ * sign-off action and the audit trail on the right (the Ledger's sign-off page). Narrow
+ * screens stack them with the action first, then the conditions, decisions and trail.
+ */
+
+.so-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.so-col {
+  display: contents;
+}
+.so-area-sign {
+  order: 1;
+}
+.so-area-conds {
+  order: 2;
+}
+.so-area-who {
+  order: 3;
+}
+.so-area-audit {
+  order: 4;
+}
+.so-grid > .so-col > div {
+  min-width: 0;
+}
+@media (min-width: 1100px) {
+  .so-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(320px, 5fr);
+    align-items: start;
+  }
+  .so-col {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    min-width: 0;
+  }
+}
+
+/* ===== A block ===== */
+.so-block {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 14px 16px 16px;
+  min-width: 0;
+}
+.so-block h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.so-block-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-bottom: 10px;
+}
+.so-block-head h2 {
+  margin-bottom: 0;
+}
+.so-block-head .faint {
+  font-size: 12.5px;
+}
+
+/* ===== Release conditions ===== */
+.so-conds {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--rule);
+}
+.so-conds > li {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 4px 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 13px;
+}
+.so-cond-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  white-space: nowrap;
+  align-self: start;
+}
+.so-cond-state svg,
+.so-chain svg,
+.so-blocked-title svg,
+.so-refusal svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.tone-met {
+  color: var(--pos);
+}
+.tone-unmet {
+  color: var(--signal);
+}
+.tone-na {
+  color: var(--ink-3);
+}
+.tone-broken {
+  color: var(--neg);
+}
+.so-cond-title {
+  font-weight: 600;
+  color: var(--ink);
+}
+.so-cond-detail,
+.so-cond-reason p {
+  color: var(--ink-2);
+  margin-top: 2px;
+}
+.so-cond-reason + .so-cond-reason {
+  margin-top: 6px;
+}
+@media (max-width: 640px) {
+  .so-conds > li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Case ids under a reason */
+.so-cases ul {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+}
+.so-more {
+  margin-top: 6px;
+}
+.so-more summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 13px;
+  width: fit-content;
+}
+.so-more > ul,
+.so-more > ol {
+  margin-top: 6px;
+}
+
+/* ===== Who decided what ===== */
+.so-deciders {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  font-size: 13px;
+}
+.so-deciders .fig {
+  color: var(--ink-2);
+}
+.so-who-table .so-note {
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===== Sign off ===== */
+.so-sign[data-state="blocked"] {
+  border-inline-start: 3px solid var(--signal);
+}
+.so-sign[data-state="ready"],
+.so-sign[data-state="signedOff"] {
+  border-inline-start: 3px solid var(--pos);
+}
+.so-sign .so-block-head {
+  justify-content: space-between;
+}
+.so-msg {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  max-width: 60ch;
+  margin-bottom: 12px;
+}
+.so-msg strong {
+  color: var(--ink);
+}
+.so-blocked p + p,
+.so-blocked .so-cond-reason {
+  margin-top: 4px;
+}
+.so-blocked-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.so-sign-btn {
+  min-height: 36px;
+  padding-inline: 16px;
+}
+.so-refusal {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--neg) 45%, transparent);
+  background: var(--neg-wash);
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+.so-refusal > p {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  color: var(--neg);
+  font-weight: 600;
+}
+.so-refusal ul {
+  margin: 6px 0 0;
+  padding-inline-start: 20px;
+  color: var(--ink-2);
+}
+.so-reason-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+.so-next {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+  font-size: 13.5px;
+}
+
+/* Confirmation */
+.so-dialog .so-figs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px 18px;
+  margin: 14px 0 18px;
+}
+.so-figs dt {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.so-figs dd {
+  margin: 2px 0 0;
+  font-size: 15px;
+  color: var(--ink);
+}
+.so-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ===== Audit trail ===== */
+.so-chain {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+.so-entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--rule);
+}
+.so-entry {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "seq what who"
+    "seq when when";
+  gap: 1px 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 13px;
+}
+.so-entry-seq {
+  grid-area: seq;
+  color: var(--ink-3);
+  font-size: 12px;
+  min-width: 4ch;
+}
+.so-entry-what {
+  grid-area: what;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.so-entry-who {
+  grid-area: who;
+  text-align: right;
+  white-space: nowrap;
+}
+.so-entry-when {
+  grid-area: when;
+  font-size: 12px;
+}
+.so-entry .ov-case {
+  font-family: var(--font-fig);
+  font-size: 12.5px;
+}
+.so-earlier {
+  margin: 0 0 8px;
+}
