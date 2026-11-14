@@ -109,16 +109,23 @@
 .mi-block .table-wrap {
   position: relative;
 }
-.mi-matrix td,
-.mi-matrix th[scope="row"] {
+/* Row headers read as the first column, not as a second header band. */
+.mi-block .data-table th[scope="row"] {
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.mi-matrix td {
   white-space: nowrap;
 }
 .mi-matrix th.mi-group {
   text-align: center;
   border-bottom-color: var(--rule-strong);
 }
-.mi-total th,
-.mi-total td {
+.mi-block .data-table .mi-total th,
+.mi-block .data-table .mi-total td {
   font-weight: 600;
   border-top: 1px solid var(--rule-strong);
   border-bottom: none;
@@ -216,8 +223,8 @@
 .mi-trend-table th[scope="row"] {
   white-space: nowrap;
 }
-.mi-trend-table tr[aria-current="date"] th,
-.mi-trend-table tr[aria-current="date"] td {
+.mi-block .mi-trend-table tr[aria-current="date"] th,
+.mi-block .mi-trend-table tr[aria-current="date"] td {
   background: var(--accent-wash);
 }
 
