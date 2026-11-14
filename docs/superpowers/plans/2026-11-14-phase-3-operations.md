@@ -269,3 +269,130 @@ files and load into a BI tool unchanged; the screens use the vocabulary.
   downloads and an export refusal.
 - Playwright `e2e/mi.spec.ts`: MI for a run day with both exports downloaded (the file
   names and the CSV header checked) and axe on the screen in both themes.
+
+---
+
+## Stage 3c: the audit log viewer and history across days
+
+Spec section 8 (the viewer: filter by fund, date, actor, action or case; verify the chain
+on the server; export to CSV) and the multi-day history of section 14, phase 3.
+
+### The audit log: `src/reconpilot_web/auditviewer.py`, routes under `/api/audit`
+
+Any signed-in role, viewers included (reading the log is how a control team checks the
+desk). The chain is global, so entries without a fund (sign-ins, user creation, chain
+verifications) are part of the log too.
+
+**Filters**, shared by the list and the export, every one optional:
+
+| Parameter | Meaning |
+|---|---|
+| `fund` | a fund code (404 for an unknown fund); absent means every entry, funds and system |
+| `as_of` | one business day's trail, exactly as `GET .../days/{as_of}/audit` finds it; needs `fund` (422 without) |
+| `from`, `to` | when the entry was recorded, inclusive: an ISO date (a whole UTC day) or an ISO date-time with an offset (the browser sends the user's local day as instants); 422 when `from` is after `to` |
+| `actor` | a username, case-insensitive |
+| `action` | one or more actions, comma-separated (`CASE_APPROVED,CASE_REJECTED`); 422 for anything that is not an action code |
+| `case` | a case id, case-insensitive |
+
+**`GET /api/audit`**: one page of matching entries, newest first, by keyset on `seq`.
+`limit` 1 to 200 (default 50); `before` a sequence number (entries below it).
+
+```json
+{
+  "entries": [{"seq": 41, "ts": "...", "actor": "approver2", "role": "approver",
+               "action": "DAY_SIGNED_OFF", "fund": "GEF1", "case_id": null,
+               "payload": {"cases": 6}, "prev_hash": "...", "hash": "..."}],
+  "total": 41, "newer": 0, "has_newer": false, "newer_before": null, "next_before": null,
+  "latest_seq": 57
+}
+```
+
+`total` counts every matching entry; `newer` how many match above this page (so the screen
+says "51 to 100 of 1,234"); `next_before` is the cursor for the next older page (null on
+the last page) and `newer_before` the cursor for the next newer page (null when that page
+is the first; `has_newer` false when there is none). `latest_seq` is the whole log's
+newest entry. Entries carry their payload (the screens word it from the vocabulary) and
+`fund` is the fund's code (null for system entries, or for a fund since removed).
+
+**`GET /api/audit/facets`** (optional `fund`): `{"actors": [...], "actions": [...]}`, the
+distinct values present, sorted, for the filter menus.
+
+**`GET /api/audit/entries/{seq}`**: one entry in full, with its own integrity:
+`hash_ok` (its hash recomputes from its fields with the engine's `record_hash`) and
+`linked` (its `prev_hash` is the previous entry's hash, or the genesis hash for entry 1).
+404 for a sequence number not in the log.
+
+**`POST /api/audit/verify`** (CSRF like every state change): re-checks every hash with
+`auditlog.verify_chain` and answers
+
+```json
+{"chain_ok": true, "broken_at": null, "entries": 57, "last_seq": 57, "last_hash": "...",
+ "verified_at": "...", "verified_by": "viewer1", "seq": 58}
+```
+
+`broken_at` is the first sequence number that does not fit. The verification itself is
+written to the log as `AUDIT_CHAIN_VERIFIED` (no fund) with `{"intact", "broken_at",
+"entries", "last_seq"}`, so the log shows who checked it and what they found; `seq` is
+that entry.
+
+**`GET /api/audit/export.csv`** (same filters): every matching entry in chain order
+(oldest first) as CSV with the columns `seq, ts, actor, role, action, fund, case_id,
+payload, prev_hash, hash`; `payload` is the stored JSON, so each row's hash recomputes
+with the engine's `record_hash` and an unfiltered export re-verifies end to end. File
+name `audit_{FUND or ALL}_{YYYY-MM-DD}.csv` (today, UTC). Audited as `EXPORT_DOWNLOADED`
+(fund: the filter's fund, else none) with `{"export": "audit_csv", "filename", "bytes",
+"sha256", "rows", "filters"}`, in the transaction that produces the file. More than
+100,000 matching entries is refused with 422 (narrow the filters).
+
+`daytrail.day_entries` keeps its behaviour; the window it finds is factored into
+`day_window` so the `as_of` filter selects exactly the same entries.
+
+### History across days
+
+- **A case across days**: `GET /api/funds/{code}/cases/{case_id}` gains `days`, the case
+  at the end of every day it was in a run (from `case_snapshots`), oldest first:
+  `{"as_of", "day_status", "is_open", "status", "cause", "category", "age_days",
+  "nav_impact", "nav_impact_bp", "material", "escalated", "sla_breached", "reviewed_by"}`.
+  `cause` is the engine's current cause that day (`ledger.current_category`), `category`
+  the rules' cause; `is_open` is false on the day it cleared.
+- **The overview's trend** gains `open_gross_impact` per day (the same figure as MI's
+  trend, now computed once in `mi.trend_rows`), so the overview shows the open impact per
+  run day gross beside net, and each day in its figures opens that day.
+
+### Front end
+
+- **Audit log screen** (`/audit`, `g l`, "Audit log" in the screen list),
+  `screens/audit/`: the header carries "Verify chain" and "Export CSV". Filters live in
+  the address (`scope=all` for every fund and system entry, else the fund being worked;
+  `only_day=1` for the business day being worked; `from`, `to`, `actor`, `action`,
+  `case`; `before` for the page), so a filtered view can be shared. The table: entry,
+  recorded, who, action, case (opening the case in the workbench) and one line of
+  detail; each entry's payload and hashes, with the server's check of that entry, behind
+  a disclosure. Older and newer pages, and the position ("51 to 100 of 1,234"). The
+  verification's verdict in plain words; a broken chain names the entry and shows it.
+- **Sign-off**: the audit trail gains a link to the day in the audit log.
+- **Case workbench**: the case pane gains "Across days": first seen, and per day the
+  status, cause, age, impact and flags, each day opening the case as it stood then.
+- **Overview trend**: net and gross open impact per day in its figures, days as links.
+- `api/queries.ts` gains `useAuditLog`, `useAuditFacets`, `useAuditEntry`,
+  `useVerifyChain`, `useAuditExport` and their paths; the vocabulary gains
+  `AUDIT_CHAIN_VERIFIED`, `USER_CREATED`, `FUND_CREATED`, `ACCOUNT_LOCKED` and the
+  audit export.
+
+### Tests
+
+- pytest `tests/web/test_auditviewer.py`: sign-in needed and every role may read, verify
+  and export; each filter alone and combined (fund, system entries, `as_of` equal to the
+  day trail, dates and instants, actor, action list, case), bad filters 422; keyset pages
+  covering every entry once with `newer` and both cursors; one entry with `hash_ok` and
+  `linked`, and a tampered one; verify intact, broken (the first broken seq), audited and
+  CSRF-protected; the CSV's columns, rows re-hashing with the engine's `record_hash`, an
+  unfiltered export re-verifying end to end, the export audited with its hash and the
+  row cap. `tests/web/test_cases.py` gains the case across days (open, carried, cleared);
+  `tests/web/test_overview.py` the trend's gross figure across days.
+- Vitest `screens/audit/AuditScreen.test.tsx` (filters to the query and the address,
+  paging, the entry detail, verification intact and broken, export and its refusal), the
+  case pane's days and the overview trend's figures.
+- Playwright `e2e/audit.spec.ts`: a viewer filters the log to a case's decisions, opens
+  an entry, verifies the chain and exports the CSV (file name and header); an analyst
+  sees a carried case across days; axe on the audit screen in both themes.
