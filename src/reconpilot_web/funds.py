@@ -13,6 +13,7 @@ created with no settings behaves exactly like the command line.
 
 from __future__ import annotations
 
+import inspect
 import re
 from collections.abc import Iterable
 from datetime import date, timedelta
@@ -24,6 +25,7 @@ from sqlalchemy.orm import Session
 
 from reconpilot.ledger import LifecycleSettings
 from reconpilot.models import BASE_CURRENCY
+from reconpilot.nav import PRICE_MOVE_LIMITS, run_checks
 from reconpilot.pipeline import CHECK_SETTINGS
 from reconpilot_web.auditlog import DbAuditLog
 from reconpilot_web.auth import SYSTEM_ACTOR, SYSTEM_ROLE, current_user, get_db
@@ -71,6 +73,19 @@ def fund_check_settings(fund: Fund) -> dict:
     Empty means the engine's defaults.
     """
     return dict(fund_settings(fund)["check_settings"])
+
+
+def engine_check_defaults() -> dict[str, Any]:
+    """The release checks' settings when a fund overrides none: ``nav.run_checks``'s own defaults."""
+    params = inspect.signature(run_checks).parameters
+    defaults = {key: params[key].default for key in CHECK_SETTINGS}
+    defaults["price_move_limits"] = dict(defaults["price_move_limits"] or PRICE_MOVE_LIMITS)
+    return defaults
+
+
+def checks_in_force(fund: Fund) -> dict[str, Any]:
+    """The release checks' settings the engine applies for this fund: its defaults, overlaid by the fund's."""
+    return {**engine_check_defaults(), **fund_check_settings(fund)}
 
 
 def validate_settings(settings: dict[str, Any]) -> dict[str, Any]:
@@ -225,6 +240,7 @@ def fund_detail(db: Session, fund: Fund) -> dict[str, Any]:
         **fund_summary(db, fund),
         "non_business_dates": [str(d) for d in sorted(fund.non_business_dates or ())],
         "settings": fund_settings(fund),
+        "checks_in_force": checks_in_force(fund),
     }
 
 

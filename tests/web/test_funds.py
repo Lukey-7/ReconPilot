@@ -137,3 +137,18 @@ def test_viewer_can_list_funds(make_client, users, fund, db_session):
     assert detail.json()["settings"] == DEFAULT_FUND_SETTINGS
     assert detail.json()["non_business_dates"] == []
     assert viewer.get("/api/funds/NOPE").status_code == 404
+
+
+def test_fund_detail_shows_the_checks_in_force(make_client, users, make_fund):
+    """The release checks' settings as the engine applies them: its defaults, then the fund's own."""
+    make_fund()
+    make_fund("INC2", name="Income Fund", settings={"check_settings": {"cash_tolerance": 5.0}})
+    viewer = make_client("viewer1")
+    engine_defaults = {
+        "max_price_age_days": 1, "movement_threshold": 0.02, "cash_tolerance": 1.0,
+        "price_move_limits": {"EQUITY": 0.10, "BOND": 0.02},
+    }
+    assert viewer.get(f"/api/funds/{FUND_CODE}").json()["checks_in_force"] == engine_defaults
+    income = viewer.get("/api/funds/INC2").json()
+    assert income["settings"]["check_settings"] == {"cash_tolerance": 5.0}
+    assert income["checks_in_force"] == {**engine_defaults, "cash_tolerance": 5.0}

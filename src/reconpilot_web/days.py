@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any
 
@@ -27,11 +28,13 @@ from reconpilot_web.auditlog import DbAuditLog
 from reconpilot_web.auth import current_user, get_db, require_roles
 from reconpilot_web.funds import fund_settings, get_fund, is_business_day, previous_business_day
 from reconpilot_web.jobs import enqueue, job_payload
-from reconpilot_web.models import BusinessDay, Fund, InputFile, Job, User
+from reconpilot_web.models import AuditEntry, BusinessDay, Fund, InputFile, Job, User
 from reconpilot_web.validation import (
     FILE_KINDS,
     KIND_BY_FILENAME,
     MAX_FILE_BYTES,
+    MAX_ROWS,
+    REQUIRED,
     ValidationReport,
     validate_files,
 )
@@ -48,6 +51,8 @@ RUN_STATUSES = ("ready", "signed_off")
 
 # How many error messages a VALIDATION_FAILED audit entry quotes (the counts are always complete).
 AUDIT_ERROR_SAMPLE = 20
+
+UPLOADS_OFF_MESSAGE = "Uploads are switched off in the demo."
 
 
 def parse_as_of(value: str) -> date:
@@ -75,20 +80,45 @@ def day_files(db: Session, day: BusinessDay) -> dict[str, bytes]:
     return {kind: bytes(content) for kind, content in rows}
 
 
-def check_day_order(db: Session, fund: Fund, as_of: date) -> None:
-    """409 unless files for ``as_of`` may be loaded: a business day of the fund, from its
-    start date on, whose previous business day (if any) is signed off.
+@dataclass(frozen=True)
+class OrderProblem:
+    """Why files for a day cannot be loaded yet, as ``day_order_problem`` finds it.
+
+    ``code`` is one of ``BEFORE_START``, ``NOT_BUSINESS_DAY``, ``PREVIOUS_NOT_LOADED`` and
+    ``PREVIOUS_NOT_SIGNED_OFF``; ``day`` is the date the reason is about (the start date,
+    the day itself or the previous business day) and ``day_status`` that day's status.
+    """
+
+    code: str
+    message: str
+    day: date | None = None
+    day_status: str | None = None
+
+
+def day_order_problem(db: Session, fund: Fund, as_of: date) -> OrderProblem | None:
+    """``None`` when files for ``as_of`` may be loaded: a business day of the fund, from its
+    start date on, whose previous business day (if any) is signed off. Otherwise the reason.
     """
     if as_of < fund.start_date:
-        raise HTTPException(status.HTTP_409_CONFLICT,
-                            f"{as_of} is before {fund.code}'s start date, {fund.start_date}.")
+        return OrderProblem("BEFORE_START", f"{as_of} is before {fund.code}'s start date, {fund.start_date}.",
+                            fund.start_date)
     if not is_business_day(fund, as_of):
-        raise HTTPException(status.HTTP_409_CONFLICT, f"{as_of} is not a business day for {fund.code}.")
+        return OrderProblem("NOT_BUSINESS_DAY", f"{as_of} is not a business day for {fund.code}.", as_of)
     prev = previous_business_day(fund, as_of)
     if prev is not None:
         prev_day = get_day(db, fund, prev)
-        if prev_day is None or prev_day.status != "signed_off":
-            raise HTTPException(status.HTTP_409_CONFLICT, f"Sign off {prev} first.")
+        if prev_day is None:
+            return OrderProblem("PREVIOUS_NOT_LOADED", f"Sign off {prev} first.", prev)
+        if prev_day.status != "signed_off":
+            return OrderProblem("PREVIOUS_NOT_SIGNED_OFF", f"Sign off {prev} first.", prev, prev_day.status)
+    return None
+
+
+def check_day_order(db: Session, fund: Fund, as_of: date) -> None:
+    """409 unless files for ``as_of`` may be loaded (see ``day_order_problem``)."""
+    problem = day_order_problem(db, fund, as_of)
+    if problem is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, problem.message)
 
 
 def base_name(filename: str | None) -> str:
@@ -202,7 +232,7 @@ def upload_files(
     db: Session = Depends(get_db),
 ) -> dict:
     if request.app.state.settings.mode == "demo":
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Uploads are switched off in the demo.")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, UPLOADS_OFF_MESSAGE)
     fund = get_fund(db, code)
     day_date = parse_as_of(as_of)
     check_day_order(db, fund, day_date)
@@ -387,6 +417,120 @@ def start_run(
     })
     db.commit()
     return {"job_id": job_id}
+
+
+def intake_payload(db: Session, fund: Fund, as_of: date, *, demo: bool) -> dict[str, Any]:
+    """Whether files for ``as_of`` can be loaded now and, if not, why (spec 7.5).
+
+    ``open`` is true exactly when an analyst's or approver's upload would pass the
+    day-order and lock checks; ``blocked`` is then ``None``. Otherwise ``blocked`` gives the
+    first reason, in the order the upload route checks them, with the route's own message.
+    """
+    day = get_day(db, fund, as_of)
+    prev = previous_business_day(fund, as_of)
+    prev_day = get_day(db, fund, prev) if prev is not None else None
+    blocked: dict[str, Any] | None = None
+    if demo:
+        blocked = {"code": "UPLOADS_OFF", "message": UPLOADS_OFF_MESSAGE, "day": None, "day_status": None}
+    else:
+        problem = day_order_problem(db, fund, as_of)
+        if problem is not None:
+            blocked = {"code": problem.code, "message": problem.message,
+                       "day": str(problem.day) if problem.day else None, "day_status": problem.day_status}
+        elif day is not None and day.status == "signed_off":
+            blocked = {"code": "SIGNED_OFF", "message": f"{as_of} is signed off; its files cannot change.",
+                       "day": str(as_of), "day_status": day.status}
+        elif day is not None and day.status == "running":
+            blocked = {"code": "RUNNING", "message": f"{as_of} is being run; upload again when it finishes.",
+                       "day": str(as_of), "day_status": day.status}
+    return {
+        "fund": fund.code,
+        "as_of": str(as_of),
+        "open": blocked is None,
+        "blocked": blocked,
+        "day_status": day.status if day is not None else None,
+        "previous_business_day": str(prev) if prev else None,
+        "previous_status": prev_day.status if prev_day is not None else None,
+        "following_day": str(next_business_day(fund, max(as_of, fund.start_date - timedelta(days=1)))),
+        "expected_files": [
+            {"kind": kind, "filename": name, "required": kind in REQUIRED} for kind, name in FILE_KINDS.items()
+        ],
+        "max_file_bytes": MAX_FILE_BYTES,
+        "max_rows": MAX_ROWS,
+    }
+
+
+@router.get("/{as_of}/intake")
+def read_intake(
+    code: str, as_of: str, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)
+) -> dict:
+    """Whether the day can take files now, why not if it cannot, and the files it expects."""
+    fund = get_fund(db, code)
+    return intake_payload(db, fund, parse_as_of(as_of), demo=request.app.state.settings.mode == "demo")
+
+
+def _seconds(start, end) -> float | None:
+    return round((end - start).total_seconds(), 3) if start is not None and end is not None else None
+
+
+def runs_payload(db: Session, fund: Fund, day: BusinessDay) -> dict[str, Any]:
+    """Every ``run_day`` job for the day, newest first, with who started it and what it found."""
+    jobs = db.execute(
+        select(Job)
+        .where(Job.kind == RUN_JOB_KIND, Job.payload["business_day_id"].as_integer() == day.id)
+        .order_by(Job.id.desc())
+    ).scalars().all()
+    # Whether a run was a re-run is recorded when it is started, in its RUN_STARTED entry.
+    started: dict[int, dict] = {}
+    for payload in db.execute(
+        select(AuditEntry.payload).where(AuditEntry.fund_id == fund.id, AuditEntry.action == "RUN_STARTED")
+    ).scalars():
+        if isinstance(payload, dict) and isinstance(payload.get("job_id"), int):
+            started[payload["job_id"]] = payload
+    runs = []
+    for job in jobs:
+        result = job.result or {}
+        outcome = None
+        if job.status == "done" and "skipped" not in result:
+            rerun = result.get("rerun") or {}
+            outcome = {
+                "open_cases": result.get("open_cases"),
+                "new_cases": result.get("new_cases"),
+                "carried_cases": result.get("carried_cases"),
+                "cleared_today": len(result.get("cleared_today") or []),
+                "breaks": result.get("breaks"),
+                "matches": result.get("matches"),
+                "decisions_reapplied": len(rerun.get("decisions_reapplied") or []),
+                "decisions_voided": len(rerun.get("decisions_voided") or []),
+                "cases_withdrawn": len(rerun.get("cases_withdrawn") or []),
+            }
+        runs.append({
+            "job_id": job.id,
+            "status": job.status,
+            "attempts": job.attempts,
+            "max_attempts": job.max_attempts,
+            "started_by": _username(db, job.created_by),
+            "rerun": bool(started.get(job.id, {}).get("rerun", False)),
+            "queued_at": job.created_at.isoformat() if job.created_at else None,
+            "started_at": job.started_at.isoformat() if job.started_at else None,
+            "finished_at": job.finished_at.isoformat() if job.finished_at else None,
+            "duration_seconds": _seconds(job.started_at, job.finished_at),
+            "error": job.error,
+            "outcome": outcome,
+            "skipped": result.get("skipped"),
+        })
+    return {"fund": fund.code, "as_of": str(day.as_of), "runs": runs}
+
+
+@router.get("/{as_of}/runs")
+def list_runs(code: str, as_of: str, user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
+    """The day's runs, newest first (404 when the day has no files)."""
+    fund = get_fund(db, code)
+    day_date = parse_as_of(as_of)
+    day = get_day(db, fund, day_date)
+    if day is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"No files have been uploaded for {day_date}.")
+    return runs_payload(db, fund, day)
 
 
 jobs_router = APIRouter(prefix="/api/jobs", tags=["jobs"])
