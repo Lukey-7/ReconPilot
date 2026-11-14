@@ -5,6 +5,8 @@
 export function keyNames(keys: string): string[] {
   return keys.split(" ").flatMap((k) => {
     if (k === "Escape") return ["Esc"];
+    if (k === "ArrowDown") return ["↓"];
+    if (k === "ArrowUp") return ["↑"];
     if (k.startsWith("mod+")) return ["Ctrl", k.slice(4).toUpperCase()];
     return [k];
   });

@@ -227,6 +227,8 @@ export const AUDIT_ACTIONS = {
   USER_CREATED: "User created",
   FUND_CREATED: "Fund created",
   ACCOUNT_LOCKED: "Account locked",
+  DEMO_FUND_CREATED: "Demo fund created",
+  DEMO_FUND_EXPIRED: "Demo fund expired",
 } as const;
 export type AuditAction = keyof typeof AUDIT_ACTIONS;
 

@@ -49,3 +49,13 @@
 .signin-submit + .signin-submit {
   margin-top: 8px;
 }
+
+/* The upload screen's demo note: its icon beside the words, as in the other notices. */
+.demo-generate {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+}
+.demo-generate > svg {
+  margin-top: 3px;
+}
