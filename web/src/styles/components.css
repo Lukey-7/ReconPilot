@@ -266,3 +266,61 @@
 .notice svg {
   margin-top: 2px;
 }
+
+/* ===== Motion that explains a change (all of it off under reduced motion: tokens.css) ===== */
+
+/* The release status has just moved (Blocked to Ready, Ready to Signed off): one pulse. */
+.release-changed {
+  animation: release-pulse var(--t-status) var(--ease);
+}
+@keyframes release-pulse {
+  0% {
+    opacity: 0.35;
+    transform: scale(0.94);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* Rows arriving in a list fade in, the first ten a beat apart. */
+.list-enter tbody tr {
+  animation: row-in var(--t-panel) var(--ease) both;
+}
+.list-enter tbody tr:nth-child(2) {
+  animation-delay: 15ms;
+}
+.list-enter tbody tr:nth-child(3) {
+  animation-delay: 30ms;
+}
+.list-enter tbody tr:nth-child(4) {
+  animation-delay: 45ms;
+}
+.list-enter tbody tr:nth-child(5) {
+  animation-delay: 60ms;
+}
+.list-enter tbody tr:nth-child(6) {
+  animation-delay: 75ms;
+}
+.list-enter tbody tr:nth-child(7) {
+  animation-delay: 90ms;
+}
+.list-enter tbody tr:nth-child(8) {
+  animation-delay: 105ms;
+}
+.list-enter tbody tr:nth-child(9) {
+  animation-delay: 120ms;
+}
+.list-enter tbody tr:nth-child(n + 10) {
+  animation-delay: 135ms;
+}
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}

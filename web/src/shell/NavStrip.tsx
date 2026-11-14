@@ -4,7 +4,8 @@
  *
  * Figures come from the day record (`GET .../days/{as_of}`) and the status from the
  * release route (`GET .../release`), which the server computes identically for everyone.
- * The strip never works a status out for itself.
+ * The strip never works a status out for itself. NAV and NAV per share ease to a new
+ * value (another day, a rerun), and the status pulses once when it changes in place.
  */
 import * as Popover from "@radix-ui/react-popover";
 import { Link } from "react-router";
@@ -15,6 +16,7 @@ import { Icon } from "../components/Icon";
 import { Kbd } from "../components/Kbd";
 import { ReleaseBadge, releaseState } from "../components/Labels";
 import { MISSING, money, perShare, signedPercent, timestamp } from "../format";
+import { useChangeCount, useTween } from "../motion";
 import { RELEASE_LABELS, releaseReasonLabel } from "../vocabulary";
 import { useWorkspace } from "./workspace";
 
@@ -37,6 +39,10 @@ export function NavStrip() {
   const code = fund?.code ?? null;
   const day = useDay(code, asOf);
   const release = useRelease(code, asOf);
+  const navShown = useTween(day.data?.nav?.nav ?? null);
+  const npsShown = useTween(day.data?.nav?.nav_per_share ?? null);
+  const signedOffNow = day.data?.status === "signed_off" || release.data?.signed_off === true;
+  const changes = useChangeCount(releaseState(release.data, signedOffNow), `${code}|${asOf}`, !!release.data && !day.isPending);
 
   if (!fund) return null;
   if (!asOf) {
@@ -49,7 +55,7 @@ export function NavStrip() {
 
   const noFiles = day.error instanceof ApiError && day.error.status === 404;
   const nav = day.data?.nav ?? null;
-  const signedOff = day.data?.status === "signed_off" || release.data?.signed_off === true;
+  const signedOff = signedOffNow;
   const state = releaseState(release.data, signedOff);
   const reasons = release.data?.reasons ?? [];
   const first = reasons[0];
@@ -66,14 +72,14 @@ export function NavStrip() {
       <div className="strip-cell">
         <span className="lbl">NAV, {fund.base_currency}</span>
         <span className="big fig" data-testid="strip-nav">
-          {noFiles ? MISSING : money(nav?.nav)}
+          {noFiles ? MISSING : money(nav ? navShown : null)}
         </span>
         {noFiles ? <span className="mv faint">No files loaded</span> : !nav && !day.isPending && <span className="mv faint">Not run yet</span>}
       </div>
       <div className="strip-cell">
         <span className="lbl">NAV per share</span>
         <span className="big fig" data-testid="strip-nps">
-          {perShare(nav?.nav_per_share)}
+          {perShare(nav ? npsShown : null)}
         </span>
         {nav && <Movement movement={nav.detail?.movement} prior={nav.prior_nav_per_share} />}
       </div>
@@ -81,7 +87,7 @@ export function NavStrip() {
         {release.isPending ? (
           <span className="release-badge release-pending">{MISSING}</span>
         ) : (
-          <ReleaseBadge state={state} />
+          <ReleaseBadge key={changes} state={state} changed={changes > 0} />
         )}
         <p className="why">
           {why}

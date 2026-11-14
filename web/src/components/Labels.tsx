@@ -57,10 +57,14 @@ export function releaseState(release: Release | null | undefined, signedOff: boo
 
 const RELEASE_ICONS: Record<ReleaseState, IconName> = { ready: "check", blocked: "warn", signedOff: "lock" };
 
-/** The day's one release status: Ready to sign off, Blocked, or Signed off. */
-export function ReleaseBadge({ state }: { state: ReleaseState }) {
+/**
+ * The day's one release status: Ready to sign off, Blocked, or Signed off. `changed` marks
+ * a status that has just moved (Blocked to Ready, say), which pulses once unless motion is
+ * reduced; give the badge a new key each time so the pulse replays.
+ */
+export function ReleaseBadge({ state, changed = false }: { state: ReleaseState; changed?: boolean }) {
   return (
-    <span className={`release-badge release-${state}`} data-release={state}>
+    <span className={`release-badge release-${state}${changed ? " release-changed" : ""}`} data-release={state}>
       <Icon name={RELEASE_ICONS[state]} />
       {RELEASE_LABELS[state]}
     </span>

@@ -6,6 +6,7 @@
 import type { Check, Overview } from "../../api/types";
 import { CheckLabel, ReleaseBadge, releaseState } from "../../components/Labels";
 import { plural, timestamp } from "../../format";
+import { useChangeCount } from "../../motion";
 import { checkLabel, releaseReasonLabel } from "../../vocabulary";
 import { CaseLink } from "./caseLinks";
 
@@ -89,6 +90,7 @@ export function ReleaseSection({ overview }: { overview: Overview }) {
   const signedOff = overview.day_status === "signed_off" || !!overview.signed_off_at;
   const state = releaseState(overview.release, signedOff);
   const reasons = overview.release.reasons;
+  const changes = useChangeCount(state, `${overview.fund.code}|${overview.as_of}`);
 
   let headline: string;
   if (signedOff) {
@@ -105,7 +107,7 @@ export function ReleaseSection({ overview }: { overview: Overview }) {
     <section className="ov-block ov-release" aria-labelledby="ov-h-release" data-state={state}>
       <h2 id="ov-h-release">Release status</h2>
       <div className="ov-release-state" aria-live="polite">
-        <ReleaseBadge state={state} />
+        <ReleaseBadge key={changes} state={state} changed={changes > 0} />
         <p className="ov-headline">{headline}</p>
       </div>
       {!signedOff && reasons.length > 0 && (

@@ -210,7 +210,7 @@ export function QueuePane({
           selectedId={openId}
           onActivate={(row) => onOpen(row.case_id)}
           onOrderChange={onOrderChange}
-          className="wb-queue"
+          className="wb-queue list-enter"
           empty={
             filtered ? (
               <>
