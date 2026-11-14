@@ -145,6 +145,8 @@ export const api = {
   get: <T>(path: string, query?: RequestOptions["query"], signal?: AbortSignal) =>
     apiFetch<T>(path, { query, signal }),
   post: <T>(path: string, json?: unknown) => apiFetch<T>(path, { method: "POST", json }),
+  /** Send files as `multipart/form-data` (the browser sets the boundary). */
+  upload: <T>(path: string, form: FormData) => apiFetch<T>(path, { method: "POST", body: form }),
 };
 
 /** A URL path segment, escaped. */

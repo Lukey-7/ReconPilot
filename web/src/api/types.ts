@@ -93,6 +93,28 @@ export interface Job {
   finished_at: string | null;
 }
 
+/** One problem found in an uploaded file; `row` counts the header as row 1, null for the whole file. */
+export interface ValidationIssue {
+  file: string;
+  row: number | null;
+  message: string;
+}
+
+export interface ValidationReport {
+  errors: ValidationIssue[];
+  warnings: ValidationIssue[];
+}
+
+/** `POST /api/funds/{code}/days/{as_of}/files`: the day's status and the whole set's validation. */
+export interface UploadResult extends ValidationReport {
+  status: string;
+}
+
+/** `POST /api/funds/{code}/days/{as_of}/run` (202). */
+export interface RunStarted {
+  job_id: number;
+}
+
 /** `GET /api/funds/{code}/days/{as_of}`. */
 export interface Day {
   fund: string;
@@ -100,7 +122,7 @@ export interface Day {
   status: string;
   previous_business_day: string | null;
   files: DayFile[];
-  validation: Record<string, unknown> | null;
+  validation: ValidationReport | null;
   error: string | null;
   run_by: string | null;
   run_at: string | null;

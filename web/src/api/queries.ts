@@ -5,6 +5,7 @@
  * after a decision or a sign-off: `invalidateDay(queryClient, fund, asOf)`.
  */
 import { QueryClient, keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 
 import { ApiError, api, seg } from "./client";
 import type {
@@ -14,9 +15,12 @@ import type {
   DaysList,
   DecisionRequest,
   FundSummary,
+  Job,
   Overview,
   QueueCase,
   ReleaseForMe,
+  RunStarted,
+  UploadResult,
 } from "./types";
 
 export const queryKeys = {
@@ -30,6 +34,7 @@ export const queryKeys = {
   cases: (fund: string, asOf: string, filters?: Record<string, unknown>) =>
     filters ? (["funds", fund, "day", asOf, "cases", filters] as const) : (["funds", fund, "day", asOf, "cases"] as const),
   case: (fund: string, caseId: string, asOf?: string) => ["funds", fund, "case", caseId, asOf ?? null] as const,
+  job: (id: number) => ["jobs", id] as const,
 };
 
 export const paths = {
@@ -46,6 +51,9 @@ export const paths = {
   cases: (fund: string, asOf: string) => `/api/funds/${seg(fund)}/days/${seg(asOf)}/cases`,
   case: (fund: string, caseId: string) => `/api/funds/${seg(fund)}/cases/${seg(caseId)}`,
   decision: (fund: string, caseId: string) => `/api/funds/${seg(fund)}/cases/${seg(caseId)}/decision`,
+  files: (fund: string, asOf: string) => `/api/funds/${seg(fund)}/days/${seg(asOf)}/files`,
+  run: (fund: string, asOf: string) => `/api/funds/${seg(fund)}/days/${seg(asOf)}/run`,
+  job: (id: number) => `/api/jobs/${seg(String(id))}`,
 };
 
 /** Don't retry answers that will not change on a retry (signed out, forbidden, missing, refused). */
@@ -98,13 +106,30 @@ export function useRelease(fund: string | null, asOf: string | null) {
   });
 }
 
+/**
+ * The day's overview. While the day is being run it is asked again every few seconds, and
+ * when the run ends everything about the day is refetched, so the screen, the strip and
+ * the day list fill in together.
+ */
 export function useOverview(fund: string | null, asOf: string | null) {
-  return useQuery({
+  const client = useQueryClient();
+  const query = useQuery({
     queryKey: queryKeys.overview(fund ?? "", asOf ?? ""),
     queryFn: ({ signal }) => api.get<Overview>(paths.overview(fund ?? "", asOf ?? ""), undefined, signal),
     enabled: !!fund && !!asOf,
+    refetchInterval: (q) => (q.state.data?.day_status === "running" ? RUNNING_POLL_MS : false),
   });
+  const status = query.data?.day_status ?? null;
+  const previous = useRef(status);
+  useEffect(() => {
+    if (previous.current === "running" && status !== "running" && fund && asOf) void invalidateDay(client, fund, asOf);
+    previous.current = status;
+  }, [status, client, fund, asOf]);
+  return query;
 }
+
+/** How often a screen showing a day that is being run asks again. */
+export const RUNNING_POLL_MS = 2000;
 
 /** The day's audit trail, oldest first, and whether the whole hash chain still verifies. */
 export function useDayAudit(fund: string | null, asOf: string | null) {
@@ -201,6 +226,56 @@ export function useSignOff(fund: string, asOf: string) {
     },
     onError: async () => {
       await invalidateDay(client, fund, asOf);
+    },
+  });
+}
+
+/** Job statuses after which a job never changes again. */
+export const FINISHED_JOB_STATUSES: ReadonlySet<string> = new Set(["done", "failed"]);
+
+/** How often a queued or running job is asked for its progress. */
+export const JOB_POLL_MS = 1000;
+
+/**
+ * Upload some or all of a day's files. The server stores them, validates the whole set
+ * held for the day and answers with the result; the day, its list and the overview are
+ * refetched either way, so every screen shows the files and status the server now holds.
+ */
+export function useUploadFiles(fund: string, asOf: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (files: File[]) => {
+      const form = new FormData();
+      for (const file of files) form.append("files", file, file.name);
+      return api.upload<UploadResult>(paths.files(fund, asOf), form);
+    },
+    onSettled: async () => {
+      await invalidateDay(client, fund, asOf);
+    },
+  });
+}
+
+/** Queue a run of the day (202 with the job id). The day becomes "running" at once. */
+export function useStartRun(fund: string, asOf: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<RunStarted>(paths.run(fund, asOf)),
+    onSettled: async () => {
+      await invalidateDay(client, fund, asOf);
+    },
+  });
+}
+
+/** A job's progress, asked again every second until it has finished. */
+export function useJob(id: number | null) {
+  return useQuery({
+    queryKey: queryKeys.job(id ?? 0),
+    queryFn: ({ signal }) => api.get<Job>(paths.job(id ?? 0), undefined, signal),
+    enabled: id != null,
+    staleTime: 0,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status && FINISHED_JOB_STATUSES.has(status) ? false : JOB_POLL_MS;
     },
   });
 }
