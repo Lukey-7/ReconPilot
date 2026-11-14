@@ -20,6 +20,7 @@ import type { Day, FundSummary, Reason, ReleaseForMe, User } from "../../api/typ
 import { Icon } from "../../components/Icon";
 import { ReleaseBadge, releaseState } from "../../components/Labels";
 import { count, dayLabel, money, perShare, signedPercent, timestamp } from "../../format";
+import { useCommand } from "../../keyboard/KeyboardProvider";
 import { useWorkspace } from "../../shell/workspace";
 import { releaseReasonLabel } from "../../vocabulary";
 import { CaseIdList } from "./CaseIdList";
@@ -202,6 +203,17 @@ export function SignOffBox({
 
   const signedOff = release.signed_off || day?.status === "signed_off";
   const state = releaseState(release, signedOff);
+  const blocked = signedOff ? null : blockedMessage(release, user);
+
+  // The palette never signs off: it opens the same confirmation as the button.
+  useCommand(
+    "Sign off the NAV…",
+    () => {
+      setRefusal(null);
+      setConfirming(true);
+    },
+    { group: "Sign-off", enabled: user.role === "approver" && !signedOff && !blocked && !signOff.isPending, keywords: "release lock" },
+  );
 
   function confirm() {
     setRefusal(null);
@@ -235,7 +247,6 @@ export function SignOffBox({
       </>
     );
   } else {
-    const blocked = blockedMessage(release, user);
     const isApprover = user.role === "approver";
     body = (
       <>

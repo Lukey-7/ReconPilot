@@ -297,6 +297,30 @@ describe("Sign-off screen", () => {
     expect(within(fourEyes).getByText("Four-eyes: the signer decided no case today")).toBeInTheDocument();
   });
 
+  it("offers sign-off in the command palette only to an approver who may sign off, and it only opens the confirmation", async () => {
+    const api = mockApi(routes(approver, { release: READY, cases: DECIDED }));
+    renderApp(URL_DAY);
+    await signBox();
+    const user = userEvent.setup();
+    await user.keyboard("{Control>}k{/Control}");
+    const palette = await screen.findByRole("dialog", { name: "Command palette" });
+    await user.keyboard("sign off the nav");
+    expect(within(palette).getByRole("option", { name: /Sign off the NAV…/ })).toHaveAttribute("aria-selected", "true");
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("dialog", { name: "Sign off the NAV?" })).toBeInTheDocument();
+    expect(api.calls(`POST ${BASE}/signoff`)).toHaveLength(0);
+  });
+
+  it("does not offer sign-off in the palette to an analyst", async () => {
+    mockApi(routes(analyst, { release: READY, cases: DECIDED }));
+    renderApp(URL_DAY);
+    await signBox();
+    const user = userEvent.setup();
+    await user.keyboard("{Control>}k{/Control}");
+    const palette = await screen.findByRole("dialog", { name: "Command palette" });
+    expect(within(palette).queryByText(/Sign off the NAV/)).not.toBeInTheDocument();
+  });
+
   it("signs off after confirming, then shows the day locked and the next day open", async () => {
     document.cookie = "rp_csrf=token-123; path=/";
     const r = routes(approver, { release: READY, cases: DECIDED });

@@ -178,7 +178,7 @@ function Workbench({ fund, currency, asOf }: { fund: string; currency: string; a
       searchRef.current?.focus();
       searchRef.current?.select();
     },
-    { description: "Search the queue", group },
+    { description: "Search the queue", group, palette: true },
   );
 
   /** a, r and c on a row that is not the open case open it first, so a key never decides a case you cannot see. */

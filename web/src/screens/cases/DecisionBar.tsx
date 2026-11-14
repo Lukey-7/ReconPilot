@@ -168,7 +168,7 @@ export function DecisionBar({ detail, fund, asOf, role, signedOffBy, beforeShort
     () => {
       if (!beforeShortcut()) approve();
     },
-    { ...shortcutOptions, description: "Approve the open case" },
+    { ...shortcutOptions, description: "Approve the open case", palette: `Approve ${detail.case_id}` },
   );
   useShortcut(
     "r",
@@ -180,7 +180,7 @@ export function DecisionBar({ detail, fund, asOf, role, signedOffBy, beforeShort
         noteRef.current?.focus();
       }
     },
-    { ...shortcutOptions, description: "Reject the open case (moves to the note)" },
+    { ...shortcutOptions, description: "Reject the open case (moves to the note)", palette: `Reject ${detail.case_id}…` },
   );
   useShortcut(
     "c",
@@ -189,7 +189,11 @@ export function DecisionBar({ detail, fund, asOf, role, signedOffBy, beforeShort
       setArmed("reclassify");
       causeRef.current?.focus();
     },
-    { ...shortcutOptions, description: "Reclassify the open case (moves to the cause)" },
+    {
+      ...shortcutOptions,
+      description: "Reclassify the open case (moves to the cause)",
+      palette: `Reclassify ${detail.case_id}…`,
+    },
   );
 
   const decided = c.status !== "PENDING";

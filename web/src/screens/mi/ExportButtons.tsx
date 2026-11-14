@@ -6,6 +6,7 @@
  */
 import { type ExportKind, useExport } from "../../api/queries";
 import { ErrorLine } from "../../components/QueryState";
+import { useCommand } from "../../keyboard/KeyboardProvider";
 import { EXPORTS, EXPORT_FORMATS } from "../../vocabulary";
 
 const KINDS: ExportKind[] = ["report", "mi_csv"];
@@ -13,6 +14,9 @@ const KINDS: ExportKind[] = ["report", "mi_csv"];
 export function ExportButtons({ fund, asOf }: { fund: string; asOf: string }) {
   const exporting = useExport(fund, asOf);
   const busy = exporting.isPending ? exporting.variables : null;
+  const options = { group: "MI", enabled: !exporting.isPending, keywords: "export download" };
+  useCommand(`Download the ${EXPORTS.report.toLowerCase()} (${EXPORT_FORMATS.report})`, () => exporting.mutate("report"), options);
+  useCommand(`Download the ${EXPORTS.mi_csv} (${EXPORT_FORMATS.mi_csv})`, () => exporting.mutate("mi_csv"), options);
   return (
     <div className="mi-exports">
       <div className="mi-export-buttons" role="group" aria-label="Exports for this day">

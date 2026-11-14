@@ -13,6 +13,7 @@ import type { Day, FundSummary, Job, User } from "../../api/types";
 import { Icon } from "../../components/Icon";
 import { ErrorLine, Loading } from "../../components/QueryState";
 import { dayLabel, plural, timestamp } from "../../format";
+import { useCommand } from "../../keyboard/KeyboardProvider";
 import { useWorkspace } from "../../shell/workspace";
 import { RunHistory } from "./RunHistory";
 
@@ -110,6 +111,12 @@ export function RunBlock({
   const status = day.status;
   const runningJob = status === "running" ? (run.data?.job_id ?? day.job?.id ?? null) : null;
   const openCases = typeof day.summary?.open_cases === "number" ? day.summary.open_cases : null;
+  const runnable = canAct(user) && RUNNABLE.has(status);
+  useCommand(`${status === "validated" ? "Run" : "Run again"}: ${dayLabel(day.as_of)}`, () => run.mutate(), {
+    group: "Upload",
+    enabled: runnable && !run.isPending,
+    keywords: "run the day engine start",
+  });
 
   let body;
   if (status === "running") {
@@ -148,7 +155,7 @@ export function RunBlock({
             </Link>
           </p>
         )}
-        {canAct(user) && RUNNABLE.has(status) && (
+        {runnable && (
           <div className="up-run">
             <button
               type="button"

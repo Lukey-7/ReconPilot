@@ -19,6 +19,7 @@ import { useUser } from "../../auth/AuthContext";
 import { Empty, ErrorLine, Loading } from "../../components/QueryState";
 import { ScreenHeader } from "../../components/ScreenHeader";
 import { count, dayLabel, plural } from "../../format";
+import { useCommand } from "../../keyboard/KeyboardProvider";
 import { useWorkspace } from "../../shell/workspace";
 import { AUDIT_EXPORT } from "../../vocabulary";
 import { AuditTable } from "./AuditTable";
@@ -28,6 +29,11 @@ import { apiFilters, isFiltered, viewFrom, withAuditParam, withoutAuditFilters }
 
 function ExportButton({ filters }: { filters: AuditFilters }) {
   const exporting = useAuditExport();
+  useCommand("Export the audit log as CSV", () => exporting.mutate(filters), {
+    group: "Audit log",
+    enabled: !exporting.isPending,
+    keywords: "download entries hashes",
+  });
   return (
     <>
       <button
@@ -90,6 +96,11 @@ export function AuditScreen() {
   const query = useAuditLog(filters, view.before);
   const page = query.data;
   const filtered = isFiltered(view);
+  useCommand("Verify the audit chain", () => verify.mutate(), {
+    group: "Audit log",
+    enabled: !verify.isPending,
+    keywords: "check hashes tamper",
+  });
 
   const set = useCallback<FilterBarProps["set"]>(
     (key, value) => setParams(withAuditParam(params, key, value)),

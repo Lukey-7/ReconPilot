@@ -1,6 +1,8 @@
 /**
- * The top bar: screens, the fund and business day being worked, the signed-in user and
- * their role, the theme and the shortcuts. One row, nothing decorative.
+ * The top bar: screens, the fund and business day being worked, the way into the command
+ * palette, the signed-in user and their role, the theme and the shortcuts. Nothing
+ * decorative: each screen's shortcut is in its tooltip, the help dialog and the palette,
+ * not printed beside every link.
  */
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { NavLink, useNavigate } from "react-router";
@@ -23,6 +25,14 @@ export const SCREENS = [
   { path: "/mi", label: "MI", keys: "g m" },
   { path: "/audit", label: "Audit log", keys: "g l" },
 ] as const;
+
+/** "g o" as "G then O", for a tooltip. */
+export function keysTitle(keys: string): string {
+  return keys
+    .split(" ")
+    .map((k) => k.toUpperCase())
+    .join(" then ");
+}
 
 /** Every fund and the chosen fund's settings: reached from beside the fund selector, not the screen list. */
 export const FUNDS_SCREEN = { path: "/funds", label: "Funds", keys: "g f" } as const;
@@ -58,10 +68,9 @@ function FundSelect() {
       <NavLink
         to={href(FUNDS_SCREEN.path)}
         className={({ isActive }) => (isActive ? "btn ghost funds-link active" : "btn ghost funds-link")}
-        title="Every fund, and this fund's settings"
+        title={`Every fund, and this fund's settings (${keysTitle(FUNDS_SCREEN.keys)})`}
       >
         {FUNDS_SCREEN.label}
-        <Kbd keys={FUNDS_SCREEN.keys} />
       </NavLink>
     </div>
   );
@@ -126,7 +135,7 @@ function UserMenu() {
   );
 }
 
-export function TopBar({ onShowHelp }: { onShowHelp: () => void }) {
+export function TopBar({ onShowHelp, onOpenPalette }: { onShowHelp: () => void; onOpenPalette: () => void }) {
   const { href } = useWorkspace();
   const user = useUser();
   return (
@@ -136,10 +145,14 @@ export function TopBar({ onShowHelp }: { onShowHelp: () => void }) {
       </div>
       <nav className="screens" aria-label="Screens">
         {SCREENS.map((s) => (
-          <NavLink key={s.path} to={href(s.path)} className={({ isActive }) => (isActive ? "active" : undefined)}>
+          <NavLink
+            key={s.path}
+            to={href(s.path)}
+            className={({ isActive }) => (isActive ? "active" : undefined)}
+            title={keysTitle(s.keys)}
+          >
             {s.label}
             {s.path === "/cases" && <PendingBadge />}
-            <Kbd keys={s.keys} />
           </NavLink>
         ))}
       </nav>
@@ -148,11 +161,30 @@ export function TopBar({ onShowHelp }: { onShowHelp: () => void }) {
         <DaySelect />
       </div>
       <div className="tools">
+        <button
+          type="button"
+          className="btn palette-btn"
+          onClick={onOpenPalette}
+          aria-haspopup="dialog"
+          aria-keyshortcuts="Control+K"
+          title="Jump to a case, screen, fund or day, or run an action"
+        >
+          <Icon name="search" />
+          <span>Search</span>
+          <Kbd keys="mod+k" />
+        </button>
         {user.demo && <RoleSwitcher user={user} />}
         <ThemeToggle />
-        <button type="button" className="btn ghost" onClick={onShowHelp} aria-haspopup="dialog">
-          <Icon name="key" /> Shortcuts
-          <Kbd keys="?" />
+        <button
+          type="button"
+          className="btn ghost icon-btn"
+          onClick={onShowHelp}
+          aria-haspopup="dialog"
+          aria-keyshortcuts="?"
+          aria-label="Keyboard shortcuts"
+          title="Keyboard shortcuts (?)"
+        >
+          <Icon name="key" />
         </button>
         <UserMenu />
       </div>

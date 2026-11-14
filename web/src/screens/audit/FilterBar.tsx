@@ -4,10 +4,11 @@
  * action, and a case. Each change goes into the address at once and returns to the newest
  * page; the case id is applied when Enter is pressed or the field is left.
  */
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 
 import { useAuditFacets } from "../../api/queries";
 import { dayLabel } from "../../format";
+import { useShortcut } from "../../keyboard/KeyboardProvider";
 import { auditActionLabel } from "../../vocabulary";
 import type { AuditView } from "./filters";
 
@@ -24,6 +25,15 @@ export interface FilterBarProps {
 export function FilterBar({ view, fund, asOf, set, clear, filtered }: FilterBarProps) {
   const facets = useAuditFacets(view.all ? null : fund);
   const [caseText, setCaseText] = useState(view.caseId);
+  const caseRef = useRef<HTMLInputElement>(null);
+  useShortcut(
+    "/",
+    () => {
+      caseRef.current?.focus();
+      caseRef.current?.select();
+    },
+    { description: "Filter the log by case", group: "Audit log", palette: true },
+  );
   useEffect(() => setCaseText(view.caseId), [view.caseId]);
 
   const actors = [...(facets.data?.actors ?? [])];
@@ -95,6 +105,8 @@ export function FilterBar({ view, fund, asOf, set, clear, filtered }: FilterBarP
         <span>Case</span>
         <input
           type="search"
+          ref={caseRef}
+          aria-keyshortcuts="/"
           value={caseText}
           placeholder="Case id"
           spellCheck={false}

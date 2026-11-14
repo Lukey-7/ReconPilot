@@ -488,6 +488,48 @@ describe("case workbench", () => {
     expect(within(within(section).getAllByRole("row")[2] as HTMLElement).getByText("Cleared")).toBeInTheDocument();
   });
 
+  it("offers the open case's decisions in the command palette, and approves from it with the case's version", async () => {
+    const api = setup();
+    api.set("POST /api/funds/GEF1/cases/C1/decision", {
+      body: detailOf({ ...C1, status: "APPROVED", version: 4 }, {}, { reviewed_by: "analyst1", reviewed_role: "analyst" }),
+    });
+    renderApp(`${BASE}&case=C1`);
+    await openCase("C1");
+    const user = userEvent.setup();
+    await user.keyboard("{Control>}k{/Control}");
+    const palette = await screen.findByRole("dialog", { name: "Command palette" });
+    const actions = within(palette).getByRole("group", { name: /^Actions/ });
+    for (const label of ["Approve C1", "Reject C1…", "Reclassify C1…", "Search the queue"]) {
+      expect(within(actions).getByText(label)).toBeInTheDocument();
+    }
+    await user.keyboard("approve c1{Enter}");
+    expect(await screen.findByText("Approved C1. Recorded in the audit log.")).toBeInTheDocument();
+    expect(api.calls("POST /api/funds/GEF1/cases/C1/decision")[0]?.body).toEqual({ decision: "approve", note: "", version: 3 });
+  });
+
+  it("rejecting from the palette moves to the note, as r does", async () => {
+    setup();
+    renderApp(`${BASE}&case=C1`);
+    await openCase("C1");
+    const user = userEvent.setup();
+    await user.keyboard("{Control>}k{/Control}");
+    await screen.findByRole("dialog", { name: "Command palette" });
+    await user.keyboard("reject{Enter}");
+    await waitFor(() => expect(screen.getByLabelText(/^Note/)).toHaveFocus());
+  });
+
+  it("offers a viewer no decision in the palette", async () => {
+    setup(viewer);
+    renderApp(`${BASE}&case=C1`);
+    await openCase("C1");
+    const user = userEvent.setup();
+    await user.keyboard("{Control>}k{/Control}");
+    const palette = await screen.findByRole("dialog", { name: "Command palette" });
+    const actions = within(palette).getByRole("group", { name: /^Actions/ });
+    expect(within(actions).queryByText(/Approve|Reject|Reclassify/)).not.toBeInTheDocument();
+    expect(within(actions).getByText("Search the queue")).toBeInTheDocument();
+  });
+
   it("says when the day has not been run yet", async () => {
     setup(analyst, { [QUEUE]: { status: 409, body: { detail: `${DAY} has not been run yet.` } } });
     renderApp(BASE);
