@@ -40,7 +40,12 @@ export function AgeingSection({ ageing, currency }: { ageing: AgeingBucket[]; cu
             {ageing.map((b) => (
               <tr key={b.bucket} data-bucket={b.bucket}>
                 <th scope="row" className="ov-age-name">
-                  {b.count > 0 ? <Link to={href("/cases", { age: b.bucket })}>{ageBucketLabel(b.bucket)}</Link> : ageBucketLabel(b.bucket)}                </th>
+                  {b.count > 0 ? (
+                    <Link to={href("/cases", { age: b.bucket })}>{ageBucketLabel(b.bucket)}</Link>
+                  ) : (
+                    ageBucketLabel(b.bucket)
+                  )}
+                </th>
                 <td className="num">{count(b.count)}</td>
                 <td className="num">{money(b.gross)}</td>
                 <td className="num">{money(b.net, { signed: true })}</td>
