@@ -358,7 +358,17 @@ switches between them and remembers each user's choice on the server, so it
 follows them to another browser; **Funds** (`g f`) lists every fund with its
 latest day and shows the chosen fund's settings read-only: materiality,
 escalation and SLA days, the AI second opinion, the release checks in force
-and the business calendar. The same steps through the API:
+and the business calendar.
+
+**MI** (`g m`) is the management information for the fund up to the day on
+show, computed by the engine's own MI from every run day's cases: open breaks
+by cause and age with their gross and net NAV impact, the trend across run days
+(open, new, cleared, material, escalated and past SLA), the average business
+days to resolve by cause, the five largest open breaks and every SLA breach.
+Two buttons export the day's **exception report** (the engine's Excel workbook,
+MI sheet included) and **mi.csv** in the engine's tidy form for a BI tool; both
+are the files the command line writes for the same days, and every download is
+recorded in the audit log with the file's SHA-256. The same steps through the API:
 
 ```bash
 reconpilot generate --as-of 2026-11-09 --days 2 --breaks 4 --hard --out data
@@ -397,6 +407,10 @@ signer.get(f"/api/funds/{fund}/days/{day}/audit").json()["chain_ok"]   # the day
 analyst.get(f"/api/funds/{fund}/days/{day}/runs").json()["runs"]          # the day's runs, newest first
 analyst.get(f"/api/funds/{fund}/days/2026-11-10/intake").json()["open"]   # True once the day before is signed off
 analyst.put("/api/auth/me/preferences", json={"fund": fund}).json()     # the fund this user works
+
+analyst.get(f"/api/funds/{fund}/days/{day}/mi").json()["by_cause_age"]   # MI: open breaks by cause and age
+Path("report.xlsx").write_bytes(analyst.get(f"/api/funds/{fund}/days/{day}/exports/report.xlsx").content)
+Path("mi.csv").write_bytes(analyst.get(f"/api/funds/{fund}/days/{day}/exports/mi.csv").content)  # both audited
 ```
 
 Whoever signs off must not have decided any of the day's open cases, so
@@ -450,7 +464,9 @@ can act on none. On the second fund: the analyst reads every fund's settings,
 switches fund and finds the choice again in a new session; loads the first
 day's files in two goes, seeing per file what is missing; runs the day and sees
 it in the day's runs; and is told in plain words that the next day waits for
-the first day's sign-off, which the server confirms.
+the first day's sign-off, which the server confirms. Then a viewer opens MI,
+switches the trend's measure, downloads both exports and finds the downloads
+in the day's audit trail.
 
 ## Input files
 
@@ -500,12 +516,14 @@ src/reconpilot_web/
   runner.py      a day through the engine, persisted in one transaction
   cases.py       case queue, detail and decisions
   release.py     release status and four-eyes sign-off
+  overview.py    the morning overview
+  mi.py          MI across days and the audited Excel and mi.csv exports
   auditlog.py    the hash-chained audit log in PostgreSQL
   cli.py         reconpilot-web: dev, serve, worker, migrate, create-user, create-fund
 scripts/         the common-password list generator, the AI carried-case check and the browser-test server
 tests/           unit and end-to-end tests; AI tests use a fake client, no network
 tests/web/       the web layer against an embedded PostgreSQL, including CLI equivalence
-web/src/         the front end: shell and NAV strip, upload and run, overview, cases, sign-off
+web/src/         the front end: shell and NAV strip, upload and run, overview, cases, sign-off, MI
 web/e2e/         browser journeys (Playwright) with axe accessibility checks
 ```
 
