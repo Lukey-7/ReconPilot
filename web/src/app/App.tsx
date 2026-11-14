@@ -12,6 +12,7 @@ import { AuthProvider } from "../auth/AuthContext";
 import { RequireAuth } from "../auth/RequireAuth";
 import { SignInScreen } from "../auth/SignInScreen";
 import { KeyboardProvider } from "../keyboard/KeyboardProvider";
+import { AuditScreen } from "../screens/audit/AuditScreen";
 import { CasesScreen } from "../screens/cases/CasesScreen";
 import { FundsScreen } from "../screens/funds/FundsScreen";
 import { MiScreen } from "../screens/mi/MiScreen";
@@ -59,6 +60,7 @@ export function AppRoutes() {
         <Route path="/cases" element={<CasesScreen />} />
         <Route path="/signoff" element={<SignOffScreen />} />
         <Route path="/mi" element={<MiScreen />} />
+        <Route path="/audit" element={<AuditScreen />} />
         <Route path="/funds" element={<FundsScreen />} />
       </Route>
       <Route path="/" element={<Home />} />

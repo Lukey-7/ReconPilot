@@ -20,6 +20,7 @@ export const SCREENS = [
   { path: "/cases", label: "Cases", keys: "g q" },
   { path: "/signoff", label: "Sign-off", keys: "g s" },
   { path: "/mi", label: "MI", keys: "g m" },
+  { path: "/audit", label: "Audit log", keys: "g l" },
 ] as const;
 
 /** Every fund and the chosen fund's settings: reached from beside the fund selector, not the screen list. */

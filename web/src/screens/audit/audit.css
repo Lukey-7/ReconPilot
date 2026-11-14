@@ -1,0 +1,239 @@
+/* The audit log: a quiet filter row, a dense table, each record on demand. */
+
+.al-actions {
+  margin-inline-start: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px 8px;
+}
+.al-actions .state-line {
+  flex-basis: 100%;
+  margin: 0;
+}
+.al-status {
+  flex-basis: 100%;
+  text-align: end;
+  font-size: 12.5px;
+  min-height: 1em;
+}
+.al-status:empty {
+  display: none;
+}
+
+/* ===== The server's verdict on the chain ===== */
+.al-verdict {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--rule);
+  border-left-width: 3px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  font-size: 13px;
+  color: var(--ink);
+  max-width: 96ch;
+}
+.al-verdict > svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  margin-top: 3px;
+}
+.al-verdict.tone-met {
+  border-left-color: var(--pos);
+}
+.al-verdict.tone-met > svg {
+  color: var(--pos);
+}
+.al-verdict.tone-broken {
+  border-left-color: var(--neg);
+  background: var(--neg-wash);
+}
+.al-verdict.tone-broken > svg {
+  color: var(--neg);
+}
+.al-broken-entry {
+  margin-top: 8px;
+}
+.al-broken-entry summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+
+/* ===== Filters ===== */
+.al-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 14px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rule);
+}
+.al-field {
+  display: grid;
+  gap: 3px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.al-field input[type="search"] {
+  width: 15ch;
+}
+.al-check-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  color: var(--ink);
+}
+.al-check-field input:disabled + span {
+  color: var(--ink-3);
+}
+.al-clear {
+  align-self: flex-end;
+}
+
+/* ===== Entries ===== */
+.al-table {
+  font-size: 13px;
+}
+.al-table td,
+.al-table th {
+  vertical-align: top;
+}
+.al-seq {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+.al-seq:hover {
+  background: var(--accent-wash);
+}
+.al-chev {
+  width: 12px;
+  height: 12px;
+  transform: rotate(-90deg);
+  transition: transform var(--t-fast) var(--ease);
+}
+.al-chev.open {
+  transform: none;
+}
+.al-when {
+  white-space: nowrap;
+}
+.al-action {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.al-what {
+  max-width: 48ch;
+  overflow-wrap: anywhere;
+}
+.al-row.open th,
+.al-row.open td {
+  border-bottom-color: transparent;
+}
+.al-detail-row > td {
+  background: var(--panel-2);
+}
+
+/* ===== One entry's record ===== */
+.al-detail {
+  display: grid;
+  gap: 10px;
+  padding: 6px 4px 8px;
+}
+.al-checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 3px;
+}
+.al-check {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.al-check svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+.al-check.tone-met {
+  color: var(--pos);
+}
+.al-check.tone-broken {
+  color: var(--neg);
+}
+.al-check span {
+  color: var(--ink);
+}
+.al-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 6px 18px;
+  margin: 0;
+}
+.al-fields dt {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.al-fields dd {
+  margin: 0;
+}
+.al-fields .al-wide {
+  grid-column: 1 / -1;
+}
+.al-hash {
+  font: 12px/1.5 var(--font-fig);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.al-payload-h {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.al-payload {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--ink);
+  font: 12px/1.5 var(--font-fig);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ===== Pages ===== */
+.al-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+.al-page-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .al-chev {
+    transition: none;
+  }
+}
