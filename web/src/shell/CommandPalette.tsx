@@ -20,6 +20,7 @@ import { useCaseLatest, useCases } from "../api/queries";
 import type { CaseDetail, QueueCase } from "../api/types";
 import { Icon } from "../components/Icon";
 import { Kbd } from "../components/Kbd";
+import { useReturnFocus } from "../components/returnFocus";
 import { dayLabel, money, plural } from "../format";
 import { type CommandInfo, useCommands } from "../keyboard/KeyboardProvider";
 import { causeLabel, dayStatusLabel, statusLabel } from "../vocabulary";
@@ -314,6 +315,7 @@ function PaletteBody({ close, dismiss }: { close: (run: () => void) => void; dis
 
 export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const pending = useRef<(() => void) | null>(null);
+  const returnFocus = useReturnFocus(open);
   const close = useCallback(
     (run: () => void) => {
       pending.current = run;
@@ -334,6 +336,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
               event.preventDefault(); // the action decides where focus goes
               run();
             }
+            returnFocus(event); // closed without an action: focus goes back where it was
           }}
         >
           <Dialog.Title className="sr-only">Command palette</Dialog.Title>

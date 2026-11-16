@@ -43,6 +43,11 @@ export function SignInScreen() {
     if (error) errorRef.current?.focus();
   }, [error]);
 
+  // The browser tab names the page, as each screen's heading does once signed in.
+  useEffect(() => {
+    document.title = `${demo ? "Try the demo" : "Sign in"} · ReconPilot`;
+  }, [demo]);
+
   if (state.status === "signedIn" && !busy) return <Navigate to={safeDestination(nav.from)} replace />;
 
   if (demo) {

@@ -9,6 +9,7 @@ import { Outlet, useNavigate } from "react-router";
 
 import type { DemoMember } from "../api/types";
 import { useAuth, useUser } from "../auth/AuthContext";
+import { AnnouncerProvider } from "../components/Announcer";
 import { ErrorLine, Loading } from "../components/QueryState";
 import { DemoBanner } from "../demo/DemoBanner";
 import { useCommand, useShortcut } from "../keyboard/KeyboardProvider";
@@ -97,21 +98,23 @@ export function AppShell() {
   const user = useUser();
   return (
     <WorkspaceProvider>
-      <a className="skip-link" href="#main">
-        Skip to the screen
-      </a>
-      {user.demo && <DemoBanner />}
-      <div className="chrome">
-        <TopBar onShowHelp={() => setHelpOpen(true)} onOpenPalette={() => setPaletteOpen(true)} />
-        <NavStrip />
-      </div>
-      <main id="main" className="main" tabIndex={-1}>
-        <Body />
-      </main>
-      <ScreenShortcuts onShowHelp={() => setHelpOpen(true)} onOpenPalette={() => setPaletteOpen((open) => !open)} />
-      <ShellCommands />
-      <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
-      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+      <AnnouncerProvider>
+        <a className="skip-link" href="#main">
+          Skip to the screen
+        </a>
+        {user.demo && <DemoBanner />}
+        <div className="chrome">
+          <TopBar onShowHelp={() => setHelpOpen(true)} onOpenPalette={() => setPaletteOpen(true)} />
+          <NavStrip />
+        </div>
+        <main id="main" className="main" tabIndex={-1}>
+          <Body />
+        </main>
+        <ScreenShortcuts onShowHelp={() => setHelpOpen(true)} onOpenPalette={() => setPaletteOpen((open) => !open)} />
+        <ShellCommands />
+        <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
+        <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+      </AnnouncerProvider>
     </WorkspaceProvider>
   );
 }

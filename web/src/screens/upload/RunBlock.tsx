@@ -4,12 +4,13 @@
  * the day is refetched so the strip, the day list and every screen move on together.
  */
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Link } from "react-router";
 
 import { ApiError } from "../../api/client";
 import { FINISHED_JOB_STATUSES, invalidateDay, useJob, useStartRun } from "../../api/queries";
 import type { Day, FundSummary, Job, User } from "../../api/types";
+import { useAnnounce } from "../../components/Announcer";
 import { Icon } from "../../components/Icon";
 import { ErrorLine, Loading } from "../../components/QueryState";
 import { dayLabel, plural, timestamp } from "../../format";
@@ -85,6 +86,25 @@ function RunProgress({ jobId, fund, asOf }: { jobId: number; fund: string; asOf:
   );
 }
 
+/**
+ * Says the run's start and end aloud: the progress line is on screen while the job runs,
+ * but its end replaces it, so a screen-reader user who moved on would otherwise not hear
+ * that the cases are ready. A failed run says so in an alert of its own.
+ */
+function useRunAnnouncements(status: string, openCases: number | null) {
+  const announce = useAnnounce();
+  const previous = useRef(status);
+  useEffect(() => {
+    const before = previous.current;
+    previous.current = status;
+    if (before === status) return;
+    if (status === "running") announce("The run has started.");
+    else if (before === "running" && status === "ready") {
+      announce(`The run has finished${openCases != null ? `: ${plural(openCases, "open case")}` : ""}. The cases are ready.`);
+    }
+  }, [status, openCases, announce]);
+}
+
 function NextDayHint({ asOf, followingDay }: { asOf: string; followingDay: string }) {
   const { href } = useWorkspace();
   return (
@@ -112,6 +132,7 @@ export function RunBlock({
   const runningJob = status === "running" ? (run.data?.job_id ?? day.job?.id ?? null) : null;
   const openCases = typeof day.summary?.open_cases === "number" ? day.summary.open_cases : null;
   const runnable = canAct(user) && RUNNABLE.has(status);
+  useRunAnnouncements(status, openCases);
   useCommand(`${status === "validated" ? "Run" : "Run again"}: ${dayLabel(day.as_of)}`, () => run.mutate(), {
     group: "Upload",
     enabled: runnable && !run.isPending,

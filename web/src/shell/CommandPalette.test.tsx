@@ -114,6 +114,27 @@ describe("command palette", () => {
     expect(location()).toBe(BASE);
   });
 
+  it("gives focus back where it was when the palette or the shortcuts close without an action", async () => {
+    setup();
+    renderApp(BASE);
+    const heading = await screen.findByRole("heading", { level: 1, name: "Morning overview" });
+    const select = screen.getByLabelText("Fund");
+    select.focus();
+    const user = userEvent.setup();
+    await user.keyboard("{Control>}k{/Control}");
+    await screen.findByRole("dialog", { name: "Command palette" });
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(select).toHaveFocus();
+
+    heading.focus();
+    fireEvent.keyDown(heading, { key: "?" });
+    await screen.findByRole("dialog", { name: "Keyboard shortcuts" });
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(heading).toHaveFocus();
+  });
+
   it("jumps to a screen, keeping the fund and day", async () => {
     setup();
     const { user, dialog } = await openPalette();

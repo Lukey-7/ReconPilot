@@ -11,7 +11,7 @@
  * when the request arrives; a refusal (409 with reasons) is shown in the server's words.
  */
 import * as Dialog from "@radix-ui/react-dialog";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router";
 
 import { ApiError } from "../../api/client";
@@ -19,6 +19,7 @@ import { useSignOff } from "../../api/queries";
 import type { Day, FundSummary, Reason, ReleaseForMe, User } from "../../api/types";
 import { Icon } from "../../components/Icon";
 import { ReleaseBadge, releaseState } from "../../components/Labels";
+import { useReturnFocus } from "../../components/returnFocus";
 import { count, dayLabel, money, perShare, signedPercent, timestamp } from "../../format";
 import { useCommand } from "../../keyboard/KeyboardProvider";
 import { useWorkspace } from "../../shell/workspace";
@@ -80,6 +81,7 @@ function ConfirmDialog({
   openCases,
   busy,
   onConfirm,
+  keepFocus,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -89,13 +91,22 @@ function ConfirmDialog({
   openCases: number | null;
   busy: boolean;
   onConfirm: () => void;
+  /** True once signed off: the button that opened the dialog is gone, so focus goes to the result instead. */
+  keepFocus: boolean;
 }) {
   const nav = day?.nav ?? null;
+  const returnFocus = useReturnFocus(open);
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="scrim" />
-        <Dialog.Content className="dialog so-dialog">
+        <Dialog.Content
+          className="dialog so-dialog"
+          onCloseAutoFocus={(event) => {
+            if (keepFocus) event.preventDefault();
+            returnFocus(event); // back to the button that opened it
+          }}
+        >
           <div className="dialog-head">
             <Dialog.Title>Sign off the NAV?</Dialog.Title>
           </div>
@@ -200,10 +211,17 @@ export function SignOffBox({
   const [done, setDone] = useState(false);
   const signOff = useSignOff(fund.code, asOf);
   const describedBy = useId();
+  const resultRef = useRef<HTMLParagraphElement>(null);
 
   const signedOff = release.signed_off || day?.status === "signed_off";
   const state = releaseState(release, signedOff);
   const blocked = signedOff ? null : blockedMessage(release, user);
+
+  // Once signed off, the button that was focused has gone: put focus on the result, which is
+  // read out, rather than letting it fall to the top of the page.
+  useEffect(() => {
+    if (done && signedOff) resultRef.current?.focus();
+  }, [done, signedOff]);
 
   // The palette never signs off: it opens the same confirmation as the button.
   useCommand(
@@ -237,7 +255,7 @@ export function SignOffBox({
   if (signedOff) {
     body = (
       <>
-        <p className="so-msg" aria-live="polite">
+        <p className="so-msg" aria-live="polite" tabIndex={-1} ref={resultRef}>
           {done ? "Signed off. " : ""}
           The NAV was signed off by <strong>{day?.signed_off_by ?? "an approver"}</strong>
           {day?.signed_off_at ? `, ${timestamp(day.signed_off_at)}` : ""}. The day is locked: its files, cases and
@@ -313,6 +331,7 @@ export function SignOffBox({
           openCases={openCases}
           busy={signOff.isPending}
           onConfirm={confirm}
+          keepFocus={done}
         />
       </>
     );

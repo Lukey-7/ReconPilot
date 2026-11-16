@@ -1,6 +1,7 @@
 /**
  * A screen's heading. Focus moves to it when the screen opens (by link or shortcut), so a
- * screen reader announces where the person now is and Tab continues from the top.
+ * screen reader announces where the person now is and Tab continues from the top; the
+ * browser tab's title names the screen too.
  */
 import { type ReactNode, useEffect, useRef } from "react";
 
@@ -8,6 +9,7 @@ export function ScreenHeader({ title, children }: { title: string; children?: Re
   const ref = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     ref.current?.focus({ preventScroll: true });
+    document.title = `${title} · ReconPilot`;
   }, [title]);
   return (
     <div className="screen-head">

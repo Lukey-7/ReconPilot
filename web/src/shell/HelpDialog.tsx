@@ -3,6 +3,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 
 import { Icon } from "../components/Icon";
 import { keyNames } from "../components/Kbd";
+import { useReturnFocus } from "../components/returnFocus";
 import { useGroupedShortcuts } from "../keyboard/KeyboardProvider";
 
 /** "g o" as G then O; "mod+k" as Ctrl and K pressed together. */
@@ -24,11 +25,12 @@ function Keys({ keys }: { keys: string }) {
 
 export function HelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const groups = useGroupedShortcuts();
+  const returnFocus = useReturnFocus(open);
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="scrim" />
-        <Dialog.Content className="dialog help-dialog">
+        <Dialog.Content className="dialog help-dialog" onCloseAutoFocus={returnFocus}>
           <div className="dialog-head">
             <Dialog.Title>Keyboard shortcuts</Dialog.Title>
             <Dialog.Close className="btn ghost icon-btn" aria-label="Close">

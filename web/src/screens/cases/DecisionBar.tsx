@@ -12,6 +12,7 @@ import { type KeyboardEvent, useId, useRef, useState } from "react";
 import { ApiError } from "../../api/client";
 import { useDecision } from "../../api/queries";
 import type { CaseDetail, DecisionRequest, RoleName } from "../../api/types";
+import { useAnnounce } from "../../components/Announcer";
 import { Icon } from "../../components/Icon";
 import { Kbd } from "../../components/Kbd";
 import { StatusLabel } from "../../components/Labels";
@@ -89,6 +90,7 @@ export interface DecisionBarProps {
 export function DecisionBar({ detail, fund, asOf, role, signedOffBy, beforeShortcut }: DecisionBarProps) {
   const c = detail.case;
   const decision = useDecision(fund, asOf);
+  const announce = useAnnounce();
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const causeRef = useRef<HTMLSelectElement>(null);
   const [note, setNote] = useState("");
@@ -123,6 +125,9 @@ export function DecisionBar({ detail, fund, asOf, role, signedOffBy, beforeShort
               : "";
           const message = `${verb} ${updated.case_id}${as}. Recorded in the audit log.`;
           setOutcome({ kind: "done", message });
+          // The line above can move as the bar changes to its decided state, so the result is
+          // also read out from the shell's live region, worded for a listener.
+          announce(`Decision recorded: ${verb} ${updated.case_id}${as}.`);
           setNote("");
           setArmed(null);
         },
@@ -208,7 +213,7 @@ export function DecisionBar({ detail, fund, asOf, role, signedOffBy, beforeShort
   const decided = c.status !== "PENDING";
   const outcomeLine =
     outcome == null ? null : outcome.kind === "done" ? (
-      <p className="wb-outcome wb-outcome-done" role="status">
+      <p className="wb-outcome wb-outcome-done">
         <Icon name="check" />
         {outcome.message}
       </p>
