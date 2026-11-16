@@ -12,7 +12,8 @@
     "lint": "eslint . --max-warnings 0",
     "test": "vitest",
     "test:e2e": "npm run build && playwright test --workers=1 --project=chromium",
-    "test:e2e:demo": "npm run build && playwright test --config playwright.demo.config.ts --workers=1 --project=chromium"
+    "test:e2e:demo": "npm run build && playwright test --config playwright.demo.config.ts --workers=1 --project=chromium",
+    "screenshots": "npm run build && playwright test --config playwright.demo.config.ts --workers=1 --project=chromium screenshots"
   },
   "dependencies": {
     "@fontsource/red-hat-mono": "^5.2.0",
