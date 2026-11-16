@@ -160,6 +160,12 @@ function Workbench({ fund, currency, asOf }: { fund: string; currency: string; a
     if (at >= 0) lastIndex.current = at;
   }, [cursorId, order]);
 
+  // A case opened from elsewhere (the palette, a link, the address) brings the cursor with it,
+  // so a, r and c then decide the case in view rather than reopening the row the cursor was on.
+  useEffect(() => {
+    if (openId) setCursorId(openId);
+  }, [openId]);
+
   const group = "Cases";
   useShortcut("j", () => move(1), { description: "Next case in the queue", group });
   useShortcut("k", () => move(-1), { description: "Previous case in the queue", group });

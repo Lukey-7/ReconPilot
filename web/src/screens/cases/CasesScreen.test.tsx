@@ -529,6 +529,24 @@ describe("case workbench", () => {
     expect(screen.queryByText(/Press the key again/)).not.toBeInTheDocument();
   });
 
+  it("brings the cursor to a case opened from the palette, so a then decides that case", async () => {
+    const api = setup();
+    api.set("POST /api/funds/GEF1/cases/C2/decision", { body: detailOf({ ...C2, status: "APPROVED", version: 2 }) });
+    renderApp(BASE);
+    await openCase("C1");
+    const user = userEvent.setup();
+    await user.keyboard("{Control>}k{/Control}");
+    await screen.findByRole("dialog", { name: "Command palette" });
+    await user.keyboard("C2");
+    expect(await screen.findByRole("option", { name: /^C2/, selected: true })).toBeInTheDocument();
+    await user.keyboard("{Enter}");
+    await openCase("C2");
+    fireEvent.keyDown(document.body, { key: "a" });
+    expect(await screen.findByText("Approved C2. Recorded in the audit log.")).toBeInTheDocument();
+    expect(api.calls("POST /api/funds/GEF1/cases/C1/decision")).toHaveLength(0);
+    expect(screen.queryByText(/Press the key again/)).not.toBeInTheDocument();
+  });
+
   it("moves to the open case's note from the palette's Reject even when the cursor is elsewhere", async () => {
     setup();
     renderApp(`${BASE}&case=C1`);
