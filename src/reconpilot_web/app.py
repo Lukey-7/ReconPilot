@@ -10,6 +10,7 @@ from starlette.responses import Response
 from sqlalchemy.orm import sessionmaker
 
 from reconpilot_web import (
+    admin,
     auditviewer,
     auth,
     cases,
@@ -123,6 +124,7 @@ def create_app(settings: Settings, web_dist: Path | None = None) -> FastAPI:
     app.include_router(mi.router)
     app.include_router(auditviewer.router)
     app.include_router(demo.router)
+    app.include_router(admin.router)
     if web_dist is not None:
         mount_web(app, web_dist)
     return app
