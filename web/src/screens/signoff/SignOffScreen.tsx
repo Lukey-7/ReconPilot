@@ -16,6 +16,7 @@ import { useUser } from "../../auth/AuthContext";
 import { Empty, ErrorLine, Loading } from "../../components/QueryState";
 import { ScreenHeader } from "../../components/ScreenHeader";
 import { useWorkspace } from "../../shell/workspace";
+import { UnlockPanel } from "../admin/UnlockPanel";
 import { ScreenContext } from "../ScreenContext";
 import { AuditTrail } from "./AuditTrail";
 import { Conditions } from "./Conditions";
@@ -85,6 +86,7 @@ export function SignOffScreen() {
               openCases={openCases}
               user={user}
             />
+            <UnlockPanel fund={fund.code} asOf={asOf} />
           </div>
           <div className="so-area-audit">
             <AuditTrail fund={fund.code} asOf={asOf} />
