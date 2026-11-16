@@ -13,6 +13,7 @@ import { Icon } from "../components/Icon";
 import { Kbd } from "../components/Kbd";
 import { RoleSwitcher } from "../demo/RoleSwitcher";
 import { count, dayLabel } from "../format";
+import { useCommand } from "../keyboard/KeyboardProvider";
 import { ThemeToggle } from "../theme/ThemeProvider";
 import { dayStatusLabel, roleLabel } from "../vocabulary";
 import { useWorkspace } from "./workspace";
@@ -33,6 +34,9 @@ export function keysTitle(keys: string): string {
     .map((k) => k.toUpperCase())
     .join(" then ");
 }
+
+/** Users and funds administration: reached from the user menu and the palette, by administrators only. */
+export const ADMIN_SCREEN = { path: "/admin/users", label: "Administration" } as const;
 
 /** Every fund and the chosen fund's settings: reached from beside the fund selector, not the screen list. */
 export const FUNDS_SCREEN = { path: "/funds", label: "Funds", keys: "g f" } as const;
@@ -105,6 +109,11 @@ function UserMenu() {
   const user = useUser();
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const { href } = useWorkspace();
+  useCommand("Open administration", () => navigate(href(ADMIN_SCREEN.path)), {
+    enabled: user.is_admin,
+    keywords: "admin users funds settings ai calendar",
+  });
   return (
     // Not modal: a modal menu locks page scroll with an injected <style>, which the CSP refuses.
     <DropdownMenu.Root modal={false}>
@@ -121,6 +130,11 @@ function UserMenu() {
             {user.is_admin ? " and administrator" : ""}
           </DropdownMenu.Label>
           <DropdownMenu.Separator className="menu-sep" />
+          {user.is_admin && (
+            <DropdownMenu.Item className="menu-item" onSelect={() => navigate(href(ADMIN_SCREEN.path))}>
+              <Icon name="key" /> {ADMIN_SCREEN.label}
+            </DropdownMenu.Item>
+          )}
           <DropdownMenu.Item
             className="menu-item"
             onSelect={() => {

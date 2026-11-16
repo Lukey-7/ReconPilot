@@ -105,3 +105,7 @@
   color: var(--ink);
   font-size: 13px;
 }
+.fd-admin-link {
+  margin-inline-start: auto;
+  font-size: 13px;
+}

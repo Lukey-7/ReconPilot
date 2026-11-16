@@ -229,6 +229,22 @@ export const AUDIT_ACTIONS = {
   ACCOUNT_LOCKED: "Account locked",
   DEMO_FUND_CREATED: "Demo fund created",
   DEMO_FUND_EXPIRED: "Demo fund expired",
+  USER_RENAMED: "User renamed",
+  USER_ROLE_CHANGED: "Role changed",
+  USER_ADMIN_CHANGED: "Administrator rights changed",
+  USER_DEACTIVATED: "User deactivated",
+  USER_REACTIVATED: "User reactivated",
+  PASSWORD_RESET: "Password reset",
+  ACCOUNT_UNLOCKED: "Account unlocked",
+  FUND_SETTINGS_CHANGED: "Fund settings changed",
+  FUND_CALENDAR_CHANGED: "Business calendar changed",
+  AI_SWITCHED_ON: "AI switched on",
+  AI_SWITCHED_OFF: "AI switched off",
+  UNLOCK_REQUESTED: "Unlock requested",
+  DAY_UNLOCKED: "Day unlocked",
+  UNLOCK_DECLINED: "Unlock declined",
+  UNLOCK_WITHDRAWN: "Unlock withdrawn",
+  UNLOCK_EXPIRED: "Unlock expired",
 } as const;
 export type AuditAction = keyof typeof AUDIT_ACTIONS;
 

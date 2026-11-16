@@ -9,8 +9,11 @@
  */
 import "./funds.css";
 
+import { Link } from "react-router";
+
 import { useFund } from "../../api/queries";
 import type { FundDetail, FundSummary } from "../../api/types";
+import { useUser } from "../../auth/AuthContext";
 import { Icon } from "../../components/Icon";
 import { Empty, ErrorLine, Loading } from "../../components/QueryState";
 import { ScreenHeader } from "../../components/ScreenHeader";
@@ -103,6 +106,8 @@ function Setting({ name, value, note, own }: { name: string; value: string; note
 }
 
 function Settings({ fund }: { fund: FundDetail }) {
+  const user = useUser();
+  const { href } = useWorkspace();
   const s = fund.settings;
   const checks = fund.checks_in_force;
   const own = (key: string) => Object.prototype.hasOwnProperty.call(s.check_settings, key);
@@ -118,6 +123,11 @@ function Settings({ fund }: { fund: FundDetail }) {
         <span className="tag">
           <Icon name="lock" /> Read-only
         </span>
+        {user.is_admin && (
+          <Link className="fd-admin-link" to={href("/admin/funds")}>
+            Change settings
+          </Link>
+        )}
       </div>
       <p className="muted">
         The rules {fund.name}&rsquo;s days are run and released by. An administrator changes them; a change applies

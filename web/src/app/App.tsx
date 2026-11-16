@@ -12,6 +12,7 @@ import { AuthProvider } from "../auth/AuthContext";
 import { RequireAuth } from "../auth/RequireAuth";
 import { SignInScreen } from "../auth/SignInScreen";
 import { KeyboardProvider } from "../keyboard/KeyboardProvider";
+import { AdminScreen } from "../screens/admin/AdminScreen";
 import { AuditScreen } from "../screens/audit/AuditScreen";
 import { CasesScreen } from "../screens/cases/CasesScreen";
 import { FundsScreen } from "../screens/funds/FundsScreen";
@@ -38,6 +39,12 @@ export function AppProviders({ client, children }: { client: QueryClient; childr
   );
 }
 
+/** "/admin" opens its first tab, users, keeping any fund and day in the address. */
+function AdminHome() {
+  const { search } = useLocation();
+  return <Navigate to={`/admin/users${search}`} replace />;
+}
+
 /** "/" opens the overview, keeping any fund and day in the address. */
 function Home() {
   const { search } = useLocation();
@@ -62,6 +69,9 @@ export function AppRoutes() {
         <Route path="/mi" element={<MiScreen />} />
         <Route path="/audit" element={<AuditScreen />} />
         <Route path="/funds" element={<FundsScreen />} />
+        <Route path="/admin" element={<AdminHome />} />
+        <Route path="/admin/users" element={<AdminScreen tab="users" />} />
+        <Route path="/admin/funds" element={<AdminScreen tab="funds" />} />
       </Route>
       <Route path="/" element={<Home />} />
       <Route path="*" element={<NotFoundScreen />} />
