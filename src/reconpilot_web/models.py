@@ -43,6 +43,7 @@ DAY_STATUSES = ("uploaded", "validated", "running", "ready", "signed_off", "fail
 JOB_STATUSES = ("queued", "running", "done", "failed")
 DECISIONS = ("approve", "reject", "reclassify")
 OPEN_ITEM_SIDES = ("book", "custodian")
+UNLOCK_STATUSES = ("pending", "confirmed", "declined", "withdrawn", "expired")
 
 
 def _in(column: str, values: tuple[str, ...]) -> str:
@@ -165,6 +166,8 @@ class Fund(Base):
     demo_resume_hash: Mapped[str | None] = mapped_column(String(64), unique=True, index=True)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = _now()
+    # The AI provider this fund's runs use when its AI is switched on; ``None`` is the server's default.
+    ai_provider: Mapped[str | None] = mapped_column(String(32))
 
 
 class BusinessDay(Base):
@@ -416,3 +419,32 @@ class AICacheEntry(Base):
     prompt_version: Mapped[str] = mapped_column(String(32), nullable=False, server_default="")
     response: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = _now()
+
+
+# --------------------------------------------------------------------------- unlocking
+
+
+class UnlockRequest(Base):
+    """A request to unlock a signed-off day: asked by an administrator, confirmed by another approver."""
+
+    __tablename__ = "unlock_requests"
+    __table_args__ = (
+        CheckConstraint(_in("status", UNLOCK_STATUSES), name="unlock_requests_status"),
+        Index("unlock_requests_fund_status", "fund_id", "status"),
+        Index(
+            "unlock_requests_one_pending", "business_day_id", unique=True,
+            postgresql_where=text("status = 'pending'"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, Identity(), primary_key=True)
+    fund_id: Mapped[int] = mapped_column(ForeignKey("funds.id", ondelete="CASCADE"), nullable=False)
+    business_day_id: Mapped[int] = mapped_column(ForeignKey("business_days.id", ondelete="CASCADE"), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default="pending")
+    requested_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    requested_at: Mapped[datetime] = _now()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decision_note: Mapped[str] = mapped_column(Text, nullable=False, server_default="")

@@ -24,10 +24,13 @@ for the same security with the same suggested cause; any other decision is
 voided (``DECISION_VOIDED_BY_RERUN``), and a case from the earlier run that the
 new run no longer raises is withdrawn (``CASE_WITHDRAWN_BY_RERUN``).
 
-The AI provider comes from the environment, never the database: the first of
-``ANTHROPIC_API_KEY``, ``OPENAI_API_KEY`` and ``GOOGLE_API_KEY`` that is set, or
-``RP_AI_PROVIDER``; ``RP_AI_MODEL``, ``RP_AI_EFFORT`` and ``RP_AI_TIMEOUT`` override
-the engine's defaults. A demo visitor's fund never calls a provider, key or not: its
+Keys and endpoints come from the environment, never the database. The provider is
+the fund's own (``funds.ai_provider``, chosen by an administrator when switching AI on),
+else ``RP_AI_PROVIDER``, else the first of ``ANTHROPIC_API_KEY``, ``OPENAI_API_KEY`` and
+``GOOGLE_API_KEY`` that is set; ``openai_compatible`` is a private endpoint configured
+by ``OPENAI_COMPATIBLE_BASE_URL`` and its companions (``reconpilot.ai.COMPATIBLE_ENV``).
+``RP_AI_MODEL`` (for the server's default provider), ``RP_AI_EFFORT`` and
+``RP_AI_TIMEOUT`` override the engine's defaults. A demo visitor's fund never calls a provider, key or not: its
 AI answers come from the demo's pre-filled cache (``demo_ai_client``), and anything
 not cached falls back to the rules.
 """
@@ -79,12 +82,19 @@ class RunError(Exception):
 # --------------------------------------------------------------------------- inputs
 
 
-def ai_client():
-    """The AI client from the environment, or ``None`` when no provider key is set."""
+def ai_client(provider: str | None = None):
+    """The AI client for ``provider`` (a fund's choice) or the server's default, from the environment.
+
+    ``None`` when that provider has no key (or, for ``openai_compatible``, no base URL).
+    """
     timeout = os.environ.get("RP_AI_TIMEOUT", "").strip()
+    default = os.environ.get("RP_AI_PROVIDER", "").strip() or None
+    model = os.environ.get("RP_AI_MODEL", "").strip() or None
+    if provider is not None and provider != default:
+        model = None  # RP_AI_MODEL names a model of the default provider
     return make_client(
-        os.environ.get("RP_AI_PROVIDER", "").strip() or None,
-        os.environ.get("RP_AI_MODEL", "").strip() or None,
+        provider or default,
+        model,
         os.environ.get("RP_AI_EFFORT", "").strip() or "medium",
         float(timeout) if timeout else 120.0,
     )
@@ -381,7 +391,7 @@ def run_day_job(session: Session, payload: dict) -> dict:
 
     settings = fund_settings(fund)
     use_ai = bool(settings["ai_enabled"])
-    client = (demo_ai_client() if fund.is_demo else ai_client()) if use_ai else None
+    client = (demo_ai_client() if fund.is_demo else ai_client(fund.ai_provider)) if use_ai else None
     audit = DbAuditLog(session, fund_id=fund.id)
     cache_session = Session(bind=session.get_bind()) if client is not None else None
     try:

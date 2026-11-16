@@ -29,6 +29,7 @@ TABLES = {
     "audit_log",
     "jobs",
     "ai_cache",
+    "unlock_requests",
 }
 
 INSERT_AUDIT = (
