@@ -222,6 +222,13 @@
     grid-column: span 2;
   }
 }
+/* In a short window (a desk screen at 200% zoom, a laptop at 150%) the strip scrolls away
+   with the page rather than sticking, so it never covers the work or the focused control. */
+@media (max-height: 560px) {
+  .strip {
+    position: static;
+  }
+}
 
 /* ===== Release badge ===== */
 .release-badge {

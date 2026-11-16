@@ -1,6 +1,7 @@
 /**
  * A small trend: open cases at the end of each run day (oldest first, up to the day being
- * viewed), as thin bars with the day being viewed picked out. Each bar names its day and
+ * viewed), as thin bars with the day being viewed picked out (in the accent colour and by a
+ * mark beneath its bar, so never by colour alone). Each bar names its day and
  * figures on hover; the figures for every day sit behind "Show the figures", with the open
  * impact gross and, beneath it, net (never net alone), and each earlier day opens that day's
  * overview.
@@ -14,6 +15,7 @@ import { useWorkspace } from "../../shell/workspace";
 const HEIGHT = 56;
 const BAR = 14;
 const GAP = 6;
+const MARK = 5; // room under the base line for the mark beneath the day being viewed
 
 function barTitle(d: TrendDay): string {
   return `${dayLabel(d.as_of)}: ${plural(d.open_cases, "open case")}, ${count(d.new_cases)} new, ${count(d.cleared_cases)} cleared`;
@@ -25,9 +27,9 @@ function Bars({ trend, asOf }: { trend: TrendDay[]; asOf: string }) {
   return (
     <svg
       className="ov-trend-chart"
-      viewBox={`0 0 ${width} ${HEIGHT}`}
+      viewBox={`0 0 ${width} ${HEIGHT + MARK}`}
       width={width}
-      height={HEIGHT}
+      height={HEIGHT + MARK}
       role="img"
       aria-label={`Open cases per run day, ${dayShort(trend[0]?.as_of)} to ${dayShort(trend[trend.length - 1]?.as_of)}`}
     >
@@ -41,6 +43,7 @@ function Bars({ trend, asOf }: { trend: TrendDay[]; asOf: string }) {
             {/* A hit target the full height of the chart, wider than the mark. */}
             <rect className="ov-trend-hit" x={x - GAP / 2} y={0} width={BAR + GAP} height={HEIGHT} />
             {h > 0 && <rect x={x} y={HEIGHT - 1 - h} width={BAR} height={h} rx={2} />}
+            {d.as_of === asOf && <rect className="ov-trend-mark" x={x} y={HEIGHT + 2} width={BAR} height={2} />}
           </g>
         );
       })}

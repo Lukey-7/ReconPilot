@@ -124,6 +124,13 @@
   font-weight: 500;
   white-space: nowrap; /* a case id reads as one word */
 }
+/* A case id in a list is a target of its own: at least 24px tall (WCAG 2.5.8), however the
+   list wraps (at 200% zoom the ids stack). */
+li > .ov-case {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+}
 
 /* Tables scroll inside their block on narrow screens; visually hidden header text stays inside too. */
 .ov-block .table-wrap {
@@ -401,6 +408,9 @@
 }
 .ov-trend-bar.current rect:not(.ov-trend-hit) {
   fill: var(--accent);
+}
+.ov-trend-bar.current rect.ov-trend-mark {
+  fill: var(--ink-2);
 }
 .ov-trend-bar:hover rect:not(.ov-trend-hit) {
   fill: var(--bar-material);
