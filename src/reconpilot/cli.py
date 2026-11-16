@@ -30,7 +30,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from reconpilot.ai import DEFAULT_MODELS, ResponseCache, make_client
+from reconpilot.ai import COMPATIBLE_PROVIDER, DEFAULT_MODELS, ResponseCache, make_client
 from reconpilot.audit import AuditLog
 from reconpilot.evaluate import (
     comparison_markdown,
@@ -361,8 +361,9 @@ def _run_args(**overrides) -> argparse.Namespace:
 def _add_ai_args(p: argparse.ArgumentParser) -> None:
     g = p.add_argument_group("AI-assisted triage")
     g.add_argument("--ai", action="store_true", help="add an AI second opinion to every case")
-    g.add_argument("--ai-provider", choices=sorted(DEFAULT_MODELS),
-                   help="default: the first of anthropic, openai, google with a key set")
+    g.add_argument("--ai-provider", choices=[*sorted(DEFAULT_MODELS), COMPATIBLE_PROVIDER],
+                   help="default: the first of anthropic, openai, google with a key set; "
+                   "openai_compatible is a private endpoint set by OPENAI_COMPATIBLE_BASE_URL")
     g.add_argument("--ai-model", help="model name; default depends on the provider")
     g.add_argument("--ai-effort", default="medium", choices=["low", "medium", "high"],
                    help="reasoning effort, where the provider supports it")

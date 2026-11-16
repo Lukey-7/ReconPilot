@@ -29,6 +29,7 @@ import json
 import os
 import re
 import urllib.error
+import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -241,6 +242,94 @@ class GoogleClient:
         return text
 
 
+@dataclass
+class OpenAICompatibleClient:
+    """Any endpoint that speaks OpenAI's Chat Completions API, at a base URL of your choice.
+
+    For a private deployment: a bank's Azure OpenAI resource, or a model hosted in-house
+    (vLLM, Ollama, LM Studio and the like), so the evidence never leaves the firm's own
+    network. ``base_url`` is everything before ``/chat/completions`` (for Azure:
+    ``https://<resource>.openai.azure.com/openai/deployments/<deployment>``, with
+    ``api_version`` set and ``auth="api-key"``).
+    """
+
+    base_url: str
+    api_key: str = ""
+    model: str = "default"
+    effort: str = "medium"
+    timeout: float = 120.0
+    api_version: str = ""
+    auth: str = "bearer"  # "bearer" (Authorization: Bearer <key>) or "api-key" (Azure's api-key header)
+    provider: str = "openai_compatible"
+
+    def url(self) -> str:
+        url = self.base_url.rstrip("/") + "/chat/completions"
+        if self.api_version:
+            url += "?" + urllib.parse.urlencode({"api-version": self.api_version})
+        return url
+
+    def headers(self) -> dict:
+        if not self.api_key:
+            return {}
+        if self.auth == "api-key":
+            return {"api-key": self.api_key}
+        return {"Authorization": f"Bearer {self.api_key}"}
+
+    def complete(self, system: str, user: str) -> str:
+        data = _post_json(
+            self.url(),
+            self.headers(),
+            {
+                "model": self.model,
+                "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+                "response_format": {"type": "json_object"},
+            },
+            self.timeout,
+        )
+        try:
+            text = data["choices"][0]["message"].get("content") or ""
+        except (KeyError, IndexError, TypeError, AttributeError):
+            raise AIError(f"no choices in response: {json.dumps(data)[:300]}") from None
+        if not text:
+            raise AIError("empty response")
+        return text
+
+
+# The OpenAI-compatible endpoint is configured by these variables. It is used only when
+# asked for by name (``make_client("openai_compatible")``), never picked automatically.
+COMPATIBLE_PROVIDER = "openai_compatible"
+COMPATIBLE_ENV = {
+    "base_url": "OPENAI_COMPATIBLE_BASE_URL",
+    "api_key": "OPENAI_COMPATIBLE_API_KEY",
+    "model": "OPENAI_COMPATIBLE_MODEL",
+    "api_version": "OPENAI_COMPATIBLE_API_VERSION",
+    "auth": "OPENAI_COMPATIBLE_AUTH",
+}
+
+
+def make_compatible_client(
+    model: str | None = None, effort: str = "medium", timeout: float = 120.0
+) -> OpenAICompatibleClient | None:
+    """The OpenAI-compatible client from ``COMPATIBLE_ENV``, or None when no base URL is set."""
+    env = {name: os.environ.get(var, "").strip() for name, var in COMPATIBLE_ENV.items()}
+    if not env["base_url"]:
+        return None
+    if not env["base_url"].lower().startswith(("https://", "http://")):
+        raise ValueError(f"{COMPATIBLE_ENV['base_url']} must start with https:// or http://")
+    auth = (env["auth"] or "bearer").lower()
+    if auth not in ("bearer", "api-key"):
+        raise ValueError(f"{COMPATIBLE_ENV['auth']} must be 'bearer' or 'api-key'")
+    return OpenAICompatibleClient(
+        base_url=env["base_url"],
+        api_key=env["api_key"],
+        model=model or env["model"] or "default",
+        effort=effort,
+        timeout=timeout,
+        api_version=env["api_version"],
+        auth=auth,
+    )
+
+
 _CLIENTS = {"anthropic": AnthropicClient, "openai": OpenAIClient, "google": GoogleClient}
 
 
@@ -253,12 +342,17 @@ def make_client(
     """Build a client from environment keys. Returns None when no key is set.
 
     With no provider given, the first provider with a key wins, in the order
-    Anthropic, OpenAI, Google.
+    Anthropic, OpenAI, Google. ``"openai_compatible"`` builds the private-endpoint
+    client from ``COMPATIBLE_ENV`` (None when no base URL is set); it is never
+    chosen automatically.
     """
+    if provider == COMPATIBLE_PROVIDER:
+        return make_compatible_client(model, effort, timeout)
     order = [provider] if provider else list(KEY_ENV)
     for name in order:
         if name not in _CLIENTS:
-            raise ValueError(f"unknown provider {name!r}; choose from {', '.join(_CLIENTS)}")
+            choices = ", ".join([*_CLIENTS, COMPATIBLE_PROVIDER])
+            raise ValueError(f"unknown provider {name!r}; choose from {choices}")
         key = os.environ.get(KEY_ENV[name], "").strip()
         if key:
             return _CLIENTS[name](api_key=key, model=model or DEFAULT_MODELS[name], effort=effort, timeout=timeout)
