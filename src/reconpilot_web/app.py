@@ -23,6 +23,7 @@ from reconpilot_web import (
     overview,
     preferences,
     release,
+    unlock,
 )
 from reconpilot_web.aicache import load_demo_cache
 from reconpilot_web.config import Settings
@@ -125,6 +126,7 @@ def create_app(settings: Settings, web_dist: Path | None = None) -> FastAPI:
     app.include_router(auditviewer.router)
     app.include_router(demo.router)
     app.include_router(admin.router)
+    app.include_router(unlock.router)
     if web_dist is not None:
         mount_web(app, web_dist)
     return app
