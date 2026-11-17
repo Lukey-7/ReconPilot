@@ -56,6 +56,8 @@ USERS: tuple[tuple[str, str, str], ...] = (
     ("approver2", "approver", "Approver Two"),
     ("viewer1", "viewer", "Viewer One"),
 )
+# An administrator (an analyst by role), for the administration and unlocking journeys.
+ADMINS: tuple[tuple[str, str, str], ...] = (("admin1", "analyst", "Admin One"),)
 
 
 def write_days(folder: Path) -> list[Path]:
@@ -136,10 +138,12 @@ def serve(data_dir: Path, host: str, port: int) -> int:
             funds.create_fund(session, SECOND_FUND_CODE, SECOND_FUND_NAME, START_DATE)
             for username, role, display_name in USERS:
                 auth.create_user(session, username, password, role, display_name=display_name)
+            for username, role, display_name in ADMINS:
+                auth.create_user(session, username, password, role, is_admin=True, display_name=display_name)
     finally:
         engine.dispose()
     written = write_days(data_dir / "days")
-    print(f"e2e: funds {FUND_CODE} and {SECOND_FUND_CODE}, {len(USERS)} users, days in {written[0].parent}",
+    print(f"e2e: funds {FUND_CODE} and {SECOND_FUND_CODE}, {len(USERS) + len(ADMINS)} users, days in {written[0].parent}",
           flush=True)
 
     stop = threading.Event()
