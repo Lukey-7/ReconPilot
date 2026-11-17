@@ -12,6 +12,13 @@ a language model reads the evidence for each one and suggests the cause, explain
 it with the actual figures, lists the investigation steps and drafts the query
 to the custodian. An analyst approves every suggestion before anything happens.
 
+It comes two ways: a command line that runs a fund's day into a folder and an
+Excel report, and a [web application](#web-application) for a team, with
+roles, a PostgreSQL system of record, four-eyes sign-off and a verifiable audit
+log, which anyone can [try as a demo](#the-public-demo).
+
+![The morning overview in the dark theme: the NAV strip with the release status, every break accounted for, and the open breaks ranked by NAV impact](docs/images/overview.png)
+
 ## Who does what
 
 | Step | Done by | Why |
@@ -64,7 +71,8 @@ the raw response and whether the fallback was used. Responses are cached on disk
 by prompt hash, so evaluation runs are reproducible and cost nothing to repeat.
 
 Anthropic, OpenAI and Google models are supported through their HTTP APIs, with
-no SDK dependencies.
+no SDK dependencies, and so is a private OpenAI-compatible endpoint (such as a
+firm's own Azure OpenAI deployment) set by `OPENAI_COMPATIBLE_BASE_URL`.
 
 ## Results
 
@@ -261,7 +269,7 @@ AI options, accepted by `run`, `demo` and `evaluate`:
 | Option | Default |
 |---|---|
 | `--ai` | off: without it, or without a key, everything runs on the rules alone |
-| `--ai-provider` | first of `anthropic`, `openai`, `google` with a key set |
+| `--ai-provider` | first of `anthropic`, `openai`, `google` with a key set; `openai_compatible` for a private endpoint |
 | `--ai-model` | `claude-sonnet-5-5`, `gpt-6-luna` or `gemini-3.8-flash` |
 | `--ai-effort` | `medium` (reasoning effort, where the provider supports it) |
 | `--ai-cache` | `.reconpilot_cache/ai` |
@@ -302,43 +310,51 @@ reconpilot evaluate --hard --ai
 reconpilot evaluate --multi-day --hard
 ```
 
-## Running the web application
+## Web application
 
-The web application wraps the same engine for a team: built-in accounts and
-roles, a PostgreSQL system of record, a job queue for runs, a server-side
-release status, four-eyes sign-off and the hash-chained audit log in the
-database, with a browser front end in `web/` (React, TypeScript and Vite) on
-top of the API. Nothing needs Docker: development uses an embedded PostgreSQL
-started from Python, and Node 20.19 or later for the front end.
+The web application puts the same engine in front of a fund-servicing team.
+Each morning the team loads the day's files, sees every break ranked by its
+effect on the NAV, reads the rules' and the AI's view of each one side by side,
+decides them with maker-checker controls, and releases the NAV under the
+four-eyes rule, with management information and a hash-chained audit log that
+anyone can verify. It is a FastAPI service over PostgreSQL, with a worker for
+the day's runs and a React front end in `web/`. Every figure on every screen
+comes from the API; the browser holds no figure of its own, and every control
+it shows is enforced again on the server.
 
-```bash
-pip install -e ".[dev,web]"
-(cd web && npm install)
-reconpilot-web dev
-```
+![The case workbench: the queue ranked by NAV impact, a case where the AI disagrees with the rules, both suggestions side by side, the evidence, and the decision bar](docs/images/case-workbench.png)
 
-`reconpilot-web dev` starts the embedded database in `.rp_data/` (or uses
-`RP_DATABASE_URL`), brings the schema up to date and, the first time, creates
-the fund `DEMO1` (first business day 2026-11-09) and four users, printing
-their one-time passwords once:
+<table>
+<tr>
+<td width="50%"><img src="docs/images/upload.png" alt="Upload and run: the day's files checked one by one, the run, and the day's runs"></td>
+<td width="50%"><img src="docs/images/sign-off.png" alt="Sign-off: the release conditions in plain words, the sign-off held back by the four-eyes rule, who decided what, and the day's audit trail"></td>
+</tr>
+<tr>
+<td><img src="docs/images/mi.png" alt="Management information: open breaks by cause and age with gross and net impact, and the trend across run days"></td>
+<td><img src="docs/images/audit-log.png" alt="The audit log: filters, entries newest first, and the chain verified on the server"></td>
+</tr>
+<tr>
+<td><img src="docs/images/command-palette.png" alt="The command palette over the workbench, finding a case by its security's name"></td>
+<td><img src="docs/images/overview-light.png" alt="The morning overview in the light theme"></td>
+</tr>
+</table>
 
-```
-Created fund DEMO1 starting 2026-11-09 and these users. The passwords are shown once only; note them now:
-  analyst1   analyst          ********************
-  approver1  approver  admin  ********************
-  approver2  approver         ********************
-  viewer1    viewer           ********************
-API on http://127.0.0.1:8000/api with a worker running in-process.
-Front end on http://localhost:5173 (Vite, proxying /api to the API).
-Ctrl+C stops everything.
-```
+The screenshots are of the running application on the public demo's synthetic
+data (`npm run screenshots` in `web/` takes them again; see
+[Tests](#tests-for-the-web-application)).
 
-It then serves the API on `127.0.0.1:8000` with a worker running in the same
-process and, once `npm install` has been run in `web/`, Vite's dev server on
-`localhost:5173`, which proxies `/api` to the API; open that address and sign
-in. Ctrl+C stops the API, the worker, Vite and the database. For a single
-server, build the front end once (`npm run build` in `web/`) and
-`reconpilot-web serve` serves it from `web/dist` beside the API.
+### A day in the browser
+
+| Screen | Keys | What it is for |
+|---|---|---|
+| **Overview** | `g o` | The release status and its reasons, every break accounted for (found, held in a case, decided, pending), open breaks by NAV impact (gross and net, never net alone), ageing, escalations, what cleared, the trend |
+| **Upload and run** | `g u` | The day's files, checked file by file and row by row before anything runs; the run's progress; the day's runs |
+| **Cases** | `g q` | The workbench: queue, case and evidence panes, the AI's second opinion, the drafted custodian query, the decision bar |
+| **Sign-off** | `g s` | The release conditions in plain words, who decided what, the day's audit trail, and the sign-off itself |
+| **MI** | `g m` | Breaks by cause and age, time to resolve, the trend, the largest open breaks, SLA breaches; Excel and `mi.csv` exports |
+| **Audit log** | `g l` | The whole hash-chained log, filtered, verified on the server and exported |
+| **Funds** | `g f` | Every fund and its latest day, and the chosen fund's settings |
+| **Administration** | | Administrators only, from the user menu or the palette: users, and each fund's settings, calendar and AI switch |
 
 A whole day is worked in the browser, in the same order as on the command line:
 **Upload** the day's files (several at once; each expected file shown as held
@@ -390,161 +406,46 @@ the day it was first seen to the day it cleared, each earlier day opening the
 case as it stood then. The overview's trend gives each run day's open impact,
 gross above net, and opens any earlier day.
 
-The desk works from the keyboard. **Ctrl+K** (Cmd+K on a Mac), or **Search**
-in the top bar, opens the command palette: type part of a case id, a security,
-a screen, a fund or a day and press Enter to go there, or run an action. The
-palette offers only what the person may do now, by role and by the day's
-state (the server still checks every request): approve, reject or reclassify
-the open case on the workbench, run the day on upload, verify the chain or
-export on the audit log, the two exports on MI, the theme, sign out, and in
-the demo "Work as" another user. "Sign off the NAV…" opens the same
-confirmation as the button and never signs off by itself. The shortcuts:
+### Running it
 
-| Keys | Does |
-|---|---|
-| `g` then `o` `u` `q` `s` `m` `l` (`f`) | Overview, upload, cases, sign-off, MI, audit log (funds) |
-| `j` `k`, arrows, `Enter` | Move through the queue and open the case |
-| `a` `r` `c` | Approve, reject (to the note), reclassify (to the cause) |
-| `/` | Search the queue; on the audit log, filter by case |
-| `Ctrl+K` | The command palette, even from inside a field |
-| `?` | Every shortcut on the screen in view |
-| `Esc` | Leave a field, or close the dialog |
+Nothing needs Docker: development uses an embedded PostgreSQL started from
+Python, and Node 20.19 or later for the front end.
 
-Shortcuts never fire while you type. Motion only explains a change: figures
-ease to a new value, the release status pulses once when it moves from
-blocked to ready, rows arrive in the queue, panes swap in under 200 ms; all
-of it is off when the system asks for reduced motion. The same steps through
-the API:
+```bash
+pip install -e ".[dev,web]"
+(cd web && npm install)
+reconpilot-web dev
+```
+
+`reconpilot-web dev` starts the embedded database in `.rp_data/` (or uses
+`RP_DATABASE_URL`), brings the schema up to date and, the first time, creates
+the fund `DEMO1` (first business day 2026-11-09) and four users, printing
+their one-time passwords once:
+
+```
+Created fund DEMO1 starting 2026-11-09 and these users. The passwords are shown once only; note them now:
+  analyst1   analyst          ********************
+  approver1  approver  admin  ********************
+  approver2  approver         ********************
+  viewer1    viewer           ********************
+API on http://127.0.0.1:8000/api with a worker running in-process.
+Front end on http://localhost:5173 (Vite, proxying /api to the API).
+Ctrl+C stops everything.
+```
+
+It then serves the API on `127.0.0.1:8000` with a worker running in the same
+process and, once `npm install` has been run in `web/`, Vite's dev server on
+`localhost:5173`, which proxies `/api` to the API; open that address and sign
+in. Ctrl+C stops the API, the worker, Vite and the database. For a single
+server, build the front end once (`npm run build` in `web/`) and
+`reconpilot-web serve` serves it from `web/dist` beside the API.
+
+To work a day, generate some files and upload one day's folder on **Upload**
+as `analyst1`:
 
 ```bash
 reconpilot generate --as-of 2026-11-09 --days 2 --breaks 4 --hard --out data
 ```
-
-```python
-from pathlib import Path
-
-import httpx
-
-def sign_in(user, password):
-    c = httpx.Client(base_url="http://127.0.0.1:8000")
-    c.post("/api/auth/login", json={"username": user, "password": password}).raise_for_status()
-    c.headers["X-CSRF-Token"] = c.cookies["rp_csrf"]  # required on every POST
-    return c
-
-analyst = sign_in("analyst1", "<password printed by dev>")
-approver = sign_in("approver1", "<password printed by dev>")
-signer = sign_in("approver2", "<password printed by dev>")      # four-eyes: decides nothing
-fund, day = "DEMO1", "2026-11-09"
-
-files = [("files", (p.name, p.read_bytes(), "text/csv")) for p in Path(f"data/{day}").glob("*.csv")]
-analyst.post(f"/api/funds/{fund}/days/{day}/files", files=files).json()   # {'status': 'validated', ...}
-job = analyst.post(f"/api/funds/{fund}/days/{day}/run").json()["job_id"]   # 202: queued for the worker
-analyst.get(f"/api/jobs/{job}").json()["status"]                         # 'done' a moment later
-
-for case in analyst.get(f"/api/funds/{fund}/days/{day}/cases").json():   # largest NAV impact first
-    who = approver if case["escalated"] else analyst                     # escalated cases need an approver
-    who.post(f"/api/funds/{fund}/cases/{case['case_id']}/decision",
-             json={"decision": "approve", "version": case["version"]})
-
-signer.get(f"/api/funds/{fund}/days/{day}/release?for_user=me").json()  # ready, reasons, signable_by_me
-signer.post(f"/api/funds/{fund}/days/{day}/signoff").json()["status"]  # 'signed_off'
-signer.get(f"/api/funds/{fund}/days/{day}/audit").json()["chain_ok"]   # the day's audit trail: True
-
-analyst.get(f"/api/funds/{fund}/days/{day}/runs").json()["runs"]          # the day's runs, newest first
-analyst.get(f"/api/funds/{fund}/days/2026-11-10/intake").json()["open"]   # True once the day before is signed off
-analyst.put("/api/auth/me/preferences", json={"fund": fund}).json()     # the fund this user works
-
-analyst.get(f"/api/funds/{fund}/days/{day}/mi").json()["by_cause_age"]   # MI: open breaks by cause and age
-Path("report.xlsx").write_bytes(analyst.get(f"/api/funds/{fund}/days/{day}/exports/report.xlsx").content)
-Path("mi.csv").write_bytes(analyst.get(f"/api/funds/{fund}/days/{day}/exports/mi.csv").content)  # both audited
-
-analyst.get("/api/audit", params={"fund": fund, "action": "CASE_APPROVED"}).json()["entries"]  # newest first
-analyst.get("/api/audit/entries/1").json()["hash_ok"]                    # one entry, checked on the server
-analyst.post("/api/audit/verify").json()                                # {'chain_ok': True, 'broken_at': None, ...}
-Path("audit.csv").write_bytes(analyst.get("/api/audit/export.csv", params={"fund": fund}).content)  # audited
-case_id = analyst.get(f"/api/funds/{fund}/days/{day}/cases").json()[0]["case_id"]
-analyst.get(f"/api/funds/{fund}/cases/{case_id}").json()["days"]         # the case at the end of each day
-```
-
-Whoever signs off must not have decided any of the day's open cases, so
-`approver2` signs off the cases `approver1` decided. A viewer can read
-everything and decide nothing.
-
-| Command | What it does |
-|---|---|
-| `reconpilot-web dev [--host --port --start-date]` | Everything for development, as above |
-| `reconpilot-web serve [--host --port]` | The API, and the built front end from `web/dist` when it exists |
-| `reconpilot-web serve --mode demo` | The public demo in one process (see below) |
-| `reconpilot-web demo-cleanup` | Delete demo funds unused for 24 hours (the demo server also does this itself) |
-| `reconpilot-web worker [--once]` | Run queued day runs (retried up to three times) |
-| `reconpilot-web migrate` | Create or upgrade the schema and record the instance mode |
-| `reconpilot-web create-user --username --role [--admin]` | Add an account (password from `RP_NEW_PASSWORD` or a prompt) |
-| `reconpilot-web create-fund --code --name --start-date` | Add a fund with the engine's default settings |
-
-| Variable | Meaning |
-|---|---|
-| `RP_DATABASE_URL` | PostgreSQL 15+ for the API and worker; empty means the embedded database |
-| `RP_MIGRATION_DATABASE_URL` | The schema owner for `migrate` (default `RP_DATABASE_URL`) |
-| `RP_MODE` | `real` (default) or `demo`; a database is written for one mode only |
-| `RP_DATA_DIR` | Local state: the embedded database and AI cache (default `.rp_data`) |
-| `RP_COOKIE_SECURE` | `1` behind HTTPS |
-| `OPENAI_API_KEY` and the others | The AI provider, used only for funds with AI switched on (never by the demo) |
-| `RP_DEMO_MAX_FUNDS` | Demo: the most visitor funds alive at once (default 200) |
-| `RP_DEMO_CREATIONS_PER_HOUR` | Demo: how many demos one address may start in an hour (default 5) |
-
-`reconpilot-web migrate` creates an application role, `rp_app`, that can only
-insert into and read the audit log; production runs the API and worker as that
-role and migrations as the owner.
-
-Front-end checks, run in `web/`: `npm run typecheck`, `npm run lint` and
-`npm test -- --run` (Vitest with Testing Library).
-
-Browser tests (Playwright, Chromium) walk a whole business day against the real
-API, worker and built front end on a throwaway embedded database, and run axe
-on every screen in the dark and light themes:
-
-```bash
-cd web
-npx playwright install chromium   # once
-npm run test:e2e                   # builds web/dist, then runs the journeys
-```
-
-`scripts/e2e_server.py` starts that server: it wipes its data folder (the
-system temp folder's `reconpilot-e2e` unless `RP_E2E_DATA_DIR` says otherwise),
-creates the funds `E2E1` and `E2E2` and the four users with a test password, generates two
-business days and serves on port 8765. The journeys: the analyst uploads and
-runs the first day, opens a case from the overview and works the queue; an
-approver decides the escalated case and is then kept from signing off by the
-four-eyes rule; a second approver signs off; the analyst uploads and runs the
-next day, with the open cases carried into it; a viewer reads every screen and
-can act on none. On the second fund: the analyst reads every fund's settings,
-switches fund and finds the choice again in a new session; loads the first
-day's files in two goes, seeing per file what is missing; runs the day and sees
-it in the day's runs; and is told in plain words that the next day waits for
-the first day's sign-off, which the server confirms. Then a viewer opens MI,
-switches the trend's measure, downloads both exports and finds the downloads
-in the day's audit trail. Last, on the first fund's two days, the analyst
-follows a carried case across days and opens it as it stood the day before,
-and a viewer filters the audit log to one case's approval, opens the entry with
-the server's check of it, verifies the chain and exports the log as CSV.
-
-## Input files
-
-| File | Contents |
-|---|---|
-| `book_trades.csv` | Fund's trades: id, dates, security, side, quantity, price, currency, FX rate, fees, settlement cash |
-| `book_positions.csv` | Fund's positions with price and price date |
-| `custodian_holdings.csv` | Custodian's holdings statement |
-| `custodian_cash.csv` | Custodian's cash statement in base currency, with narrative, including lines value-dated in the future |
-| `securities.csv`, `fx_rates.csv`, `fund.csv` | Static data with asset class, rates, opening cash, prior NAV, shares in issue, fee rate and expense budget |
-| `book_cash.csv` | Non-trade cash booked by the fund: income, FX adjustments (optional) |
-| `accruals.csv` | Fee and expense accruals booked for the day (optional) |
-| `prior_prices.csv` | Book prices on the prior business day, for the price move check (optional) |
-| `planted_breaks.json` | Answer key (generated data only), with start and fix dates in multi-day data |
-
-A run folder holds `run.json`, the hash-chained `audit.jsonl`, today's
-`cases.json`, one `exceptions_<date>.xlsx` per day, `mi.csv`, and
-`state/<date>/` with each day's case ledger and carried open items.
 
 ### The public demo
 
@@ -619,6 +520,402 @@ cd web
 npm run test:e2e:demo
 ```
 
+### Roles and controls
+
+| Role | May |
+|---|---|
+| **Analyst** | Load and run days; approve, reject (with a note) or reclassify cases (on an escalated case the decision is recorded, but only an approver's clears the escalation) |
+| **Approver** | Everything an analyst may, plus clear escalated cases with their decision and sign off the NAV |
+| **Viewer** | Read every screen, MI and the audit log, and export; decide nothing |
+| **Admin** (a flag on any account) | Administer users and funds, switch a fund's AI on or off, and ask to unlock a signed-off day |
+
+Every control is enforced on the server, from the session's role, whatever the
+browser shows; the front end only hides what the server would refuse.
+
+- **Viewers cannot act.** Every change is refused for a viewer.
+- **A rejection needs a note**, so the reason is on record.
+- **Escalated cases need an approver.** Material cases, and cases open longer
+  than the fund's escalation days, are escalated by the engine; only an
+  approver's decision counts for them. The escalation records the NAV impact at
+  the time, labelled "at escalation" so it is not mistaken for today's.
+- **Material cases block release** until they are approved or reclassified.
+- **Four-eyes sign-off.** Whoever signs off must not have decided any of the
+  day's open cases, so `approver2` signs off the cases `approver1` decided.
+- **One release status.** *Ready* or *Blocked*, with every reason (pending
+  decisions, material cases awaiting approval, escalated cases awaiting an
+  approver, failed checks, four-eyes), is computed on the server and shown
+  identically in the NAV strip, on the overview and at sign-off. The engine's
+  own check, which covers material cases only, appears under its accurate name,
+  "Material cases approved".
+- **Sign-off locks the day**: its files, cases and decisions can no longer
+  change.
+- **Days go in order.** A day must be signed off before the next business day
+  can be uploaded or run, so only the latest day can be run again. A re-run
+  keeps the decisions that still apply and voids the rest with an audit entry;
+  a case the new run no longer raises is withdrawn, also audited.
+- **Stale decisions are refused.** Each decision carries the case's version;
+  if someone else decided first, the second decision is refused, never written
+  over theirs, and the workbench names who decided and shows their decision,
+  keeping the note in case it is still wanted.
+- **Unlocking takes two people** (see [Administration](#administration)).
+- **Everything is in the audit log**: sign-ins and failures, lockouts, uploads,
+  validation, runs, decisions, sign-offs, exports, every AI call, and user and
+  fund changes.
+
+### The AI and its guardrails
+
+The web application uses the engine's AI exactly as the command line does: a
+second opinion beside the rules for each case, with an explanation that quotes
+the evidence, investigation steps and a drafted custodian query (with a copy
+button) in the workbench. The four guardrails in
+[AI-assisted triage](#ai-assisted-triage) apply unchanged: a strict schema,
+no figure that is not in the evidence, disagreement surfaced as *"AI disagrees:
+needs review"* rather than resolved, and a fallback to the rules on any error,
+timeout, invalid answer or missing key. The AI never decides anything: every
+decision is a person's, through the decision bar. Every call is in the audit
+log with the model, a hash of the prompt and the raw response, and responses
+are cached in PostgreSQL.
+
+- **Off until an administrator switches it on.** In real mode the AI is off
+  for every fund. Switching it on is per fund, names the provider, and needs
+  the administrator to acknowledge where the evidence goes (to a public
+  provider it leaves the firm; to a private endpoint it goes to the host
+  shown). `AI_SWITCHED_ON` and `AI_SWITCHED_OFF` record who, the provider and
+  the model.
+- **Providers.** Anthropic, OpenAI and Google through their HTTP APIs, or a
+  **private endpoint**: any OpenAI-compatible service, such as a bank's own
+  Azure OpenAI deployment, set by `OPENAI_COMPATIBLE_BASE_URL` with
+  `OPENAI_COMPATIBLE_API_KEY`, `OPENAI_COMPATIBLE_MODEL`,
+  `OPENAI_COMPATIBLE_API_VERSION` and `OPENAI_COMPATIBLE_AUTH` (`bearer` or
+  `api-key`). A provider can be chosen only when the server has its key (or,
+  for the private endpoint, its address).
+- **Keys stay on the server.** They are read from the environment, never
+  stored in the database, never sent to the browser and never shown.
+- **The demo never calls a provider**: its answers come from a pre-filled
+  cache (see [The public demo](#the-public-demo)).
+
+### Administration
+
+**Administration** (in the user menu, or "Open administration" in the
+palette) is for accounts with the admin flag, checked on the server for every
+request, and has two tabs, **Users** and **Funds**. Demo users and demo funds
+are never administered, as they come and go with their visitor.
+
+- **Users.** Create an account (the password policy applies: at least 12
+  characters, not a common password), change its display name, role or admin
+  flag, deactivate and reactivate it, reset its password, and unlock an
+  account locked after five failed sign-ins. A change of role, admin flag or
+  password, and a deactivation, end every live session of that user at once.
+  No administrator can change their own account, so the last administrator can
+  never lock everyone out. Each change is one audit entry.
+- **Funds.** Create a fund, rename it, and change its settings (materiality,
+  escalation and SLA days, the release checks) and its non-business dates.
+  Settings apply from the fund's next run; a non-business date can be added or
+  removed only after the fund's latest loaded day, so the calendar a day was
+  worked on never changes under it. Audited setting by setting.
+- **The AI switch** per fund, on the Funds tab, with its warning about where
+  the evidence goes, as above.
+- **Unlocking a signed-off day**, on the sign-off screen of that day.
+  Occasionally a released day has to be
+  reopened (a price corrected after release, a decision recorded against the
+  wrong cause). An **administrator asks**, with a reason; a **different
+  approver confirms** within 24 hours, or declines with a note; the requester
+  may withdraw, and an unconfirmed request expires. Only the fund's latest
+  signed-off day can be unlocked, and only before the next business day has
+  run (after that, its cases were carried from this sign-off); both are checked
+  when asking and again when confirming. Confirming returns the day to *ready*:
+  the sign-off is cleared, the cases can be decided again, and the day must be
+  signed off again, under four-eyes, before the next day can be loaded or run.
+  The files, the run and every decision stand, and the audit log keeps the
+  original sign-off beside `UNLOCK_REQUESTED` and `DAY_UNLOCKED`.
+
+### Keyboard and accessibility
+
+The desk works from the keyboard. **Ctrl+K** (Cmd+K on a Mac), or **Search**
+in the top bar, opens the command palette: type part of a case id, a security,
+a screen, a fund or a day and press Enter to go there, or run an action. The
+palette offers only what the person may do now, by role and by the day's
+state (the server still checks every request): approve, reject or reclassify
+the open case on the workbench, run the day on upload, verify the chain or
+export on the audit log, the two exports on MI, the theme, sign out, and in
+the demo "Work as" another user. "Sign off the NAV…" opens the same
+confirmation as the button and never signs off by itself. The shortcuts:
+
+| Keys | Does |
+|---|---|
+| `g` then `o` `u` `q` `s` `m` `l` (`f`) | Overview, upload, cases, sign-off, MI, audit log (funds) |
+| `j` `k`, arrows, `Enter` | Move through the queue and open the case |
+| `a` `r` `c` | Approve, reject (to the note), reclassify (to the cause) |
+| `/` | Search the queue; on the audit log, filter by case |
+| `Ctrl+K` | The command palette, even from inside a field |
+| `?` | Every shortcut on the screen in view |
+| `Esc` | Leave a field, or close the dialog |
+
+Shortcuts never fire while you type. Motion only explains a change: figures
+ease to a new value, the release status pulses once when it moves from
+blocked to ready, rows arrive in the queue, panes swap in under 200 ms; all
+of it is off when the system asks for reduced motion.
+
+The application aims at WCAG 2.2 AA in both themes, and the browser tests hold
+it to that:
+
+- **Checked on every screen.** axe runs on every screen and state the journeys
+  reach (sign-in, each screen with and without data, the dialogs, the palette,
+  the demo), in the dark and the light theme, and fails on any serious or
+  critical violation.
+- **Keyboard only.** One journey works a whole business day without the
+  mouse: sign in, load and run the day, approve, reject with a note and
+  reclassify, decide the escalated cases as an approver, sign off through the
+  confirmation dialog as a second approver, and load and run the next day.
+- **Focus goes where the person is.** Moving to a screen puts focus on its
+  title and names it in the browser tab; dialogs take focus, hold it, and give
+  it back on Esc; after signing off, focus moves to the result, as the button
+  that was pressed has gone; a failed sign-in puts focus on the reason.
+- **Results are read out.** A run starting and finishing, and each decision
+  recorded, are announced through one polite live region that is always in
+  the page; failures are alerts.
+- **Status never by colour alone.** Every status, check and flag pairs an icon
+  with a word, and the day being viewed in a trend chart is picked out by a
+  mark beneath its bar (on the overview) or its figures in bold (on MI) as
+  well as by colour. Flags are labels, not tiny buttons.
+- **200% zoom.** Every screen works in a 720 by 450 window (a 1440 by 900
+  screen at 200%): nothing runs off the side, wide tables scroll inside their
+  own frame, the NAV strip stops sticking in so short a window so it never
+  covers the work, and axe still passes.
+- Semantic tables with captions, labelled controls, a skip link, and a light
+  theme (from the system's setting or the theme button) beside the dark
+  default.
+
+### Architecture
+
+```
+browser ──► front end (Vite in development; built files served by the API in production)
+               │ /api  (session cookie, CSRF token on every change)
+               ▼
+            api (FastAPI) ──────────────┐
+               │ enqueue                 │ read/write
+               ▼                         ▼
+            worker ─────────────────► PostgreSQL
+               │ calls
+               ▼
+            reconpilot engine ── AI provider (server-side key, or a private endpoint)
+```
+
+- **The engine stays the core.** `src/reconpilot/` is a library the web layer
+  calls; it never imports the web layer. The API stores the day's files with
+  their SHA-256, builds the engine's `DayData`, calls `pipeline.run_day` with
+  the fund's settings, and persists the results in one transaction. A test
+  runs the same multi-day files through the command line and through the web
+  pipeline and requires identical cases, figures and audit actions.
+- **PostgreSQL is the system of record**: funds and their calendars, business
+  days, the original input files, cases (current state as columns, the
+  engine's full case as JSONB), each case as it stood at the end of every day,
+  breaks and carried items, decisions, the audit log, jobs and the AI cache,
+  under Alembic migrations. Development uses an embedded PostgreSQL started
+  from Python (`pgserver`); production uses any PostgreSQL 15 or later.
+- **Runs are jobs.** A small job table and a worker that claims jobs with
+  `FOR UPDATE SKIP LOCKED`, so two workers never take the same one; failures
+  are retried with back-off and recorded. The front end polls the job for
+  progress.
+- **The audit log is append-only by permission.** The engine's own record
+  format and SHA-256 chain, written through a database implementation of its
+  `append`, so the engine's review and AI code write to it unchanged. Appends
+  are serialised so the chain cannot fork; the application's database role
+  (`rp_app`) can only insert into and read it, and a trigger rejects UPDATE,
+  DELETE and TRUNCATE.
+- **Security.** argon2id passwords with a common-password check; an account
+  locks for 15 minutes after five failed sign-ins; session ids stored only as
+  hashes, in httpOnly, SameSite=Lax cookies (Secure behind HTTPS) with a
+  30-minute idle and 12-hour absolute timeout; a CSRF token on every change;
+  authorisation on every route, with tests per role; a strict
+  Content-Security-Policy and security headers; uploads limited to 5 MB and
+  200,000 rows a file and parsed defensively; SQL only with bound parameters;
+  secrets only from the environment.
+- **Demo and real data never meet.** A database records its mode (`real` or
+  `demo`) when first migrated, and an instance refuses to start against one of
+  the other mode.
+- **Front end.** React and TypeScript on Vite, TanStack Query for the API and
+  TanStack Table for the tables, Radix UI primitives for the dialogs, menus and
+  popovers, and CSS custom properties for the Night desk palette: deep slate,
+  a blue accent, and one amber signal colour for whatever needs someone.
+
+### The API
+
+Everything the screens do goes through the API, so the same day can be worked
+from a script. With the files generated as above:
+
+```python
+from pathlib import Path
+
+import httpx
+
+def sign_in(user, password):
+    c = httpx.Client(base_url="http://127.0.0.1:8000")
+    c.post("/api/auth/login", json={"username": user, "password": password}).raise_for_status()
+    c.headers["X-CSRF-Token"] = c.cookies["rp_csrf"]  # required on every POST
+    return c
+
+analyst = sign_in("analyst1", "<password printed by dev>")
+approver = sign_in("approver1", "<password printed by dev>")
+signer = sign_in("approver2", "<password printed by dev>")      # four-eyes: decides nothing
+fund, day = "DEMO1", "2026-11-09"
+
+files = [("files", (p.name, p.read_bytes(), "text/csv")) for p in Path(f"data/{day}").glob("*.csv")]
+analyst.post(f"/api/funds/{fund}/days/{day}/files", files=files).json()   # {'status': 'validated', ...}
+job = analyst.post(f"/api/funds/{fund}/days/{day}/run").json()["job_id"]   # 202: queued for the worker
+analyst.get(f"/api/jobs/{job}").json()["status"]                         # 'done' a moment later
+
+for case in analyst.get(f"/api/funds/{fund}/days/{day}/cases").json():   # largest NAV impact first
+    who = approver if case["escalated"] else analyst                     # escalated cases need an approver
+    who.post(f"/api/funds/{fund}/cases/{case['case_id']}/decision",
+             json={"decision": "approve", "version": case["version"]})
+
+signer.get(f"/api/funds/{fund}/days/{day}/release?for_user=me").json()  # ready, reasons, signable_by_me
+signer.post(f"/api/funds/{fund}/days/{day}/signoff").json()["status"]  # 'signed_off'
+signer.get(f"/api/funds/{fund}/days/{day}/audit").json()["chain_ok"]   # the day's audit trail: True
+
+analyst.get(f"/api/funds/{fund}/days/{day}/runs").json()["runs"]          # the day's runs, newest first
+analyst.get(f"/api/funds/{fund}/days/2026-11-10/intake").json()["open"]   # True once the day before is signed off
+analyst.put("/api/auth/me/preferences", json={"fund": fund}).json()     # the fund this user works
+
+analyst.get(f"/api/funds/{fund}/days/{day}/mi").json()["by_cause_age"]   # MI: open breaks by cause and age
+Path("report.xlsx").write_bytes(analyst.get(f"/api/funds/{fund}/days/{day}/exports/report.xlsx").content)
+Path("mi.csv").write_bytes(analyst.get(f"/api/funds/{fund}/days/{day}/exports/mi.csv").content)  # both audited
+
+analyst.get("/api/audit", params={"fund": fund, "action": "CASE_APPROVED"}).json()["entries"]  # newest first
+analyst.get("/api/audit/entries/1").json()["hash_ok"]                    # one entry, checked on the server
+analyst.post("/api/audit/verify").json()                                # {'chain_ok': True, 'broken_at': None, ...}
+Path("audit.csv").write_bytes(analyst.get("/api/audit/export.csv", params={"fund": fund}).content)  # audited
+case_id = analyst.get(f"/api/funds/{fund}/days/{day}/cases").json()[0]["case_id"]
+analyst.get(f"/api/funds/{fund}/cases/{case_id}").json()["days"]         # the case at the end of each day
+```
+
+Whoever signs off must not have decided any of the day's open cases, so
+`approver2` signs off the cases `approver1` decided. A viewer can read
+everything and decide nothing.
+
+Administration and unlocking have their own routes, all checked on the server
+(the admin flag for `/api/admin`, the roles above for unlocking):
+
+| Route | Does |
+|---|---|
+| `GET`, `POST /api/admin/users`; `PATCH /api/admin/users/{username}` | List and create users; change name, role or admin flag, deactivate or reactivate |
+| `POST /api/admin/users/{username}/password`, `.../unlock` | Reset a password; unlock a locked account |
+| `POST /api/admin/funds`; `GET`, `PATCH /api/admin/funds/{code}` | Create a fund; read and change its name, settings and calendar |
+| `GET /api/admin/ai/providers`; `PUT /api/admin/funds/{code}/ai` | Which providers the server can use; switch a fund's AI on (with a provider and the acknowledgement) or off |
+| `GET`, `POST /api/funds/{code}/days/{as_of}/unlock` | A day's unlock requests; ask to unlock it, with a reason (administrator) |
+| `POST .../unlock/{id}/confirm`, `.../decline` | Confirm (a different approver); decline (an approver, with a note) or withdraw (the requester) |
+
+### Commands and settings
+
+| Command | What it does |
+|---|---|
+| `reconpilot-web dev [--host --port --start-date]` | Everything for development, as above |
+| `reconpilot-web serve [--host --port]` | The API, and the built front end from `web/dist` when it exists |
+| `reconpilot-web serve --mode demo` | The public demo in one process (see below) |
+| `reconpilot-web demo-cleanup` | Delete demo funds unused for 24 hours (the demo server also does this itself) |
+| `reconpilot-web worker [--once]` | Run queued day runs (retried up to three times) |
+| `reconpilot-web migrate` | Create or upgrade the schema and record the instance mode |
+| `reconpilot-web create-user --username --role [--admin]` | Add an account (password from `RP_NEW_PASSWORD` or a prompt) |
+| `reconpilot-web create-fund --code --name --start-date` | Add a fund with the engine's default settings |
+
+| Variable | Meaning |
+|---|---|
+| `RP_DATABASE_URL` | PostgreSQL 15+ for the API and worker; empty means the embedded database |
+| `RP_MIGRATION_DATABASE_URL` | The schema owner for `migrate` (default `RP_DATABASE_URL`) |
+| `RP_MODE` | `real` (default) or `demo`; a database is written for one mode only |
+| `RP_DATA_DIR` | Local state: the embedded database and AI cache (default `.rp_data`) |
+| `RP_COOKIE_SECURE` | `1` behind HTTPS |
+| `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY` | Public AI providers' keys, used only for funds with AI switched on (never by the demo) |
+| `RP_AI_PROVIDER` | The server's default provider (else the first with a key set) |
+| `RP_AI_MODEL`, `RP_AI_EFFORT`, `RP_AI_TIMEOUT` | The default provider's model, the reasoning effort (default `medium`) and the timeout in seconds (default 120) |
+| `OPENAI_COMPATIBLE_BASE_URL` and its companions | A private OpenAI-compatible endpoint: `_API_KEY`, `_MODEL`, `_API_VERSION`, `_AUTH` (`bearer` or `api-key`) |
+| `RP_DEMO_MAX_FUNDS` | Demo: the most visitor funds alive at once (default 200) |
+| `RP_DEMO_CREATIONS_PER_HOUR` | Demo: how many demos one address may start in an hour (default 5) |
+
+`reconpilot-web migrate` creates an application role, `rp_app`, that can only
+insert into and read the audit log; production runs the API and worker as that
+role and migrations as the owner.
+
+
+### Tests for the web application
+
+The web layer's tests run with the engine's (`pytest`), against an embedded
+PostgreSQL the tests start themselves: roles on every route, fund access,
+sign-off order, four-eyes, material blocking, release status, locking, stale
+decisions, the append-only audit log, chain verification, validation, demo
+isolation, administration and unlocking, and the equivalence with the command
+line.
+
+Front-end checks, run in `web/`: `npm run typecheck`, `npm run lint` and
+`npm test -- --run` (Vitest with Testing Library).
+
+Browser tests (Playwright, Chromium) walk whole business days against the real
+API, worker and built front end on a throwaway embedded database, and run axe
+on every screen in the dark and light themes:
+
+```bash
+cd web
+npx playwright install chromium   # once
+npm run test:e2e                   # builds web/dist, then runs the journeys
+```
+
+`scripts/e2e_server.py` starts that server: it wipes its data folder (the
+system temp folder's `reconpilot-e2e` unless `RP_E2E_DATA_DIR` says otherwise),
+creates the funds `E2E1` and `E2E2` and the four users with a test password, generates two
+business days and serves on port 8765. The journeys: first, sign-in (and a
+failed attempt), a page that does not exist and the shortcuts dialog pass axe,
+and focus follows the person from screen to screen and in and out of the
+dialog. Then the analyst uploads and
+runs the first day, opens a case from the overview and works the queue; an
+approver decides the escalated case and is then kept from signing off by the
+four-eyes rule; a second approver signs off; the analyst uploads and runs the
+next day, with the open cases carried into it; a viewer reads every screen and
+can act on none. On the second fund: the analyst reads every fund's settings,
+switches fund and finds the choice again in a new session; loads the first
+day's files in two goes, seeing per file what is missing; runs the day and sees
+it in the day's runs; and is told in plain words that the next day waits for
+the first day's sign-off, which the server confirms. Then a viewer opens MI,
+switches the trend's measure, downloads both exports and finds the downloads
+in the day's audit trail. On the first fund's two days, the analyst
+follows a carried case across days and opens it as it stood the day before,
+and a viewer filters the audit log to one case's approval, opens the entry with
+the server's check of it, verifies the chain and exports the log as CSV. The
+second fund's day is then worked from the keyboard alone, with no mouse click
+anywhere: an analyst loads and runs it, hearing the run finish, and approves,
+rejects with a note and reclassifies; an approver decides the escalated cases;
+a second approver signs off through the confirmation dialog (focus held inside
+it, given back on Esc, then moved to the result); and the next day is loaded
+and run. The palette journey jumps to a case and between screens. Last, every
+screen is opened at 200% zoom and checked for sideways scrolling, room for the
+work under the sticky bars, and axe in both themes.
+
+The screenshots in this README are taken from the running demo by a journey of
+their own, which is skipped unless asked for:
+
+```bash
+cd web
+npm run screenshots                # builds web/dist, starts a demo server, writes docs/images/*.png
+```
+
+## Input files
+
+| File | Contents |
+|---|---|
+| `book_trades.csv` | Fund's trades: id, dates, security, side, quantity, price, currency, FX rate, fees, settlement cash |
+| `book_positions.csv` | Fund's positions with price and price date |
+| `custodian_holdings.csv` | Custodian's holdings statement |
+| `custodian_cash.csv` | Custodian's cash statement in base currency, with narrative, including lines value-dated in the future |
+| `securities.csv`, `fx_rates.csv`, `fund.csv` | Static data with asset class, rates, opening cash, prior NAV, shares in issue, fee rate and expense budget |
+| `book_cash.csv` | Non-trade cash booked by the fund: income, FX adjustments (optional) |
+| `accruals.csv` | Fee and expense accruals booked for the day (optional) |
+| `prior_prices.csv` | Book prices on the prior business day, for the price move check (optional) |
+| `planted_breaks.json` | Answer key (generated data only), with start and fix dates in multi-day data |
+
+A run folder holds `run.json`, the hash-chained `audit.jsonl`, today's
+`cases.json`, one `exceptions_<date>.xlsx` per day, `mi.csv`, and
+`state/<date>/` with each day's case ledger and carried open items.
+
 ## Project layout
 
 ```
@@ -654,6 +951,8 @@ src/reconpilot_web/
   auditviewer.py the audit log viewer: filters, pages, chain check and CSV export
   auditlog.py    the hash-chained audit log in PostgreSQL
   aicache.py     the AI response cache in PostgreSQL, and the demo's cache-only client
+  admin.py       administration: users, funds and each fund's AI switch
+  unlock.py      unlocking a signed-off day: an administrator asks, another approver confirms
   demo.py        demo mode: visitor funds from the generator, one-click users, next day, expiry
   demo_ai_cache.json  the demo's AI responses, built by scripts/build_demo_ai_cache.py
   cli.py         reconpilot-web: dev, serve, worker, migrate, create-user, create-fund, demo-cleanup
@@ -661,16 +960,21 @@ scripts/         the common-password list generator, the AI carried-case check, 
                  builder and the browser-test server
 tests/           unit and end-to-end tests; AI tests use a fake client, no network
 tests/web/       the web layer against an embedded PostgreSQL, including CLI equivalence
-web/src/         the front end: shell and NAV strip, upload and run, overview, cases, sign-off, MI, audit log
-web/e2e/         browser journeys (Playwright) with axe accessibility checks; e2e/demo/ the demo's
+web/src/         the front end: shell and NAV strip, command palette, upload and run, overview, cases,
+                 sign-off, MI, audit log, funds, admin
+web/e2e/         browser journeys (Playwright): every screen with axe in both themes, a keyboard-only day,
+                 200% zoom; e2e/demo/ the demo's journey and the README's screenshots
+docs/            the evaluation, the design and plans, the mockups, and the screenshots in docs/images/
 ```
 
 Run the tests with `pytest`. No API key is needed.
 
 ## Limitations and next steps
 
-- One fund, one base currency (USD). Bonds are priced per unit, with no
-  accrued interest, and there are no multi-currency cash accounts.
+- One base currency (USD), and on the command line one fund per run folder
+  (the web application works several funds side by side). Bonds are priced
+  per unit, with no accrued interest, and there are no multi-currency cash
+  accounts.
 - Cases are tracked across days by security, so two unrelated breaks on the
   same security share one case, and payments with no security identifier are
   pooled into a single case.
@@ -695,9 +999,37 @@ Run the tests with `pytest`. No API key is needed.
 - With `--ai`, open cases are re-assessed every day, and a carried case whose
   evidence changes costs a new call (598 calls over the 20-day evaluation).
 
-Planned: AI extraction of corporate-action notices checked against the
-custodian, per-currency cash accounts, and measuring analyst time per case
-with and without the AI's write-up.
+The web application is a working system, not a deployable product for a
+regulated firm:
+
+- **Built-in accounts only.** There is no single sign-on; `users` keeps a
+  nullable `external_subject` so it can be added without reworking roles.
+- **No hosting kit.** `reconpilot-web serve` is one process serving the API,
+  the built front end and a worker; HTTPS, backups, monitoring and the
+  database's own security are left to whoever hosts it.
+- **Not a regulated-grade deployment.** No high availability, point-in-time
+  recovery or log shipping. The audit chain shows any edited, deleted or
+  reordered entry, and the application's own database role cannot change it,
+  but the database's owner could drop the trigger and rewrite the whole chain
+  consistently; anchoring the latest hash outside the database would close
+  that.
+- **Files, not feeds.** The day's statements are uploaded as CSV files; there
+  are no live custodian feeds (SWIFT MT535 and MT950, ISO 20022 camt.053).
+- **Lockout, not rate limits.** Sign-in is protected by locking an account
+  after five failures; only starting a demo is rate-limited per address, so
+  sign-in, runs and exports have no per-address limit yet.
+- **A desk tool.** It is laid out for a desk screen (and works at 200% zoom on
+  one), not for a phone.
+- **The demo's AI is a cache** built from one seed; a question it does not
+  hold falls back to the rules, and a private endpoint has not been measured
+  against the evaluation.
+
+Future work: single sign-on; a production hosting kit with HTTPS and backups;
+regulated-grade deployment (high availability, point-in-time recovery, log
+shipping, an external anchor for the audit chain); live custodian feeds; AI
+extraction of corporate-action notices checked against the custodian;
+per-currency cash accounts; and measuring analyst time per case with and
+without the AI's write-up.
 
 ## Licence
 
