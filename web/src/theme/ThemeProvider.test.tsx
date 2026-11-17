@@ -24,19 +24,20 @@ function renderTheme() {
 }
 
 describe("theme", () => {
-  it("is dark by default and follows the system", () => {
+  it("is dark by default", () => {
     renderTheme();
-    expect(screen.getByText("dark / system")).toBeInTheDocument();
+    expect(screen.getByText("dark / dark")).toBeInTheDocument();
     expect(document.documentElement).not.toHaveAttribute("data-theme");
   });
 
-  it("follows a system that prefers light", () => {
+  it("stays dark when the system prefers light", () => {
     mediaMatches.add("(prefers-color-scheme: light)");
     renderTheme();
-    expect(screen.getByText("light / system")).toBeInTheDocument();
+    expect(screen.getByText("dark / dark")).toBeInTheDocument();
+    expect(document.documentElement).not.toHaveAttribute("data-theme");
   });
 
-  it("toggles to light, remembers it, and goes back to following the system", async () => {
+  it("toggles to light, remembers it, and back to dark", async () => {
     renderTheme();
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "Switch to the light theme" }));
@@ -45,7 +46,7 @@ describe("theme", () => {
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("light");
 
     await user.click(screen.getByRole("button", { name: "Switch to the dark theme" }));
-    expect(screen.getByText("dark / system")).toBeInTheDocument(); // dark is what the system prefers
+    expect(screen.getByText("dark / dark")).toBeInTheDocument();
     expect(document.documentElement).not.toHaveAttribute("data-theme");
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
   });

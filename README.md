@@ -685,8 +685,8 @@ it to that:
   own frame, the NAV strip stops sticking in so short a window so it never
   covers the work, and axe still passes.
 - Semantic tables with captions, labelled controls, a skip link, and a light
-  theme (from the system's setting or the theme button) beside the dark
-  default.
+  theme (chosen with the theme button, and remembered) beside the dark
+  default, which holds whatever the system prefers.
 
 ### Architecture
 

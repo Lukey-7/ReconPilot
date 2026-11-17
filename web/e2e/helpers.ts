@@ -76,8 +76,12 @@ async function settled(page: Page): Promise<void> {
  * the light one, and fail on any serious or critical violation.
  */
 export async function expectAccessible(page: Page, screen: string): Promise<void> {
+  // Dark is the default whatever the system prefers; light is the theme button's choice
+  // (data-theme="light" on <html>), so the light pass sets that and the end puts it back.
+  const chosen = await page.locator("html").getAttribute("data-theme");
+  await page.emulateMedia({ reducedMotion: "reduce" });
   for (const colorScheme of ["dark", "light"] as const) {
-    await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
+    await showTheme(page, colorScheme);
     await expect(page.locator("html")).toHaveCSS("color-scheme", colorScheme);
     await settled(page);
     const results = await new AxeBuilder({ page })
@@ -92,5 +96,13 @@ export async function expectAccessible(page: Page, screen: string): Promise<void
     }));
     expect(summary, `${screen} (${colorScheme} theme) has serious accessibility violations`).toEqual([]);
   }
-  await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
+  await showTheme(page, chosen === "light" ? "light" : "dark");
+}
+
+/** Show the page in a theme as the theme button would: light by data-theme, dark by default. */
+export async function showTheme(page: Page, theme: "dark" | "light"): Promise<void> {
+  await page.evaluate((t) => {
+    if (t === "light") document.documentElement.setAttribute("data-theme", "light");
+    else document.documentElement.removeAttribute("data-theme");
+  }, theme);
 }

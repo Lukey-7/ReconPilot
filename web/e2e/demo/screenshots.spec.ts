@@ -62,10 +62,11 @@ test("the README's screenshots", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /Every break accounted for/ })).toBeVisible();
   await shoot(page, "overview");
 
-  await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
+  // Dark is the default whatever the system prefers; light is the theme button's choice.
+  await page.evaluate(() => document.documentElement.setAttribute("data-theme", "light"));
   await expect(page.locator("html")).toHaveCSS("color-scheme", "light");
   await shoot(page, "overview-light");
-  await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
+  await page.evaluate(() => document.documentElement.removeAttribute("data-theme"));
   await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
 
   await page.getByRole("link", { name: /^Upload/ }).click();

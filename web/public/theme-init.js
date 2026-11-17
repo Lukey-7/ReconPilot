@@ -1,11 +1,10 @@
-// Applies the theme the user chose (light or dark) before React starts, so the page
-// never flashes the other theme. With no saved choice the page follows the system.
-// Keep the storage key in step with src/theme/ThemeProvider.tsx.
+// Applies the light theme before React starts when the user chose it, so the page never
+// flashes dark first. With no saved choice the page is dark (Night desk), whatever the
+// system prefers. Keep the storage key in step with src/theme/ThemeProvider.tsx.
 (function () {
   try {
-    const saved = window.localStorage.getItem("rp-theme");
-    if (saved === "light" || saved === "dark") document.documentElement.setAttribute("data-theme", saved);
+    if (window.localStorage.getItem("rp-theme") === "light") document.documentElement.setAttribute("data-theme", "light");
   } catch {
-    /* storage blocked: follow the system */
+    /* storage blocked: stay dark */
   }
 })();

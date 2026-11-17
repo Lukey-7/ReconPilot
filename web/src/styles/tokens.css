@@ -5,9 +5,9 @@
  * orange-amber (--signal) as the one colour that means "needs you". Green and red are
  * restrained and always come with an icon or a word, never colour alone.
  *
- * The dark palette is the default. The light palette applies when the system prefers
- * light and the user has not chosen dark, or when the user chose light
- * (data-theme on <html>, set by theme/ThemeProvider.tsx and public/theme-init.js).
+ * The dark palette is the default, whatever the system prefers. The light palette, kept
+ * for accessibility, applies only when the user chose it with the theme button
+ * (data-theme="light" on <html>, set by theme/ThemeProvider.tsx and public/theme-init.js).
  */
 :root {
   color-scheme: dark;
@@ -47,37 +47,6 @@
 
   --radius: 3px;
   --gutter: 16px;
-}
-
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    color-scheme: light;
-    --bg: #e6ebf1;
-    --panel: #f6f8fa;
-    --panel-2: #edf1f5;
-    --raise: #ffffff;
-    --rule: #cbd4de;
-    --rule-strong: #a9b7c6;
-    --field: #728296;
-    --ink: #15202c;
-    --ink-2: #435163;
-    --ink-3: #566477;
-    --accent: #1d5cc0;
-    --accent-wash: rgba(29, 92, 192, 0.1);
-    --focus: #1d5cc0;
-    --signal: #8a5700;
-    --signal-fill: #f2b54b;
-    --signal-ink: #1c1405;
-    --signal-wash: rgba(242, 181, 75, 0.2);
-    --pos: #1e6e43;
-    --pos-wash: rgba(30, 110, 67, 0.08);
-    --neg: #ae3127;
-    --neg-wash: rgba(174, 49, 39, 0.07);
-    --bar: #7489a0;
-    --bar-material: #2e3e52;
-    --scrim: rgba(21, 32, 44, 0.45);
-    --shadow: 0 10px 30px rgba(21, 32, 44, 0.18);
-  }
 }
 
 :root[data-theme="light"] {
