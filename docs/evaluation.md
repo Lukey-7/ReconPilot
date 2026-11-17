@@ -103,6 +103,28 @@ All 126 AI answers (119 live calls, 7 from the cache) passed the guardrails.
 The AI is now at least as accurate on carried cases as on new ones, and all 11
 disagreements with the rules are flagged for an analyst.
 
+## The web application
+
+The web application runs the same engine, with the same prompts and
+guardrails, so these figures hold for it too. A test runs the same multi-day
+files through the command line and through the web application's pipeline and
+requires identical cases, figures and audit actions, and the browser tests
+check that every figure on screen is the API's.
+
+Two things differ only in where the answers come from:
+
+- **The public demo never calls a provider.** Its answers come from a cache
+  built with gpt-6-luna (medium effort, prompt version `2026-11-14.1`) through
+  the web application's own code for the demo's fixed sequence (seed 62, hard
+  data, four new breaks a day, ten business days from 9 November 2026): 102
+  answers, every one the demo asks for. A question not in the cache falls back
+  to the rules, as with any failed call.
+- **A private OpenAI-compatible endpoint** (for example a firm's own Azure
+  OpenAI deployment) goes through the same guardrails, but it has not been
+  measured here: its accuracy depends on the model behind it, and should be
+  measured with `reconpilot evaluate --ai --ai-provider openai_compatible`
+  before a fund's AI is switched on.
+
 ## Multi-day lifecycle (rules only)
 
 ## Standard and hard data, 20 consecutive business days
