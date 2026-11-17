@@ -339,13 +339,18 @@ describe("Administration: funds", () => {
 
   it("adds a fund and starts working it", async () => {
     const created = adminFund({ code: "INC3", name: "Income Fund III" });
+    let funds = [fundA];
     const api = mockApi({
       ...routes(),
-      "POST /api/admin/funds": { status: 201, body: created },
+      // The new fund is listed only once it exists, as on the server.
+      "GET /api/funds": () => ({ body: funds }),
+      "POST /api/admin/funds": () => {
+        funds = [fundA, { ...fundA, code: "INC3", name: "Income Fund III" }];
+        return { status: 201, body: created };
+      },
       "GET /api/admin/funds/INC3": { body: created },
       "GET /api/funds/INC3/days": { body: { fund: "INC3", start_date: "2026-11-16", latest_day: null, next_day: "2026-11-16", days: [] } },
     });
-    api.set("GET /api/funds", { body: [fundA, { ...fundA, code: "INC3", name: "Income Fund III" }] });
     renderApp("/admin/funds?fund=GEF1&day=2026-11-10");
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Add a fund" }));
@@ -355,6 +360,8 @@ describe("Administration: funds", () => {
     await user.type(within(dialog).getByLabelText("First business day"), "2026-11-16");
     await user.click(within(dialog).getByRole("button", { name: "Add fund" }));
     await waitFor(() => expect(location()).toContain("fund=INC3"));
+    expect(await screen.findByRole("region", { name: /Settings for INC3/ })).toBeInTheDocument();
+    expect(location()).toContain("fund=INC3");
     expect(bodyOf(api.calls("POST /api/admin/funds")[0]!)).toEqual({
       code: "INC3",
       name: "Income Fund III",

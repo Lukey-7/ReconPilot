@@ -12,7 +12,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, apiFetch, seg } from "../../api/client";
 import { invalidateDay, queryKeys as appKeys } from "../../api/queries";
-import type { FundDetail, RoleName } from "../../api/types";
+import type { FundDetail, FundSummary, RoleName } from "../../api/types";
 
 // --------------------------------------------------------------------------- types
 
@@ -227,8 +227,28 @@ function useFundMutation<V>(fn: (vars: V) => Promise<AdminFund>) {
   });
 }
 
+/**
+ * Create a fund. The new fund is put into the cached fund list at once, so a caller that
+ * switches to it finds it there (otherwise the workspace, not finding it, would fall back
+ * to another fund); the list is then read again from the server.
+ */
 export function useCreateFund() {
-  return useFundMutation((fund: NewFund) => api.post<AdminFund>(adminPaths.funds, fund));
+  const client = useQueryClient();
+  return useFundMutation(async (fund: NewFund) => {
+    const created = await api.post<AdminFund>(adminPaths.funds, fund);
+    const summary: FundSummary = {
+      code: created.code,
+      name: created.name,
+      base_currency: created.base_currency,
+      start_date: created.start_date,
+      latest_day: created.latest_day,
+      latest_status: created.latest_status,
+    };
+    client.setQueryData<FundSummary[]>(appKeys.funds, (old) =>
+      [...(old ?? []).filter((f) => f.code !== summary.code), summary].sort((x, y) => x.code.localeCompare(y.code)),
+    );
+    return created;
+  });
 }
 
 export function useChangeFund(code: string) {
