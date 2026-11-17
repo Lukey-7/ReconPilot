@@ -16,8 +16,10 @@ request may be pending per day.
 
 Confirming returns the day to ``ready``: its sign-off is cleared, its cases can be decided
 again, and it must be signed off again (with four-eyes) before the next day can be loaded
-or run. Nothing else changes: the files, the run and every decision stand, and the audit
-log keeps the original sign-off.
+or run. It may take corrected files and be run again first, even when the next day's files
+were already loaded: those wait, unrun, for the new sign-off (``days.later_run_day``).
+Nothing else changes on confirming: the files, the run and every decision stand, and the
+audit log keeps the original sign-off.
 """
 
 from __future__ import annotations

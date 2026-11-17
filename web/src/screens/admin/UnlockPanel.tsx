@@ -271,7 +271,7 @@ export function UnlockPanel({ fund, asOf }: { fund: string; asOf: string }) {
         open={dialog === "ask"}
         onOpenChange={(open) => !open && close()}
         title={`Ask to unlock ${day}?`}
-        description={`The day stays signed off until an approver other than you confirms, within ${state.confirm_within_hours} hours. Then it returns to Ready: its cases can be decided again and it must be signed off again before the next day is loaded or run. Your reason is recorded in the audit log.`}
+        description={`The day stays signed off until an approver other than you confirms, within ${state.confirm_within_hours} hours. Then it returns to Ready: its cases can be decided again, it can take corrected files and be run again, and it must be signed off again before the next day can run. Your reason is recorded in the audit log.`}
         label="Reason"
         required
         minLength={MIN_REASON}

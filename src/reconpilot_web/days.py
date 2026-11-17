@@ -20,7 +20,7 @@ from datetime import date, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -45,6 +45,8 @@ RUN_JOB_KIND = "run_day"
 
 # Day statuses from which a run may be started (``uploaded`` means validation failed).
 RUNNABLE_STATUSES = ("validated", "ready", "failed")
+# A later day in one of these has been run (or is being run).
+LATER_RUN_STATUSES = ("running", "ready", "signed_off", "failed")
 
 # Statuses whose NAV, checks and release status come from a finished run.
 RUN_STATUSES = ("ready", "signed_off")
@@ -406,11 +408,28 @@ def start_run(
     return {"job_id": job_id}
 
 
+def later_run_day(db: Session, fund: Fund, as_of: date) -> date | None:
+    """The first later day of the fund that has been run (or is running), else ``None``.
+
+    Such a day carried its cases from ``as_of``'s sign-off, so ``as_of`` may not run again.
+    A later day only loaded, not run (possible once ``as_of`` was unlocked), does not block:
+    it waits for ``as_of``'s new sign-off, and ``as_of`` can be run again with corrected files.
+    """
+    return db.execute(
+        select(BusinessDay.as_of)
+        .where(BusinessDay.fund_id == fund.id, BusinessDay.as_of > as_of,
+               or_(BusinessDay.status.in_(LATER_RUN_STATUSES), BusinessDay.run_at.is_not(None)))
+        .order_by(BusinessDay.as_of)
+        .limit(1)
+    ).scalar_one_or_none()
+
+
 def queue_run(db: Session, fund: Fund, day_date: date, user: User) -> int:
     """Queue a run of the day in ``db``'s transaction (the caller commits); the job's id.
 
     409 when the day is signed off, already running, has validation errors, is not
-    the fund's latest day, or its previous business day is not signed off.
+    the fund's latest run day (a later day has been run), or its previous business day
+    is not signed off.
     """
     check_day_order(db, fund, day_date)
     day = get_day(db, fund, day_date, for_update=True)
@@ -423,15 +442,10 @@ def queue_run(db: Session, fund: Fund, day_date: date, user: User) -> int:
     if day.status not in RUNNABLE_STATUSES:
         raise HTTPException(status.HTTP_409_CONFLICT,
                             f"{day_date}'s files have validation errors; fix them before running.")
-    later = db.execute(
-        select(BusinessDay.as_of)
-        .where(BusinessDay.fund_id == fund.id, BusinessDay.as_of > day_date)
-        .order_by(BusinessDay.as_of)
-        .limit(1)
-    ).scalar_one_or_none()
+    later = later_run_day(db, fund, day_date)
     if later is not None:
         raise HTTPException(status.HTTP_409_CONFLICT,
-                            f"Only the latest day can be run; files for {later} are already loaded.")
+                            f"Only the latest day can be run; {later} has already been run.")
 
     previous_status = day.status
     day.status = "running"

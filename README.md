@@ -626,7 +626,9 @@ are never administered, as they come and go with their visitor.
   when asking and again when confirming. Confirming returns the day to *ready*:
   the sign-off is cleared, the cases can be decided again, and the day must be
   signed off again, under four-eyes, before the next day can be loaded or run.
-  The files, the run and every decision stand, and the audit log keeps the
+  It can take corrected files and be run again first, even when the next day's
+  files were already loaded (they wait, unrun, for the new sign-off). Until
+  then the files, the run and every decision stand, and the audit log keeps the
   original sign-off beside `UNLOCK_REQUESTED` and `DAY_UNLOCKED`.
 
 ### Keyboard and accessibility

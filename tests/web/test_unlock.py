@@ -167,6 +167,46 @@ def test_not_once_the_next_day_has_run(signed_off, day_files, factory, db_sessio
     assert ask(c["admin2"]).status_code == 409
 
 
+def test_unlocked_with_the_next_day_loaded_the_day_is_run_again_and_the_fund_goes_on(
+        signed_off, day_files, factory, db_session):
+    """The next day's files were loaded (not run) before the unlock: the unlocked day can take
+    corrected files, be run, decided and signed off again, and then the next day runs."""
+    c = signed_off
+    assert upload(c["analyst1"], day_files[1], as_of=DAY2).json()["status"] == "validated"
+    pending = ask(c["admin1"]).json()["pending"]
+    assert c["approver1"].post(f"{UNLOCK}/{pending['id']}/confirm", json={}).status_code == 200
+
+    # The next day waits for the new sign-off.
+    waiting = c["analyst1"].post(f"/api/funds/{FUND_CODE}/days/{DAY2}/run")
+    assert waiting.status_code == 409 and f"Sign off {DAY1} first" in waiting.json()["detail"]
+
+    # Corrected files for the unlocked day, run again, decided and signed off again.
+    run_day(c["analyst1"], factory, day_files[0])
+    decide_all(c["analyst1"], c["approver1"])
+    signoff = c["approver2"].post(f"/api/funds/{FUND_CODE}/days/{DAY1}/signoff")
+    assert signoff.status_code == 200, signoff.text
+    assert day_row(db_session).status == "signed_off"
+
+    # And the fund moves on: the next day runs from the new sign-off.
+    response = c["analyst1"].post(f"/api/funds/{FUND_CODE}/days/{DAY2}/run")
+    assert response.status_code == 202, response.text
+    from reconpilot_web import jobs
+
+    jobs.work_one(factory, "test-worker")
+    assert day_row(db_session, DAY2).status == "ready"
+
+
+def test_an_unlocked_day_cannot_run_again_once_a_later_day_has_run(signed_off, day_files, factory, db_session):
+    """Guard on the run itself: a later day that has been run blocks a run of an earlier day."""
+    c = signed_off
+    run_day(c["analyst1"], factory, day_files[1], as_of=DAY2)
+    # Force the inconsistent state directly; the API does not allow unlocking here.
+    db_session.execute(update(BusinessDay).where(BusinessDay.as_of == DAY1).values(status="ready"))
+    db_session.commit()
+    refused = c["analyst1"].post(f"/api/funds/{FUND_CODE}/days/{DAY1}/run")
+    assert refused.status_code == 409 and f"{DAY2} has already been run" in refused.json()["detail"]
+
+
 def test_only_the_latest_signed_off_day(signed_off, day_files, factory):
     c = signed_off
     run_day(c["analyst1"], factory, day_files[1], as_of=DAY2)

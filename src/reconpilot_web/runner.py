@@ -17,8 +17,8 @@ transaction (the worker's) what ``reconpilot run`` does with a run folder:
 Anything that raises rolls all of it back. The job is retried, and after its
 last attempt ``run_day_failed`` marks the day ``failed`` with the error.
 
-Re-running (spec 7.5) is allowed only for the fund's latest day before it is
-signed off. Decisions taken on that day are re-applied, through the engine's
+Re-running (spec 7.5) is allowed only for the fund's latest run day before it is
+signed off (a later day loaded but not run, possible after an unlock, does not block it). Decisions taken on that day are re-applied, through the engine's
 ``ReviewSession`` and as the person who took them, to cases that still exist
 for the same security with the same suggested cause; any other decision is
 voided (``DECISION_VOIDED_BY_RERUN``), and a case from the earlier run that the
@@ -57,6 +57,7 @@ from reconpilot_web import jobs
 from reconpilot_web.aicache import DbResponseCache, demo_client
 from reconpilot_web.auditlog import DbAuditLog
 from reconpilot_web.auth import SYSTEM_ACTOR, SYSTEM_ROLE
+from reconpilot_web.days import later_run_day
 from reconpilot_web.funds import fund_check_settings, fund_lifecycle, fund_settings, previous_business_day
 from reconpilot_web.models import (
     BreakRow,
@@ -366,11 +367,9 @@ def run_day_job(session: Session, payload: dict) -> dict:
     fund = session.get(Fund, day.fund_id)
     actor, role = _actor(session, payload.get("user_id"))
 
-    later = session.execute(
-        select(BusinessDay.as_of).where(BusinessDay.fund_id == fund.id, BusinessDay.as_of > day.as_of).limit(1)
-    ).scalar_one_or_none()
+    later = later_run_day(session, fund, day.as_of)
     if later is not None:
-        raise RunError(f"only the latest day can be run; {later} has already been loaded")
+        raise RunError(f"only the latest day can be run; {later} has already been run")
 
     prev = previous_business_day(fund, day.as_of)
     prior_open: list[Case] = []
