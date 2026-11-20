@@ -22,5 +22,7 @@ export default defineConfig({
     css: false,
     restoreMocks: true,
     include: ["src/**/*.test.{ts,tsx}"],
+    // A test renders the whole app; its finds wait up to 4 s each (see src/test/setup.ts).
+    testTimeout: 15_000,
   },
 });

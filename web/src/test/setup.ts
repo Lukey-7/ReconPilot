@@ -1,7 +1,19 @@
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
 import { afterEach, beforeEach, vi } from "vitest";
+
+/*
+ * Every test renders the whole app, and a screen's first content waits on a chain of mocked
+ * requests (who am I, then the funds and the stored fund, then the day and its release, then
+ * the screen's own data, then a case). The first render in each file is also cold: React and
+ * every component run for the first time in that file's fresh module graph. Unloaded, a
+ * file's first case opens in about 300 ms; under load that passed the library's default
+ * 1 s budget for findBy and waitFor, and the first test failed on its first find though
+ * nothing was wrong. Give every find a budget sized for a full app render; what each test
+ * asserts is unchanged, and a real failure still fails, only a few seconds later.
+ */
+configure({ asyncUtilTimeout: 4000 });
 
 /** jsdom has no matchMedia: answer "no preference" unless a test sets `mediaMatches`. */
 export const mediaMatches = new Set<string>();
