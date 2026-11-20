@@ -586,3 +586,46 @@ li > .ov-case {
 .ov-upload-link {
   margin-top: 14px;
 }
+
+/* ===== Small refinements ===== */
+.ov-ageing-table tbody tr:last-child th {
+  border-bottom: 0;
+}
+.ov-att-item .track {
+  max-width: 220px;
+}
+@media (max-width: 767px) {
+  .ov-block {
+    padding: 16px;
+  }
+  .ov-acc-card,
+  .ov-reasons-card {
+    padding-inline: 16px;
+  }
+  /* On a phone the impact bar gives its room to the figures; the bp figure says it. */
+  .ov-bar {
+    display: none;
+  }
+  .ov-table-card .table-wrap {
+    padding: 0;
+  }
+  .ov-table-card .data-table th,
+  .ov-table-card .data-table td,
+  .ov-ageing-table th,
+  .ov-ageing-table td,
+  .ov-cleared-table th,
+  .ov-cleared-table td {
+    padding-inline: 6px;
+    font-size: 13px;
+  }
+  .ov-age-name {
+    min-width: 84px;
+  }
+  .ov-ageing-table th[scope="row"] .track {
+    max-width: 84px;
+  }
+  .ov-lead .lead-figure {
+    font-size: 38px;
+    line-height: 44px;
+  }
+}

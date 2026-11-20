@@ -105,7 +105,7 @@ function DoneToast({ message, onGone }: { message: string; onGone: () => void })
     return () => clearTimeout(timer);
   }, [held, onGone]);
   return createPortal(
-    <div className="toast-region">
+    <div className="toast-region wb-toast-region">
       <p className="toast wb-outcome wb-outcome-done" onMouseEnter={() => setHeld(true)} onMouseLeave={() => setHeld(false)}>
         <Icon name="check" />
         {message}

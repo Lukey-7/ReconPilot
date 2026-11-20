@@ -775,3 +775,68 @@
   color: var(--ink);
   font-weight: 600;
 }
+
+/* ===== Small refinements ===== */
+.wb-q-id {
+  white-space: nowrap;
+}
+.wb-pane-tools .btn {
+  padding: 0 8px;
+}
+.wb-ev-pane .wb-pane-head {
+  flex-wrap: nowrap;
+}
+.wb-ev-pane .wb-pane-meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wb-ev-pane .wb-pane-head h2 {
+  flex: none;
+}
+.wb-ev-table tbody th {
+  color: var(--ink-2);
+}
+.wb-decision {
+  gap: 8px;
+  padding: 12px 16px 14px;
+}
+/* The confirming toast sits at the foot of the evidence side, clear of the decision bar. */
+.toast-region.wb-toast-region {
+  left: auto;
+  right: var(--gutter);
+  transform: none;
+  justify-items: end;
+}
+.toast.wb-outcome-done {
+  align-items: center;
+}
+@media (max-width: 1180px) {
+  .toast-region.wb-toast-region {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    justify-items: center;
+    bottom: 200px;
+  }
+}
+/* The case's sections never widen the pane: long words wrap inside it. */
+.wb-case {
+  grid-template-columns: minmax(0, 1fr);
+}
+.wb-facts .record dt {
+  flex: none;
+}
+@media (max-width: 767px) {
+  .wb-q-body .table-wrap {
+    overflow-x: auto;
+  }
+  .wb-fact-line {
+    white-space: normal;
+    text-align: right;
+  }
+  .wb-facts .track {
+    width: 100px;
+  }
+}
