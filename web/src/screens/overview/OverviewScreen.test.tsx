@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Overview, OverviewCase } from "../../api/types";
 import { mockApi } from "../../test/mockApi";
+import { mediaMatches } from "../../test/setup";
 import { approver, location, releaseFor, renderApp, signedInRoutes } from "../../test/render";
 
 const URL_DAY = "/overview?fund=GEF1&day=2026-11-10";
@@ -203,6 +204,27 @@ describe("Morning overview", () => {
     expect(screen.getByText(/Run by analyst1/)).toBeInTheDocument();
   });
 
+  it("leads with NAV per share, the NAV and its day-on-day move, and the release status", async () => {
+    mediaMatches.add("(prefers-reduced-motion: reduce)");
+    setup(overview());
+    renderApp(URL_DAY);
+    const release = await section("Release status");
+    const lead = release.querySelector(".lead") as HTMLElement;
+    expect(lead).toBe(release.firstElementChild);
+    expect(within(lead).getByTestId("ov-nps")).toHaveTextContent("102.345678");
+    expect(within(lead).getByText("251,234,567.89")).toBeInTheDocument();
+    expect(within(lead).getByText("+0.045%")).toBeInTheDocument();
+    expect(within(lead).getByText("Up")).toHaveClass("sr-only");
+    expect(within(lead).getByText("Blocked")).toBeInTheDocument();
+  });
+
+  it("counts NAV per share up and settles on the exact figure", async () => {
+    setup(overview());
+    renderApp(URL_DAY);
+    const release = await section("Release status");
+    await waitFor(() => expect(within(release).getByTestId("ov-nps")).toHaveTextContent("102.345678"));
+  });
+
   it("keeps the release checks behind an expander", async () => {
     setup(overview());
     renderApp(URL_DAY);
@@ -242,16 +264,29 @@ describe("Morning overview", () => {
     expect(within(acc).getByText(/1 break is not in any case/)).toBeInTheDocument();
   });
 
-  it("stays uncluttered: three impact totals, and the minor sections two to a panel", async () => {
+  it("stays uncluttered: four tiles under the lead card, and the minor sections two to a panel", async () => {
     setup(overview());
     renderApp(URL_DAY);
-    const impact = await section("Open breaks by NAV impact");
-    const totals = within(impact).getByTestId("impact-gross").closest("dl") as HTMLElement;
+    const tiles = await section("NAV impact of the open cases");
+    const totals = within(tiles).getByTestId("impact-gross").closest("dl") as HTMLElement;
     expect(within(totals).getAllByRole("term").map((t) => t.textContent)).toEqual([
-      "Gross impact",
       "Net impact",
       "Material",
+      "Open cases",
+      "Oldest break",
     ]);
+    // Net is never shown alone: gross sits in the same tile.
+    expect(within(tiles).getByTestId("impact-gross").closest(".tile")).toBe(
+      within(tiles).getByTestId("impact-net").closest(".tile"),
+    );
+    const tile = (term: string) => within(tiles).getByText(term, { selector: "dt" }).closest(".tile") as HTMLElement;
+    expect(within(tile("Material")).getByText("1")).toBeInTheDocument();
+    expect(within(tile("Open cases")).getByText("1 pending a decision")).toBeInTheDocument();
+    expect(within(tile("Oldest break")).getByText("7 business days")).toBeInTheDocument();
+    expect(within(tile("Oldest break")).getByRole("link", { name: "C3" })).toHaveAttribute(
+      "href",
+      "/cases?fund=GEF1&day=2026-11-10&case=C3",
+    );
     const panelOf = (name: string) => screen.getByRole("region", { name }).parentElement;
     expect(panelOf("Ageing")).toBe(panelOf("SLA breaches and escalations"));
     expect(panelOf("Trend")).toBe(panelOf("Cleared today"));
@@ -261,9 +296,10 @@ describe("Morning overview", () => {
   it("ranks open breaks by NAV impact and shows gross and net together", async () => {
     setup(overview());
     renderApp(URL_DAY);
+    const tiles = await section("NAV impact of the open cases");
+    expect(within(tiles).getByTestId("impact-gross")).toHaveTextContent("60,179.40 USD");
+    expect(within(tiles).getByTestId("impact-net")).toHaveTextContent("−36,179.40 USD");
     const impact = await section("Open breaks by NAV impact");
-    expect(within(impact).getByTestId("impact-gross")).toHaveTextContent("60,179.40 USD");
-    expect(within(impact).getByTestId("impact-net")).toHaveTextContent("−36,179.40 USD");
     const rows = within(impact).getAllByRole("row").slice(1);
     expect(rows.map((r) => within(r).getAllByRole("link")[0]?.textContent)).toEqual(["C1", "C2", "C3"]);
     const first = rows[0]!;
@@ -436,8 +472,10 @@ describe("Morning overview", () => {
     expect(within(await section("Every break accounted for")).getByText("The run found no breaks; no case is open.")).toBeInTheDocument();
     const impact = await section("Open breaks by NAV impact");
     expect(within(impact).getByText(/No open breaks/)).toBeInTheDocument();
-    expect(within(impact).getByTestId("impact-gross")).toHaveTextContent("0.00 USD");
-    expect(within(impact).getByTestId("impact-net")).toHaveTextContent("0.00 USD");
+    const tiles = await section("NAV impact of the open cases");
+    expect(within(tiles).getByTestId("impact-gross")).toHaveTextContent("0.00 USD");
+    expect(within(tiles).getByTestId("impact-net")).toHaveTextContent("0.00 USD");
+    expect(within(tiles).getByText("None open")).toBeInTheDocument();
     expect(within(await section("Ageing")).getByText("No case is open.")).toBeInTheDocument();
     expect(within(await section("Ageing")).queryByRole("link")).not.toBeInTheDocument();
     expect(within(await section("SLA breaches and escalations")).getByText(/No open case is past its SLA/)).toBeInTheDocument();

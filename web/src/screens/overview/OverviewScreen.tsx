@@ -1,10 +1,11 @@
 /**
  * The morning overview (spec section 10, screen 1), from `GET .../overview`.
  *
- * The most important thing first: the day's release status with its reasons in plain
- * words, then the open breaks by NAV impact (gross and net together) beside every break
- * accounted for; the rest is a glance away in two quiet panels, the age of the open cases
- * with their SLA breaches and escalations, and the days so far with what cleared today.
+ * The most important thing first: one lead card with NAV per share and the day's release
+ * status (its reasons in plain words beneath), then four tiles (net impact with gross, the
+ * material count, open cases and the oldest break), then the open breaks by NAV impact beside
+ * every break accounted for; the rest is a glance away in two quiet panels, the age of the
+ * open cases with their SLA breaches and escalations, and the days so far with what cleared.
  * Detail is on demand (checks, long lists and the trend's figures sit behind expanders),
  * and every case id opens the case in the workbench. Every figure is the server's.
  */
@@ -26,7 +27,9 @@ import { AgeingSection } from "./AgeingSection";
 import { AttentionSection } from "./AttentionSection";
 import { ClearedSection } from "./ClearedSection";
 import { ImpactSection } from "./ImpactSection";
+import { OvHead } from "./OvHead";
 import { ReleaseSection } from "./ReleaseSection";
+import { TilesSection } from "./TilesSection";
 import { TrendSection } from "./TrendSection";
 
 /** The way to the upload and run screen for the day on show. */
@@ -50,7 +53,7 @@ function NotRun({ overview }: { overview: Overview }) {
   else next = "The day's files are loaded and valid. Run the day to see its breaks.";
   return (
     <section className="ov-block ov-notrun" aria-labelledby="ov-h-notrun">
-      <h2 id="ov-h-notrun">Not run yet</h2>
+      <OvHead label="Run" id="ov-h-notrun" title="Not run yet" />
       <p>
         <span className="ov-day-status">{dayStatusLabel(status)}.</span> {next}
       </p>
@@ -67,43 +70,48 @@ function OverviewBody({ overview }: { overview: Overview }) {
   if (!ran || !accounted || !impact) {
     return (
       <div className="ov-grid ov-grid-notrun">
-        <div className="ov-col ov-col-main">
-          <div className="ov-area-release">
-            <ReleaseSection overview={overview} />
-          </div>
+        <div className="ov-area-release">
+          <ReleaseSection overview={overview} />
         </div>
-        <div className="ov-col ov-col-side">
-          <div className="ov-area-account">
-            <NotRun overview={overview} />
+        <div className="ov-cols">
+          <div className="ov-col ov-col-main">
+            <div className="ov-area-account card">
+              <NotRun overview={overview} />
+            </div>
           </div>
-          <div className="ov-area-trend">{trend}</div>
+          <div className="ov-col ov-col-side">
+            <div className="ov-area-trend card">{trend}</div>
+          </div>
         </div>
       </div>
     );
   }
   return (
     <div className="ov-grid">
-      <div className="ov-col ov-col-main">
-        <div className="ov-area-release">
-          <ReleaseSection overview={overview} />
-        </div>
-        <div className="ov-area-impact">
-          <ImpactSection impact={impact} currency={currency} materialityBp={overview.fund.materiality_bp} />
-        </div>
-        {/* One panel for the days so far, and what this day's run cleared. */}
-        <div className="ov-area-trend ov-panel">
-          {trend}
-          <ClearedSection cleared={overview.cleared_today} currency={currency} />
-        </div>
+      <div className="ov-area-release">
+        <ReleaseSection overview={overview} />
       </div>
-      <div className="ov-col ov-col-side">
-        <div className="ov-area-account">
-          <AccountedSection accounted={accounted} run={overview.run} />
+      <TilesSection impact={impact} accounted={accounted} currency={currency} materialityBp={overview.fund.materiality_bp} />
+      <div className="ov-cols">
+        <div className="ov-col ov-col-main">
+          <div className="ov-area-impact">
+            <ImpactSection impact={impact} currency={currency} materialityBp={overview.fund.materiality_bp} />
+          </div>
+          {/* One panel for the days so far, and what this day's run cleared. */}
+          <div className="ov-area-trend ov-panel card">
+            {trend}
+            <ClearedSection cleared={overview.cleared_today} currency={currency} />
+          </div>
         </div>
-        {/* One panel for how long the open cases have waited, and which are overdue or escalated. */}
-        <div className="ov-area-age ov-panel">
-          <AgeingSection ageing={overview.ageing} currency={currency} />
-          <AttentionSection slaBreaches={overview.sla_breaches} escalations={overview.escalations} />
+        <div className="ov-col ov-col-side">
+          <div className="ov-area-account">
+            <AccountedSection accounted={accounted} run={overview.run} />
+          </div>
+          {/* One panel for how long the open cases have waited, and which are overdue or escalated. */}
+          <div className="ov-area-age ov-panel card">
+            <AgeingSection ageing={overview.ageing} currency={currency} />
+            <AttentionSection slaBreaches={overview.sla_breaches} escalations={overview.escalations} />
+          </div>
         </div>
       </div>
     </div>

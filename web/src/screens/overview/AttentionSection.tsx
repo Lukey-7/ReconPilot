@@ -1,6 +1,7 @@
 /**
  * SLA breaches and escalations: the open cases that have waited too long or crossed a
- * threshold. An escalation's reason is what was recorded when the case was escalated, so
+ * threshold, each with a calm 6px track of its age on one scale (muted red past SLA, grey
+ * otherwise). An escalation's reason is what was recorded when the case was escalated, so
  * it is labelled "at escalation" and never passed off as today's impact.
  */
 import type { ReactNode } from "react";
@@ -8,14 +9,16 @@ import type { ReactNode } from "react";
 import type { OverviewCase } from "../../api/types";
 import { Icon } from "../../components/Icon";
 import { StatusLabel } from "../../components/Labels";
+import { Track } from "../../components/Paper";
 import { money, plural } from "../../format";
 import { CaseLink, currentCause, securityText } from "./caseLinks";
+import { OvHead } from "./OvHead";
 
 function capitalise(text: string): string {
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : text;
 }
 
-function CaseLine({ c, children }: { c: OverviewCase; children: ReactNode }) {
+function CaseLine({ c, scale, children }: { c: OverviewCase; scale: number; children: ReactNode }) {
   return (
     <li className="ov-att-item" data-case={c.case_id}>
       <div className="ov-att-top">
@@ -26,15 +29,17 @@ function CaseLine({ c, children }: { c: OverviewCase; children: ReactNode }) {
       <div className="ov-att-detail muted">
         {currentCause(c)}, <span className="fig">{money(c.nav_impact, { signed: true })}</span>. {children}
       </div>
+      <Track value={c.age_days} max={scale} tone={c.sla_breached ? "late" : "ok"} />
     </li>
   );
 }
 
 export function AttentionSection({ slaBreaches, escalations }: { slaBreaches: OverviewCase[]; escalations: OverviewCase[] }) {
   const nothing = slaBreaches.length === 0 && escalations.length === 0;
+  const scale = Math.max(1, ...slaBreaches.map((c) => c.age_days), ...escalations.map((c) => c.age_days));
   return (
     <section className="ov-block ov-attention" aria-labelledby="ov-h-attention">
-      <h2 id="ov-h-attention">SLA breaches and escalations</h2>
+      <OvHead label="Attention" id="ov-h-attention" title="SLA breaches and escalations" />
       {nothing ? (
         <p className="ov-note muted">
           <Icon name="check" /> No open case is past its SLA, and none is escalated.
@@ -47,7 +52,7 @@ export function AttentionSection({ slaBreaches, escalations }: { slaBreaches: Ov
           {slaBreaches.length > 0 && (
             <ul className="ov-att-list" aria-labelledby="ov-h-sla">
               {slaBreaches.map((c) => (
-                <CaseLine key={c.case_id} c={c}>
+                <CaseLine key={c.case_id} c={c} scale={scale}>
                   <span className="ov-signal">
                     <Icon name="clock" />
                     Open {plural(c.age_days, "business day")}, SLA {plural(c.sla_days, "day")}.
@@ -62,7 +67,7 @@ export function AttentionSection({ slaBreaches, escalations }: { slaBreaches: Ov
           {escalations.length > 0 && (
             <ul className="ov-att-list" aria-labelledby="ov-h-esc">
               {escalations.map((c) => (
-                <CaseLine key={c.case_id} c={c}>
+                <CaseLine key={c.case_id} c={c} scale={scale}>
                   <span>
                     <span className="faint">At escalation: </span>
                     {capitalise(c.escalation_reason) || "no reason recorded"}.

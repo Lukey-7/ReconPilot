@@ -1,128 +1,142 @@
 /*
- * The morning overview. Few panels and plenty of space between groups: the release status
- * first, then the open breaks and the day's account; the rest is a glance away, two
- * sections to a quiet panel.
- * Wide screens use two columns, each stacking its own sections without gaps: the work on
- * the left (release, open breaks, the days so far), the day's shape on the right (the
- * account, age and attention); narrow screens stack every section in reading order.
+ * The morning overview in Paper. One lead card first and full width (NAV per share and the
+ * release status), the reasons card under it, four figure tiles, then two columns: the work
+ * on the left (open breaks, the days so far), the day's shape on the right (the account, age
+ * and attention). Narrow screens stack every section in reading order.
+ * Builds on the shared layer (components.css): .lead, .tiles/.tile, .card, .records,
+ * .data-table, .status, .tag, .track, .mono-label.
  */
 
 .ov-run-line {
-  font-size: 12.5px;
+  font-size: 13px;
 }
 
+/* ===== Layout ===== */
 .ov-grid {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
+}
+.ov-cols {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 12px;
 }
 .ov-col {
   display: contents;
 }
-.ov-grid > .ov-col > div {
+.ov-col > div {
   min-width: 0;
 }
-.ov-area-release {
+.ov-area-account {
   order: 1;
 }
-.ov-area-account {
+.ov-area-impact {
   order: 2;
 }
-.ov-area-impact {
+.ov-area-age {
   order: 3;
 }
-.ov-area-age {
+.ov-area-trend {
   order: 4;
 }
-.ov-area-trend {
-  order: 5;
-}
 @media (min-width: 1100px) {
-  .ov-grid {
+  .ov-cols {
     display: grid;
-    grid-template-columns: minmax(0, 1.75fr) minmax(300px, 1fr);
+    grid-template-columns: minmax(0, 1.75fr) minmax(320px, 1fr);
     align-items: start;
+    gap: 24px;
   }
   .ov-col {
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 24px;
     min-width: 0;
   }
 }
 
-/* ===== Two sections sharing one quiet panel, divided by a rule ===== */
-.ov-panel {
-  background: var(--panel);
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  min-width: 0;
+/* ===== Section heads: a mono register label above a sentence-case heading ===== */
+.ov-head {
+  margin: 0 0 10px;
 }
-.ov-panel > .ov-block {
-  background: none;
-  border: 0;
-  border-radius: 0;
-}
-.ov-panel > .ov-block + .ov-block {
-  border-top: 1px solid var(--rule);
-}
-
-/* ===== A block ===== */
-.ov-block {
-  background: var(--panel);
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  padding: 14px 16px 16px;
-  min-width: 0;
-}
-.ov-block h2 {
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 10px;
-}
-.ov-block-head {
+.ov-head-row {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 4px 10px;
-  margin-bottom: 10px;
+  gap: 2px 10px;
 }
-.ov-block-head h2 {
-  margin-bottom: 0;
+.ov-head-row h2 {
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
 }
-.ov-block-head .faint {
-  font-size: 12.5px;
+.ov-head-meta {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ===== Panels: two sections sharing one card, divided by a hairline ===== */
+.ov-panel {
+  min-width: 0;
+  overflow: hidden;
+}
+.ov-block {
+  padding: 18px 20px 20px;
+  min-width: 0;
+}
+.ov-panel > .ov-block + .ov-block {
+  border-top: var(--hairline) solid var(--line);
 }
 .ov-sub {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--ink-2);
-  margin: 12px 0 6px;
+  margin: 14px 0 2px;
 }
 .ov-sub:first-of-type {
-  margin-top: 0;
+  margin-top: 4px;
+}
+.ov-sub .faint {
+  font-weight: 500;
 }
 .ov-note {
   margin-top: 10px;
   font-size: 13px;
+  line-height: 18px;
   display: flex;
   align-items: baseline;
   gap: 6px;
 }
+.ov-note svg.i {
+  flex: none;
+  align-self: center;
+}
 .ov-alert {
-  color: var(--signal);
+  color: var(--amber);
+  font-weight: 600;
 }
 .ov-signal {
-  color: var(--signal);
+  color: var(--red);
   display: inline-flex;
   align-items: baseline;
   gap: 5px;
 }
+.ov-signal svg.i {
+  align-self: center;
+}
+/* Case ids are codes: mono, one word. */
 .ov-case {
-  font-family: var(--font-fig);
+  font-family: var(--mono);
   font-size: 12.5px;
   font-weight: 500;
-  white-space: nowrap; /* a case id reads as one word */
+  letter-spacing: 0;
+  white-space: nowrap;
+  color: var(--accent-ink);
+  text-decoration: none;
+}
+.ov-case:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 /* A case id in a list is a target of its own: at least 24px tall (WCAG 2.5.8), however the
    list wraps (at 200% zoom the ids stack). */
@@ -131,50 +145,126 @@ li > .ov-case {
   align-items: center;
   min-height: 24px;
 }
-
-/* Tables scroll inside their block on narrow screens; visually hidden header text stays inside too. */
 .ov-block .table-wrap {
   position: relative;
 }
-
-/* ===== Release status ===== */
-.ov-release[data-state="blocked"] {
-  border-inline-start: 3px solid var(--signal);
+.ov-more,
+.ov-more-block,
+.ov-checks {
+  margin-top: 12px;
 }
-.ov-release[data-state="ready"],
-.ov-release[data-state="signedOff"] {
-  border-inline-start: 3px solid var(--pos);
+.ov-more summary,
+.ov-more-block summary,
+.ov-checks summary {
+  cursor: pointer;
+  color: var(--accent-ink);
+  font-size: 13px;
+  font-weight: 500;
+  width: fit-content;
+}
+.ov-more ul {
+  margin-top: 6px;
+}
+
+/* ===== The lead card: NAV per share and the release status ===== */
+.ov-release {
+  display: grid;
+  gap: 12px;
+}
+.ov-lead {
+  display: grid;
+  gap: 18px;
+  padding: 22px 24px;
+}
+.ov-lead .lead-figure {
+  font-size: 44px;
+  line-height: 50px;
+}
+.ov-lead-caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 14px;
+  font-size: 14px;
+  line-height: 20px;
+}
+.ov-lead-nav-figure {
+  font-weight: 600;
+  color: var(--hero-ink);
+}
+.ov-move {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+}
+.ov-move .fig:first-of-type {
+  font-weight: 600;
+  color: var(--hero-ink);
+}
+.ov-move svg.i {
+  align-self: center;
+  width: 14px;
+  height: 14px;
+}
+.ov-lead-release {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+.ov-lead-release h2.mono-label {
+  color: var(--hero-muted);
 }
 .ov-release-state {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 6px 14px;
+  display: grid;
+  justify-items: start;
+  gap: 8px;
 }
 .ov-release-state .release-badge {
-  font-size: 17px;
+  height: 30px;
+  padding: 0 13px 0 11px;
+  border-radius: 15px;
+  font-size: 14px;
 }
 .ov-headline {
-  font-size: 14px;
-  color: var(--ink);
+  font-size: 15px;
+  line-height: 21px;
+  color: var(--hero-ink);
+  max-width: 46ch;
+}
+@media (min-width: 768px) {
+  .ov-lead {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 0.8fr);
+    align-items: center;
+    gap: 24px;
+  }
+  .ov-lead-release {
+    padding-inline-start: 24px;
+    border-inline-start: var(--hairline) solid color-mix(in srgb, var(--hero-ink) 18%, transparent);
+  }
+}
+
+/* The reasons and checks under the lead card. */
+.ov-reasons-card {
+  padding: 4px 20px 16px;
 }
 .ov-reasons {
   list-style: none;
-  margin: 14px 0 0;
+  margin: 0;
   padding: 0;
-  display: grid;
-  gap: 10px;
 }
 .ov-reasons > li {
   display: grid;
   grid-template-columns: minmax(150px, 220px) minmax(0, 1fr);
-  gap: 2px 14px;
-  padding-top: 10px;
-  border-top: 1px solid var(--rule);
+  gap: 2px 16px;
+  padding: 12px 0;
+}
+.ov-reasons > li + li {
+  border-top: var(--hairline) solid var(--line);
 }
 .ov-reason-name {
   font-weight: 600;
-  color: var(--signal);
+  color: var(--amber);
 }
 .ov-reason-text {
   color: var(--ink);
@@ -188,7 +278,7 @@ li > .ov-case {
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 2px 12px;
+  gap: 0 14px;
 }
 @media (max-width: 640px) {
   .ov-reasons > li {
@@ -198,136 +288,149 @@ li > .ov-case {
     grid-column: 1;
   }
 }
-.ov-more,
-.ov-more-block,
 .ov-checks {
-  margin-top: 10px;
+  margin-top: 0;
+  padding-top: 12px;
 }
-.ov-more summary,
-.ov-more-block summary,
-.ov-checks summary {
-  cursor: pointer;
-  color: var(--accent-ink);
-  font-size: 13px;
-  width: fit-content;
+.ov-reasons + .ov-checks {
+  border-top: var(--hairline) solid var(--line);
 }
-.ov-more ul {
-  margin-top: 6px;
-}
-.ov-checks {
-  margin-top: 14px;
-  padding-top: 10px;
-  border-top: 1px solid var(--rule);
+.ov-reasons-card > .ov-checks:first-child {
+  padding-top: 14px;
 }
 .ov-checks summary .faint {
-  color: var(--ink-3);
+  font-weight: 400;
 }
 .ov-checks-table {
   margin-top: 8px;
 }
 .ov-checks-table td {
   height: auto;
-  padding-top: 6px;
-  padding-bottom: 6px;
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 
-/* ===== Every break accounted for ===== */
-.ov-acc {
+/* ===== Tiles ===== */
+.ov-tiles .tiles {
   margin: 0;
 }
-.ov-acc-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 5px 0;
-  border-bottom: 1px solid var(--rule);
-  font-size: 13.5px;
+.ov-tiles dd {
+  margin: 0;
 }
-.ov-acc-row dt {
+.ov-tiles .tile-note {
+  font-variant-numeric: tabular-nums;
+}
+.ov-unit {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  .ov-tiles .tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* ===== Every break accounted for: records ===== */
+.ov-acc-card {
+  padding: 6px 20px 16px;
+}
+.ov-acc .record {
+  padding: 9px 0;
+  font-size: 14px;
+}
+.ov-acc .record dt {
+  max-width: none;
   color: var(--ink);
 }
-.ov-acc-row dd {
-  margin: 0;
-  text-align: right;
+.ov-acc .record dd {
+  font-weight: 600;
 }
 .ov-acc-row.sub dt {
   padding-inline-start: 16px;
-  color: var(--ink-2);
+  color: var(--muted);
 }
 .ov-acc-row.sub dd {
+  font-weight: 500;
   color: var(--ink-2);
 }
 .ov-acc-row.total {
-  border-bottom: 0;
-  border-top: 1px solid var(--rule-strong);
-  font-weight: 600;
+  border-top-color: var(--line-strong);
+}
+.ov-acc-row.total dt,
+.ov-acc-row.total dd {
+  font-weight: 700;
+  color: var(--ink);
+}
+.ov-acc-notes {
+  padding-top: 4px;
+  border-top: var(--hairline) solid var(--line);
 }
 
-/* ===== Open breaks by NAV impact ===== */
-.ov-totals {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 10px 18px;
-  margin: 0 0 12px;
+/* ===== Open breaks by NAV impact: one card of hairline rows ===== */
+.ov-table-card {
+  overflow: hidden;
 }
-.ov-totals > div {
-  display: grid;
-  gap: 2px;
+.ov-table-card .table-wrap {
+  padding: 0 8px;
 }
-.ov-totals dt {
-  font-size: 12px;
-  color: var(--ink-3);
+.ov-table-card .data-table th:first-child,
+.ov-table-card .data-table td:first-child {
+  padding-left: 12px;
 }
-.ov-totals dd {
-  margin: 0;
-  font-size: 16px;
-}
-.ov-totals dd .faint {
-  font-size: 12px;
-  font-family: var(--font-ui);
+.ov-table-card .data-table th:last-child,
+.ov-table-card .data-table td:last-child {
+  padding-right: 12px;
 }
 .ov-case-cell,
 .ov-cause-cell {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  padding: 4px 0;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 0;
 }
 .ov-sec,
 .ov-why {
-  font-size: 12px;
+  font-size: 12.5px;
   white-space: normal;
 }
 .ov-flags {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+  margin-top: 2px;
+}
+.ov-flags .status {
+  height: 22px;
+  font-size: 12px;
 }
 .ov-impact-table td {
   height: auto;
-  min-height: 40px;
+  min-height: 44px;
 }
 .ov-bp-cell {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
+/* The size of each impact as a calm 6px track, with a tick at the materiality threshold. */
 .ov-bar {
   position: relative;
   display: inline-block;
   width: 64px;
   height: 6px;
-  border-radius: 2px;
-  background: var(--panel-2);
+  border-radius: 3px;
+  background: var(--track);
 }
 .ov-bar-fill {
   position: absolute;
   inset: 0 auto 0 0;
-  border-radius: 2px;
+  border-radius: 3px;
   background: var(--bar);
 }
 .ov-bar-fill.material {
-  background: var(--bar-material);
+  background: var(--ink-2);
 }
 .ov-bar-tick {
   position: absolute;
@@ -335,22 +438,45 @@ li > .ov-case {
   bottom: -3px;
   width: 2px;
   margin-left: -1px;
-  background: var(--signal);
+  border-radius: 1px;
+  background: var(--amber);
 }
 .ov-show-all {
-  margin-top: 10px;
+  padding: 10px 20px 14px;
+  border-top: var(--hairline) solid var(--line);
 }
 
 /* ===== Ageing ===== */
 .ov-ageing-table th[scope="row"] {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--ink);
   background: none;
   white-space: normal;
+  padding-top: 8px;
+  padding-bottom: 10px;
+}
+.ov-ageing-table th[scope="row"] .track {
+  margin-top: 8px;
+  max-width: 140px;
 }
 .ov-age-name {
-  min-width: 96px;
+  min-width: 112px;
+}
+.ov-ageing-table td,
+.ov-ageing-table th {
+  height: 52px;
+}
+.ov-ageing-table thead th {
+  height: 34px;
+}
+.ov-ageing-table th:first-child,
+.ov-ageing-table td:first-child {
+  padding-left: 0;
+}
+.ov-ageing-table th:last-child,
+.ov-ageing-table td:last-child {
+  padding-right: 0;
 }
 
 /* ===== SLA breaches and escalations ===== */
@@ -360,11 +486,12 @@ li > .ov-case {
   padding: 0;
 }
 .ov-att-item {
-  padding: 8px 0;
-  border-bottom: 1px solid var(--rule);
+  display: grid;
+  gap: 4px;
+  padding: 12px 0;
 }
-.ov-att-item:last-child {
-  border-bottom: 0;
+.ov-att-item + .ov-att-item {
+  border-top: var(--hairline) solid var(--line);
 }
 .ov-att-top {
   display: flex;
@@ -375,11 +502,14 @@ li > .ov-case {
 .ov-att-sec {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 13px;
+  font-size: 14px;
 }
 .ov-att-detail {
-  margin-top: 3px;
-  font-size: 12.5px;
+  font-size: 13px;
+  line-height: 18px;
+}
+.ov-att-item .track {
+  margin-top: 4px;
 }
 
 /* ===== Cleared today ===== */
@@ -390,13 +520,13 @@ li > .ov-case {
 /* ===== Trend ===== */
 .ov-trend-chart {
   display: block;
-  margin-top: 10px;
+  margin-top: 12px;
   max-width: 100%;
   height: auto;
   overflow: visible;
 }
 .ov-trend-base {
-  stroke: var(--rule-strong);
+  stroke: var(--line-strong);
   stroke-width: 1;
 }
 .ov-trend-hit {
@@ -413,7 +543,7 @@ li > .ov-case {
   fill: var(--ink-2);
 }
 .ov-trend-bar:hover rect:not(.ov-trend-hit) {
-  fill: var(--bar-material);
+  fill: var(--ink-2);
 }
 .ov-trend-table tr[aria-current="date"] th,
 .ov-trend-table tr[aria-current="date"] td {
@@ -423,12 +553,13 @@ li > .ov-case {
 .ov-trend-table th[scope="row"] {
   background: none;
   color: var(--ink-2);
+  font-weight: 500;
 }
 /* Seven columns in a narrow area: tighter cells, so the impact column is never cut off. */
 .ov-trend-table th,
 .ov-trend-table td {
   padding: 0 5px;
-  font-size: 12px;
+  font-size: 12.5px;
 }
 .ov-trend-table th:first-child,
 .ov-trend-table td:first-child {
@@ -439,18 +570,19 @@ li > .ov-case {
   line-height: 1.3;
 }
 .ov-trend-net {
-  font-size: 11.5px;
-  color: var(--ink-3);
+  font-size: 12px;
+  color: var(--muted);
 }
 
 /* ===== Not run ===== */
 .ov-notrun p {
-  font-size: 13.5px;
+  font-size: 14px;
+  color: var(--ink-2);
 }
 .ov-day-status {
   font-weight: 600;
+  color: var(--ink);
 }
-
 .ov-upload-link {
-  margin-top: 12px;
+  margin-top: 14px;
 }

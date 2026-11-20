@@ -7,6 +7,7 @@ import { CauseLabel } from "../../components/Labels";
 import { count, money, plural } from "../../format";
 import { causeLabel } from "../../vocabulary";
 import { CaseLink, securityText } from "./caseLinks";
+import { OvHead } from "./OvHead";
 
 /** Up to this many cleared cases show without opening the list. */
 export const CLEARED_SHOWN_OPEN = 3;
@@ -57,10 +58,9 @@ export function ClearedSection({ cleared, currency }: { cleared: ClearedCase[]; 
   const causes = [...new Set(cleared.map((c) => causeLabel(c.resolved_category ?? c.final_category ?? c.category)))];
   return (
     <section className="ov-block ov-cleared" aria-labelledby="ov-h-cleared">
-      <div className="ov-block-head">
-        <h2 id="ov-h-cleared">Cleared today</h2>
-        <span className="faint">{cleared.length ? plural(cleared.length, "case") : "none"}</span>
-      </div>
+      <OvHead label="Resolved" id="ov-h-cleared" title="Cleared today">
+        {cleared.length ? plural(cleared.length, "case") : "none"}
+      </OvHead>
       {cleared.length === 0 ? (
         <p className="ov-note muted">No case cleared on this day&rsquo;s run.</p>
       ) : cleared.length <= CLEARED_SHOWN_OPEN ? (

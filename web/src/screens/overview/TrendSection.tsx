@@ -11,6 +11,7 @@ import { Link } from "react-router";
 import type { TrendDay } from "../../api/types";
 import { count, dayLabel, dayShort, money, plural } from "../../format";
 import { useWorkspace } from "../../shell/workspace";
+import { OvHead } from "./OvHead";
 
 const HEIGHT = 56;
 const BAR = 14;
@@ -68,10 +69,9 @@ export function TrendSection({ trend, asOf, currency }: { trend: TrendDay[]; asO
 
   return (
     <section className="ov-block ov-trend" aria-labelledby="ov-h-trend">
-      <div className="ov-block-head">
-        <h2 id="ov-h-trend">Trend</h2>
-        <span className="faint">open cases per run day</span>
-      </div>
+      <OvHead label="Run days" id="ov-h-trend" title="Trend">
+        open cases per run day
+      </OvHead>
       {trend.length === 0 ? (
         <p className="ov-note muted">No day of this fund has been run yet.</p>
       ) : (
