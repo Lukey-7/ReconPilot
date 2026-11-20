@@ -145,7 +145,8 @@ select.glass-field:hover {
   gap: 2px;
   padding: 4px;
   border-radius: 26px;
-  background-color: var(--glass);
+  /* Strong glass: a light lead card scrolling beneath must not wash out the muted labels. */
+  background-color: var(--glass-strong);
   border: var(--hairline) solid var(--glass-line);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
