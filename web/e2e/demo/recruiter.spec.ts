@@ -131,7 +131,9 @@ test("a recruiter's two-minute visit", async ({ page, browser }) => {
   });
 
   await test.step("the next business day is generated and run", async () => {
-    await page.getByRole("link", { name: `Generate ${MONDAY_LABEL}` }).click();
+    await expect(page.getByText(`The next business day, ${MONDAY_LABEL}, can now be generated`)).toBeVisible();
+    await page.getByRole("link", { name: "Go to the next day" }).click();
+    await expect(page).toHaveURL(new RegExp(`/upload\\?.*day=${MONDAY}`));
     await expect(page.getByRole("heading", { level: 1, name: "Upload and run" })).toBeVisible();
     await expect(page.getByText("In the demo, days are generated rather than uploaded.")).toBeVisible();
     await expectAccessible(page, "Upload and run, demo");
