@@ -22,7 +22,7 @@
 }
 .ad-tabs a.active {
   color: var(--ink);
-  border-bottom-color: var(--accent);
+  border-bottom-color: var(--accent-ink);
   font-weight: 600;
 }
 

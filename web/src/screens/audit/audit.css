@@ -61,7 +61,7 @@
 }
 .al-broken-entry summary {
   cursor: pointer;
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 /* ===== Filters ===== */
@@ -120,7 +120,7 @@
   border: 0;
   border-radius: var(--radius);
   background: none;
-  color: var(--accent);
+  color: var(--accent-ink);
   font: inherit;
   cursor: pointer;
 }

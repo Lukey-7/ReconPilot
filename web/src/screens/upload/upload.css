@@ -52,7 +52,7 @@
   transition: background-color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
 }
 .up-drop.over {
-  border-color: var(--accent);
+  border-color: var(--accent-ink);
   background: var(--accent-wash);
 }
 .up-drop-label {
@@ -244,7 +244,7 @@
   font-weight: 600;
 }
 .up-step-now svg {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .up-retry {
   display: flex;
@@ -260,7 +260,7 @@
   margin-top: 2px;
 }
 .up-next-day a {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 /* ===== The day's runs ===== */
@@ -323,7 +323,7 @@
 }
 .up-held > summary {
   cursor: pointer;
-  color: var(--accent);
+  color: var(--accent-ink);
   font-size: 13px;
 }
 .up-held[open] > summary {

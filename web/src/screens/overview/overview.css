@@ -207,7 +207,7 @@ li > .ov-case {
 .ov-more-block summary,
 .ov-checks summary {
   cursor: pointer;
-  color: var(--accent);
+  color: var(--accent-ink);
   font-size: 13px;
   width: fit-content;
 }
@@ -407,7 +407,7 @@ li > .ov-case {
   transition: fill var(--t-fast) var(--ease);
 }
 .ov-trend-bar.current rect:not(.ov-trend-hit) {
-  fill: var(--accent);
+  fill: var(--accent-ink);
 }
 .ov-trend-bar.current rect.ov-trend-mark {
   fill: var(--ink-2);

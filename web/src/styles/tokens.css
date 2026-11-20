@@ -1,88 +1,226 @@
 /*
- * Design tokens: Night desk, dark first.
+ * Design tokens: Midnight (dark, the default) and Paper (light), from
+ * docs/design/paper-design-system.md as adapted in docs/design/paper-adaptation.md.
  *
- * Deep slate surfaces, light ink, a blue accent for links, focus and selection, and
- * orange-amber (--signal) as the one colour that means "needs you". Green and red are
- * restrained and always come with an icon or a word, never colour alone.
+ * Midnight applies whatever the system prefers (no attribute on <html>). Paper applies
+ * only when the user chose it with the theme button (data-theme="light" on <html>, set by
+ * theme/ThemeProvider.tsx and public/theme-init.js).
  *
- * The dark palette is the default, whatever the system prefers. The light palette, kept
- * for accessibility, applies only when the user chose it with the theme button
- * (data-theme="light" on <html>, set by theme/ThemeProvider.tsx and public/theme-init.js).
+ * The blue-to-violet gradient (--accent) is an accent only: the page glow, the lead
+ * card's top edge, the current place in the nav, count pills. Never a background for
+ * lists, rows, forms or body text, and at most three touches on screen.
+ *
+ * Contrast (WCAG 2.2 AA), checked for muted text and every status colour on --bg,
+ * --surface, --surface-2 and the status's own soft fill, in both themes:
+ * - Midnight: every value from the design system passes as given (muted 6.2:1 or more,
+ *   status colours 5.3:1 or more) except --hero-muted, darkened from #6B6E7B to #676A77
+ *   (4.50:1 to 4.77:1 on the paper lead card).
+ * - Paper: the status colours as given fall below 4.5:1 on --surface-2 and their soft
+ *   fills, so each is darkened the least that clears 4.5:1 everywhere: red #C8363A to
+ *   #BD3337, amber #A6660C to #925A0B, green #248054 to #21744C, info #466EE6 to #3D5FC7.
+ *   Muted #5F626E passes as given (4.9:1 on --surface-2).
+ * - The gradient stops (#5B8CFF, #A47CFF) are under 3:1 on paper, so text, icons and the
+ *   focus ring use --accent-ink (Paper #3D5FC7, Midnight #8FB0FF), and anything with
+ *   white text on the gradient (count pills) uses the deeper --accent-strong (5.1:1+).
+ * - Placeholders use --muted rather than --faint, and field boundaries use --field
+ *   (3:1 on every surface), so fields stay identifiable (1.4.11); --faint is for chevrons
+ *   and disabled controls only.
  */
 :root {
   color-scheme: dark;
-  --bg: #131b26;
-  --panel: #18222f;
-  --panel-2: #1d2836;
-  --raise: #243243;
-  --rule: #2c3a4c;
-  --rule-strong: #3d4e63;
-  --field: #687b94; /* form-field boundary, at least 3:1 on every surface */
-  --ink: #e2e8f0;
-  --ink-2: #a9b6c6;
-  --ink-3: #8c9bae;
-  --accent: #7db7ff; /* links, selection, current screen */
-  --accent-wash: rgba(125, 183, 255, 0.14);
-  --focus: #93c8ff;
-  --signal: #f2b54b; /* "needs you": text and icons */
-  --signal-fill: #f2b54b; /* badge fill */
-  --signal-ink: #1c1405; /* text on the badge fill */
-  --signal-wash: rgba(242, 181, 75, 0.11);
-  --pos: #86cda3;
-  --pos-wash: rgba(134, 205, 163, 0.1);
-  --neg: #f39a8c;
-  --neg-wash: rgba(243, 154, 140, 0.1);
-  --bar: #6a819c;
-  --bar-material: #c7d3e0;
-  --scrim: rgba(6, 10, 16, 0.66);
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
 
-  --font-ui: "Sofia Sans Semi Condensed", "Segoe UI", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
-  --font-fig: "Red Hat Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+  /* ----- Midnight surfaces and ink ----- */
+  --bg: #0a0b10;
+  --surface: #15161d;
+  --surface-fill: linear-gradient(180deg, #191a22, #14151c);
+  --surface-2: #1d1f28;
+  --surface-3: #242632; /* hover on a surface-2 control */
+  --ink: #f5f5f7;
+  --ink-2: #dfe0e7;
+  --muted: #9b9eb0;
+  --faint: #5f6270;
+  --line: rgba(255, 255, 255, 0.07);
+  --line-strong: rgba(255, 255, 255, 0.14);
+  --field: #6e7183; /* field boundary, 3:1 or more on every surface */
+  --hero: #f4f1ea;
+  --hero-ink: #14151b;
+  --hero-muted: #676a77;
 
+  /* ----- Status: always with a word ----- */
+  --red: #ff6b6b;
+  --red-soft: #3c1818;
+  --amber: #f0b050;
+  --amber-soft: #34250e;
+  --green: #4cc38a;
+  --green-soft: #122e20;
+  --info: #8fb0ff;
+  --info-soft: #1d1f28;
+  --neutral: #9b9eb0;
+  --neutral-soft: #1d1f28;
+
+  /* ----- The accent ----- */
+  --accent-a: #5b8cff;
+  --accent-b: #a47cff;
+  --accent: linear-gradient(135deg, var(--accent-a), var(--accent-b));
+  --accent-line: linear-gradient(90deg, var(--accent-a), var(--accent-b));
+  --accent-strong: linear-gradient(135deg, #3f64d8, #7b4fe6); /* white text on it */
+  --accent-ink: #8fb0ff; /* the accent as text, an icon or the focus ring */
+  --accent-tint: linear-gradient(135deg, rgba(91, 140, 255, 0.24), rgba(164, 124, 255, 0.24));
+  --accent-wash: rgba(91, 140, 255, 0.16);
+  --glow: 0.2;
+  --focus: var(--accent-ink);
+
+  /* ----- Depth ----- */
+  --card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 10px 30px rgba(0, 0, 0, 0.35);
+  --lead-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.3), 0 18px 50px rgba(91, 140, 255, 0.18);
+  --primary-shadow: 0 10px 28px rgba(91, 140, 255, 0.22);
+  --pop-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+  --glass: rgba(34, 36, 48, 0.66);
+  --glass-strong: rgba(28, 30, 40, 0.9);
+  --glass-line: rgba(255, 255, 255, 0.14);
+  --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  --glass-blur: blur(24px) saturate(1.4);
+  --scrim: rgba(5, 6, 10, 0.55);
+  --tile-box: linear-gradient(145deg, #262836, #1a1b24);
+  --tile-box-edge: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --shimmer-a: #181a22;
+  --shimmer-b: #282b38;
+  --track: #2a2c38; /* the empty part of a 6px ageing track */
+
+  /* ----- Type ----- */
+  --font: "Barlow", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  /* ----- Motion (section 7) ----- */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --spring: cubic-bezier(0.2, 0.85, 0.25, 1.15);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --t-press: 90ms;
   --t-fast: 150ms;
   --t-panel: 180ms;
+  --t-lens: 380ms;
+  --t-rise: 480ms;
+  --t-pop: 520ms;
   --t-status: 600ms;
-  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 
-  --radius: 3px;
-  --gutter: 16px;
+  /* ----- Space and shape (section 5) ----- */
+  --s-1: 4px;
+  --s-2: 6px;
+  --s-3: 8px;
+  --s-4: 10px;
+  --s-5: 12px;
+  --s-6: 16px;
+  --s-7: 20px;
+  --s-8: 24px;
+  --s-9: 32px;
+  --r-card: 20px;
+  --r-lead: 24px;
+  --r-small: 16px;
+  --r-tile-box: 12px;
+  --r-pill: 999px;
+  --hairline: 0.5px;
+  --gutter: 16px; /* side margin: 16px under 1024px, 24px from 1024px, 32px from 1440px */
+  --btn-h: 54px; /* the pill buttons: 54px under 1024px, 44px on desktop */
+  --field-h: 44px;
+
+  /* ----- Old Night desk names, kept so screens not yet restyled still render. ----- */
+  /* Each maps to its Paper equivalent; remove once no screen uses it. */
+  --panel: var(--surface);
+  --panel-2: var(--surface-2);
+  --raise: var(--surface-3);
+  --rule: var(--line);
+  --rule-strong: var(--line-strong);
+  --ink-3: var(--muted);
+  --signal: var(--amber);
+  --signal-fill: var(--amber);
+  --signal-ink: #1c1405;
+  --signal-wash: var(--amber-soft);
+  --pos: var(--green);
+  --pos-wash: var(--green-soft);
+  --neg: var(--red);
+  --neg-wash: var(--red-soft);
+  --bar: #6b6e80;
+  --bar-material: var(--ink-2);
+  --shadow: var(--pop-shadow);
+  --font-ui: var(--font);
+  --font-fig: var(--mono); /* screens use it for ids and codes; figures use .fig (Barlow) */
+  --radius: 10px;
 }
 
 :root[data-theme="light"] {
   color-scheme: light;
-  --bg: #e6ebf1;
-  --panel: #f6f8fa;
-  --panel-2: #edf1f5;
-  --raise: #ffffff;
-  --rule: #cbd4de;
-  --rule-strong: #a9b7c6;
-  --field: #728296;
-  --ink: #15202c;
-  --ink-2: #435163;
-  --ink-3: #566477;
-  --accent: #1d5cc0;
-  --accent-wash: rgba(29, 92, 192, 0.1);
-  --focus: #1d5cc0;
-  --signal: #8a5700;
-  --signal-fill: #f2b54b;
-  --signal-ink: #1c1405;
-  --signal-wash: rgba(242, 181, 75, 0.2);
-  --pos: #1e6e43;
-  --pos-wash: rgba(30, 110, 67, 0.08);
-  --neg: #ae3127;
-  --neg-wash: rgba(174, 49, 39, 0.07);
-  --bar: #7489a0;
-  --bar-material: #2e3e52;
-  --scrim: rgba(21, 32, 44, 0.45);
-  --shadow: 0 10px 30px rgba(21, 32, 44, 0.18);
+
+  --bg: #f4f1ea;
+  --surface: #ffffff;
+  --surface-fill: #ffffff;
+  --surface-2: #ebe7de;
+  --surface-3: #e3dfd5;
+  --ink: #14151b;
+  --ink-2: #3a3c47;
+  --muted: #5f626e;
+  --faint: #a3a6b3;
+  --line: rgba(20, 21, 27, 0.09);
+  --line-strong: rgba(20, 21, 27, 0.16);
+  --field: #7d808e;
+  --hero: #14151b;
+  --hero-ink: #ffffff;
+  --hero-muted: #a9acbb;
+
+  --red: #bd3337;
+  --red-soft: #fce8e6;
+  --amber: #925a0b;
+  --amber-soft: #faeed7;
+  --green: #21744c;
+  --green-soft: #e2f3e9;
+  --info: #3d5fc7;
+  --info-soft: #e8edfc;
+  --neutral: #5f626e;
+  --neutral-soft: #ebe7de;
+
+  --accent-ink: #3d5fc7;
+  --accent-tint: linear-gradient(135deg, rgba(91, 140, 255, 0.18), rgba(164, 124, 255, 0.18));
+  --accent-wash: rgba(91, 140, 255, 0.14);
+  --glow: 0.12;
+
+  --card-shadow: 0 1px 2px rgba(20, 21, 27, 0.04), 0 6px 18px rgba(20, 21, 27, 0.05);
+  --lead-shadow: 0 16px 36px rgba(20, 21, 27, 0.22);
+  --pop-shadow: 0 18px 44px rgba(20, 21, 27, 0.16);
+  --glass: rgba(255, 255, 255, 0.74);
+  --glass-strong: rgba(255, 255, 255, 0.92);
+  --glass-line: rgba(20, 21, 27, 0.1);
+  --glass-shadow: 0 10px 30px rgba(20, 21, 27, 0.12);
+  --scrim: rgba(20, 21, 27, 0.32);
+  --tile-box: #ebe7de;
+  --tile-box-edge: none;
+  --shimmer-a: #e6e2d8;
+  --shimmer-b: #f3f0e9;
+  --track: #e3dfd5;
+
+  --signal-ink: #ffffff;
+  --bar: #878a97;
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --gutter: 24px;
+    --btn-h: 44px;
+  }
+}
+@media (min-width: 1440px) {
+  :root {
+    --gutter: 32px;
+  }
 }
 
 /* All motion off for people who ask for less. */
 @media (prefers-reduced-motion: reduce) {
   :root {
+    --t-press: 0ms;
     --t-fast: 0ms;
     --t-panel: 0ms;
+    --t-lens: 0ms;
+    --t-rise: 0ms;
+    --t-pop: 0ms;
     --t-status: 0ms;
   }
   *,

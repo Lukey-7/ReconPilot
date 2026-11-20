@@ -163,7 +163,7 @@
 }
 .mi-more summary {
   cursor: pointer;
-  color: var(--accent);
+  color: var(--accent-ink);
   font-size: 13px;
   width: fit-content;
 }
@@ -188,7 +188,7 @@
 }
 .mi-measure.active {
   background: var(--accent-wash);
-  border-color: var(--accent);
+  border-color: var(--accent-ink);
   color: var(--ink);
 }
 .mi-chart-wrap {
@@ -206,7 +206,7 @@
   transition: height var(--t-panel) var(--ease), y var(--t-panel) var(--ease);
 }
 .mi-bar.current rect {
-  fill: var(--accent);
+  fill: var(--accent-ink);
 }
 .mi-bar text {
   font-family: var(--font-fig);

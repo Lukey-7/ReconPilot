@@ -45,7 +45,7 @@
   margin-inline-start: 6px;
 }
 .fd-current th[scope="row"] {
-  box-shadow: inset 2px 0 0 var(--accent);
+  box-shadow: inset 2px 0 0 var(--accent-ink);
 }
 .fd-action {
   text-align: right;

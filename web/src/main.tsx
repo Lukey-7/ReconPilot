@@ -1,10 +1,9 @@
-import "@fontsource/sofia-sans-semi-condensed/latin-400.css";
-import "@fontsource/sofia-sans-semi-condensed/latin-500.css";
-import "@fontsource/sofia-sans-semi-condensed/latin-600.css";
-import "@fontsource/sofia-sans-semi-condensed/latin-700.css";
-import "@fontsource/red-hat-mono/latin-400.css";
-import "@fontsource/red-hat-mono/latin-500.css";
-import "@fontsource/red-hat-mono/latin-600.css";
+import "@fontsource/barlow/latin-400.css";
+import "@fontsource/barlow/latin-500.css";
+import "@fontsource/barlow/latin-600.css";
+import "@fontsource/barlow/latin-700.css";
+import "@fontsource/jetbrains-mono/latin-400.css";
+import "@fontsource/jetbrains-mono/latin-500.css";
 import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/shell.css";

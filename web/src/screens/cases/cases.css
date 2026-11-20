@@ -127,7 +127,7 @@
 }
 .wb-chip[aria-pressed="true"] {
   background: var(--accent-wash);
-  border-color: var(--accent);
+  border-color: var(--accent-ink);
   color: var(--ink);
 }
 .wb-clear {
@@ -203,8 +203,8 @@
   border-color: color-mix(in srgb, var(--neg) 45%, transparent);
 }
 .wb-flag-ai {
-  color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  color: var(--accent-ink);
+  border-color: color-mix(in srgb, var(--accent-ink) 55%, transparent);
 }
 .wb-flag-escalated {
   color: var(--ink);
@@ -300,14 +300,14 @@
   gap: 8px;
   padding: 6px 10px;
   margin-bottom: 8px;
-  border: 1px dashed var(--accent);
+  border: 1px dashed var(--accent-ink);
   border-radius: 4px;
   background: var(--accent-wash);
   color: var(--ink);
   font-weight: 600;
 }
 .wb-disagree svg {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .wb-agree-line {
   display: flex;
@@ -330,7 +330,7 @@
   min-width: 0;
 }
 .wb-opinion-ai {
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--rule));
+  border-color: color-mix(in srgb, var(--accent-ink) 45%, var(--rule));
 }
 .wb-op-who {
   display: flex;
@@ -374,7 +374,7 @@
   background: var(--bar);
 }
 .wb-opinion-ai .wb-meter > span {
-  background: var(--accent);
+  background: var(--accent-ink);
 }
 .wb-steps {
   margin: 0;
@@ -405,7 +405,7 @@
 }
 .wb-tabs [role="tab"][aria-selected="true"] {
   color: var(--ink);
-  border-bottom-color: var(--accent);
+  border-bottom-color: var(--accent-ink);
 }
 .wb-tabs [role="tab"]:disabled {
   cursor: not-allowed;
@@ -539,8 +539,8 @@
 }
 .wb-reject.wb-armed,
 .wb-reclass.wb-armed select {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
+  border-color: var(--accent-ink);
+  box-shadow: 0 0 0 1px var(--accent-ink);
 }
 .wb-reclass {
   display: inline-flex;
@@ -651,7 +651,7 @@
 }
 .wb-records summary {
   cursor: pointer;
-  color: var(--accent);
+  color: var(--accent-ink);
   font-size: 13px;
   width: fit-content;
 }

@@ -147,7 +147,7 @@
 }
 .so-more summary {
   cursor: pointer;
-  color: var(--accent);
+  color: var(--accent-ink);
   font-size: 13px;
   width: fit-content;
 }
