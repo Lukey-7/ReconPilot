@@ -1,61 +1,85 @@
 /*
- * Funds: the list of funds, then the settings of the fund being worked, in three
- * groups (cases, release checks, calendar) side by side on wide screens.
+ * Funds (Paper): the lead card counts the funds; then every fund as one hairline list,
+ * and the settings of the fund being worked as records in three groups (cases, release
+ * checks, calendar), side by side on wide screens.
  */
+
+.fd-lead {
+  margin-bottom: var(--s-8);
+}
 
 .fd-grid {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: var(--s-8);
 }
 
-.fd-block {
-  background: var(--panel);
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  padding: 14px 16px 16px;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+/* ===== Every fund ===== */
+.fd-section > .section-head {
+  margin-top: 0;
 }
-.fd-block h2 {
-  font-size: 15px;
-  font-weight: 600;
+.fd-fund {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  padding-block: 14px;
 }
-.fd-block-head {
+.fd-fund .row-main {
+  gap: 3px;
+}
+.fd-name {
+  margin-inline-start: 4px;
+}
+.fd-pills {
   display: flex;
-  align-items: baseline;
   flex-wrap: wrap;
-  gap: 4px 10px;
+  gap: 6px;
+  margin-top: 5px;
 }
-.fd-block-head .tag svg,
-.fd-action .tag svg {
+/* The fund being worked: a quiet accent rule at its leading edge. */
+.fd-current {
+  box-shadow: inset 2px 0 0 var(--accent-ink);
+}
+.fd-action {
+  flex: none;
+  align-self: center;
+}
+.fd-action .tag svg,
+.fd-block-head .tag svg {
   width: 12px;
   height: 12px;
 }
 
-.fd-list th[scope="row"] {
-  font-weight: 600;
-  text-align: left;
+/* ===== Settings, read-only ===== */
+.fd-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 18px 20px 20px;
+  font-size: 14px;
+  line-height: 20px;
 }
-.fd-name {
-  font-weight: 400;
-  color: var(--ink-2);
-  margin-inline-start: 6px;
+.fd-block > p {
+  margin: 0;
 }
-.fd-current th[scope="row"] {
-  box-shadow: inset 2px 0 0 var(--accent-ink);
+.fd-block-head {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 8px 12px;
 }
-.fd-action {
-  text-align: right;
-  white-space: nowrap;
+.fd-block-head .section-head {
+  margin: 0;
+}
+.fd-admin-link {
+  margin-inline-start: auto;
 }
 
 .fd-groups {
   display: grid;
-  gap: 18px;
+  gap: 20px 28px;
   grid-template-columns: minmax(0, 1fr);
+  margin-top: 6px;
 }
 @media (min-width: 1100px) {
   .fd-groups {
@@ -63,49 +87,62 @@
   }
 }
 .fd-group h3 {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-2);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
-.fd-group dl {
-  margin: 0;
+.fd-group .records {
+  border-top: var(--hairline) solid var(--line);
 }
 .fd-setting {
-  padding: 8px 0;
-  border-top: 1px solid var(--rule);
+  flex-wrap: wrap;
+  column-gap: 16px;
+  row-gap: 4px;
 }
 .fd-setting dt {
-  font-size: 13px;
-  color: var(--ink-2);
+  flex: 0 1 auto;
 }
-.fd-setting dd {
-  margin: 2px 0 0;
-  display: flex;
+.fd-setting .fd-value {
+  display: inline-flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  justify-content: flex-end;
+  align-items: center;
   gap: 4px 8px;
-}
-.fd-value {
+  max-width: 62%;
+  margin-inline-start: auto;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
+  color: var(--ink);
 }
 .fd-source {
   font-weight: 500;
 }
-.fd-note {
+.fd-setting .fd-note {
   flex-basis: 100%;
-  font-size: 12.5px;
-  color: var(--ink-2);
-}
-.fd-list th[scope="row"] {
-  background: none;
-  color: var(--ink);
+  margin: 0;
+  text-align: left;
   font-size: 13px;
+  line-height: 18px;
+  color: var(--muted);
 }
-.fd-admin-link {
-  margin-inline-start: auto;
+
+/* Non-business days as chips. */
+.fd-dates {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fd-dates li {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 var(--hairline) var(--line-strong);
   font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }

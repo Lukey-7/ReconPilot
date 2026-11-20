@@ -1,23 +1,27 @@
 /**
  * Funds: every fund the desk services, and the settings of the fund being worked.
  *
- * One job: know which fund you are in and the rules it runs by. The list shows each
- * fund's latest business day and its status; "Work this fund" switches to it and stores
- * the choice for the user. The settings are read-only here (an administrator changes
- * them): materiality, escalation and SLA days, the AI second opinion, the release checks
- * as the engine applies them, and the business calendar. Every value is the server's.
+ * One job: know which fund you are in and the rules it runs by. The lead card counts the
+ * funds; the list shows each fund's latest business day and its status; "Work this fund"
+ * switches to it and stores the choice for the user. The settings are read-only here (an
+ * administrator changes them), as records: materiality, escalation and SLA days, the AI
+ * second opinion, the release checks as the engine applies them, and the business
+ * calendar, its non-business days as chips. Every value is the server's.
  */
 import "./funds.css";
 
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 
 import { useFund } from "../../api/queries";
 import type { FundDetail, FundSummary } from "../../api/types";
 import { useUser } from "../../auth/AuthContext";
 import { Icon } from "../../components/Icon";
+import { type StatusKind, StatusPill } from "../../components/Labels";
+import { Lead, SectionHead } from "../../components/Paper";
 import { Empty, ErrorLine, Loading } from "../../components/QueryState";
 import { ScreenHeader } from "../../components/ScreenHeader";
-import { count, dayLabel } from "../../format";
+import { count, dayLabel, plural } from "../../format";
 import { useWorkspace } from "../../shell/workspace";
 import { ASSET_CLASS_LABELS, CHECK_SETTING_LABELS, dayStatusLabel } from "../../vocabulary";
 
@@ -33,74 +37,91 @@ function days(n: number): string {
   return `${count(n)} business ${n === 1 ? "day" : "days"}`;
 }
 
+/** A day's status as a pill: signed off green, waiting on review amber, failed red. */
+const DAY_KINDS: Record<string, StatusKind> = {
+  uploaded: "late",
+  validated: "wait",
+  running: "info",
+  ready: "wait",
+  signed_off: "done",
+  failed: "late",
+};
+
+function FundLead({ funds }: { funds: FundSummary[] }) {
+  const signedOff = funds.filter((f) => f.latest_status === "signed_off").length;
+  return (
+    <Lead
+      className="fd-lead"
+      aria-label="Funds"
+      label="Funds the desk services"
+      figure={count(funds.length)}
+      caption={`${count(signedOff)} of ${plural(funds.length, "fund")} signed off on their latest day`}
+    />
+  );
+}
+
 function FundList({ funds, current }: { funds: FundSummary[]; current: string }) {
   const { setFund } = useWorkspace();
   return (
-    <section className="fd-block" aria-labelledby="fd-h-list">
-      <h2 id="fd-h-list">Every fund</h2>
-      <div className="table-wrap">
-        <table className="data-table fd-list">
-          <caption className="sr-only">Every fund, its latest business day and that day&rsquo;s status</caption>
-          <thead>
-            <tr>
-              <th scope="col">Fund</th>
-              <th scope="col">Base currency</th>
-              <th scope="col">First business day</th>
-              <th scope="col">Latest day</th>
-              <th scope="col">Status</th>
-              <th scope="col">
-                <span className="sr-only">Work</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {funds.map((f) => {
-              const working = f.code === current;
-              return (
-                <tr key={f.code} aria-current={working ? "true" : undefined} className={working ? "fd-current" : undefined}>
-                  <th scope="row">
-                    <span className="mono">{f.code}</span> <span className="fd-name">{f.name}</span>
-                  </th>
-                  <td>{f.base_currency}</td>
-                  <td>{dayLabel(f.start_date)}</td>
-                  <td>{f.latest_day ? dayLabel(f.latest_day) : "None loaded"}</td>
-                  <td>{dayStatusLabel(f.latest_status)}</td>
-                  <td className="fd-action">
-                    {working ? (
-                      <span className="tag">
-                        <Icon name="check" /> Working
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        className="btn"
-                        aria-label={`Work this fund: ${f.code}`}
-                        onClick={() => setFund(f.code)}
-                      >
-                        Work this fund
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+    <section className="fd-section" aria-labelledby="fd-h-list">
+      <SectionHead label="Funds" title="Every fund" count={count(funds.length)} id="fd-h-list" />
+      <ul className="list fd-list" aria-label="Every fund, its latest business day and that day’s status">
+        {funds.map((f) => {
+          const working = f.code === current;
+          return (
+            <li
+              key={f.code}
+              aria-current={working ? "true" : undefined}
+              className={working ? "row fd-fund fd-current" : "row fd-fund"}
+            >
+              <div className="row-main">
+                <p className="row-title">
+                  <span className="mono">{f.code}</span> <span className="fd-name">{f.name}</span>
+                </p>
+                <p className="row-sub">
+                  {f.base_currency} · First business day {dayLabel(f.start_date)} · Latest day:{" "}
+                  {f.latest_day ? dayLabel(f.latest_day) : "None loaded"}
+                </p>
+                <p className="fd-pills">
+                  <StatusPill kind={(f.latest_status && DAY_KINDS[f.latest_status]) || "neutral"}>
+                    {dayStatusLabel(f.latest_status)}
+                  </StatusPill>
+                </p>
+              </div>
+              <div className="fd-action">
+                {working ? (
+                  <span className="tag">
+                    <Icon name="check" /> Working
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn quiet"
+                    aria-label={`Work this fund: ${f.code}`}
+                    onClick={() => setFund(f.code)}
+                  >
+                    Work this fund
+                  </button>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
     </section>
   );
 }
 
-/** One setting: its name, its value, and where the value comes from when that matters. */
-function Setting({ name, value, note, own }: { name: string; value: string; note?: string; own?: boolean }) {
+/** One setting as a record: its name left, its value right, and a note beneath when it helps. */
+function Setting({ name, value, note, own }: { name: string; value: ReactNode; note?: string; own?: boolean }) {
   return (
-    <div className="fd-setting">
+    <div className="record fd-setting">
       <dt>{name}</dt>
-      <dd>
-        <span className="fd-value">{value}</span>
+      <dd className="fd-value">
         {own !== undefined && <span className="tag fd-source">{own ? "This fund" : "Engine default"}</span>}
-        {note && <span className="fd-note">{note}</span>}
+        <span>{value}</span>
       </dd>
+      {note && <dd className="fd-note">{note}</dd>}
     </div>
   );
 }
@@ -115,16 +136,22 @@ function Settings({ fund }: { fund: FundDetail }) {
     .map(([assetClass, limit]) => `${ASSET_CLASS_LABELS[assetClass] ?? assetClass} ${percent(limit)}`)
     .join(", ");
   return (
-    <section className="fd-block" aria-labelledby="fd-h-settings">
+    <section className="card fd-block" aria-labelledby="fd-h-settings">
       <div className="fd-block-head">
-        <h2 id="fd-h-settings">
-          Settings for <span className="mono">{fund.code}</span>
-        </h2>
+        <SectionHead
+          label="Rules"
+          title={
+            <>
+              Settings for <span className="mono">{fund.code}</span>
+            </>
+          }
+          id="fd-h-settings"
+        />
         <span className="tag">
           <Icon name="lock" /> Read-only
         </span>
         {user.is_admin && (
-          <Link className="fd-admin-link" to={href("/admin/funds")}>
+          <Link className="btn quiet fd-admin-link" to={href("/admin/funds")}>
             Change settings
           </Link>
         )}
@@ -136,8 +163,8 @@ function Settings({ fund }: { fund: FundDetail }) {
 
       <div className="fd-groups">
         <div className="fd-group">
-          <h3>Cases</h3>
-          <dl>
+          <h3 className="mono-label">Cases</h3>
+          <dl className="records">
             <Setting
               name="Materiality"
               value={`${number(s.materiality_bp)} bp of NAV`}
@@ -163,8 +190,8 @@ function Settings({ fund }: { fund: FundDetail }) {
         </div>
 
         <div className="fd-group">
-          <h3>Release checks</h3>
-          <dl>
+          <h3 className="mono-label">Release checks</h3>
+          <dl className="records">
             <Setting
               name={CHECK_SETTING_LABELS.max_price_age_days}
               value={`At most ${count(checks.max_price_age_days)} ${checks.max_price_age_days === 1 ? "day" : "days"} old`}
@@ -185,15 +212,21 @@ function Settings({ fund }: { fund: FundDetail }) {
         </div>
 
         <div className="fd-group">
-          <h3>Business calendar</h3>
-          <dl>
+          <h3 className="mono-label">Business calendar</h3>
+          <dl className="records">
             <Setting name="First business day" value={dayLabel(fund.start_date)} />
             <Setting
               name="Non-business days"
               value={
-                fund.non_business_dates.length
-                  ? fund.non_business_dates.map((d) => dayLabel(d)).join("; ")
-                  : "Weekends only"
+                fund.non_business_dates.length ? (
+                  <ul className="fd-dates" aria-label="Non-business days">
+                    {fund.non_business_dates.map((d) => (
+                      <li key={d}>{dayLabel(d)}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  "Weekends only"
+                )
               }
               note="Days are worked in order: each business day is signed off before the next one's files are loaded."
             />
@@ -218,10 +251,13 @@ export function FundsScreen() {
   if (!fund) body = fundsLoading ? <Loading label="Loading funds" /> : <Empty>No fund is set up yet.</Empty>;
   else
     body = (
-      <div className="fd-grid">
-        <FundList funds={funds} current={fund.code} />
-        <SettingsArea code={fund.code} />
-      </div>
+      <>
+        <FundLead funds={funds} />
+        <div className="fd-grid">
+          <FundList funds={funds} current={fund.code} />
+          <SettingsArea code={fund.code} />
+        </div>
+      </>
     );
 
   return (

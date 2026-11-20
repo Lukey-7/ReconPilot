@@ -36,8 +36,8 @@ describe("FundsScreen", () => {
     renderApp("/funds?fund=GEF1&day=2026-11-10");
     expect(await screen.findByRole("heading", { level: 1, name: "Funds" })).toBeInTheDocument();
     expect(screen.getByText("2 funds; working GEF1, Global Equity Fund")).toBeInTheDocument();
-    const table = screen.getByRole("table", { name: /Every fund/ });
-    const rows = within(table).getAllByRole("row").slice(1);
+    const list = screen.getByRole("list", { name: /Every fund/ });
+    const rows = within(list).getAllByRole("listitem");
     expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveTextContent("GEF1");
     expect(rows[0]).toHaveTextContent("Tue 10 Nov 2026");
@@ -62,7 +62,11 @@ describe("FundsScreen", () => {
     expect(within(settings).getByText("1.00 USD")).toBeInTheDocument();
     expect(within(settings).getByText("Equity 10.00%, Bond 2.00%")).toBeInTheDocument();
     expect(within(settings).getAllByText("Engine default")).toHaveLength(4);
-    expect(within(settings).getByText("Thu 26 Nov 2026; Fri 25 Dec 2026")).toBeInTheDocument();
+    const nonBusiness = within(settings).getByRole("list", { name: "Non-business days" });
+    expect(within(nonBusiness).getAllByRole("listitem").map((d) => d.textContent)).toEqual([
+      "Thu 26 Nov 2026",
+      "Fri 25 Dec 2026",
+    ]);
     // Nothing on the screen edits a setting.
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
