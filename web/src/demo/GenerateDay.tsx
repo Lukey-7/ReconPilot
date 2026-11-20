@@ -13,12 +13,19 @@ import { Icon } from "../components/Icon";
 import { dayLabel } from "../format";
 import { useWorkspace } from "../shell/workspace";
 
+/** Day statuses whose upload screen already shows a primary: Run the day, Run again, Work the cases. */
+const SCREEN_PRIMARY = new Set(["validated", "failed", "ready"]);
+
 export function GenerateDay({ fund, user }: { fund: FundSummary; user: User }) {
-  const { days, setDay, href } = useWorkspace();
+  const { days, asOf, setDay, href } = useWorkspace();
   const generate = useGenerateNextDay(fund.code);
   const next = days?.next_day ?? null;
   const latest = days?.days[0] ?? null;
   const mayAct = user.role === "analyst" || user.role === "approver";
+  // One primary per screen: when the day on show has its own (run it, or work its cases),
+  // generating the next day steps back to a secondary pill. It does exactly the same.
+  const shown = days?.days.find((d) => d.as_of === asOf)?.status ?? null;
+  const screenHasPrimary = shown !== null && SCREEN_PRIMARY.has(shown);
 
   return (
     <div className="up-order demo-generate">
@@ -33,7 +40,7 @@ export function GenerateDay({ fund, user }: { fund: FundSummary; user: User }) {
           <p className="up-order-act">
             <button
               type="button"
-              className="btn primary"
+              className={screenHasPrimary ? "btn" : "btn primary"}
               disabled={generate.isPending}
               onClick={() => generate.mutate(undefined, { onSuccess: (result) => setDay(result.as_of) })}
             >
