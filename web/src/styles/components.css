@@ -773,8 +773,27 @@ button.row:focus-visible {
   margin-bottom: 6px;
   color: var(--ink);
 }
+/* Not found: a calm, centred empty state on the page glow, with its one action. */
 .not-found {
-  margin: 10vh auto;
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 32px var(--gutter);
+}
+.not-found-card {
+  width: min(440px, 100%);
+  padding: 40px 24px 32px;
+}
+.not-found-card h1 {
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.not-found-card p {
+  margin: 0 0 8px;
+  font-size: 15px;
+  line-height: 21px;
 }
 
 /* ===== Toast (6.13): dark pill, bottom centre ===== */
