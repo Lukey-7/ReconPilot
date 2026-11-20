@@ -1,7 +1,7 @@
 /**
  * One audit entry in full, on demand: the server's check of the entry itself (its hash
  * recomputes from its fields, and it names the hash of the entry before it), then exactly
- * what was recorded: when, by whom, the payload and both hashes.
+ * what was recorded, as records: when, by whom, the payload and both hashes.
  */
 import { useAuditEntry } from "../../api/queries";
 import type { AuditLogEntry } from "../../api/types";
@@ -52,40 +52,48 @@ function Integrity({ seq }: { seq: number }) {
 export function EntryDetail({ entry }: { entry: AuditLogEntry }) {
   return (
     <div className="al-detail">
-      <Integrity seq={entry.seq} />
-      <dl className="al-fields">
-        <div>
-          <dt>Recorded</dt>
-          <dd className="fig">{entry.ts}</dd>
-        </div>
-        <div>
-          <dt>By</dt>
-          <dd>
-            {entry.actor}
-            {entry.role && <span className="faint"> ({roleLabel(entry.role)})</span>}
-          </dd>
-        </div>
-        <div>
-          <dt>Action</dt>
-          <dd className="fig">{entry.action}</dd>
-        </div>
-        <div>
-          <dt>Fund</dt>
-          <dd>{entry.fund ?? <span className="faint">None (a system entry)</span>}</dd>
-        </div>
-        <div className="al-wide">
-          <dt>Previous hash</dt>
-          <dd className="al-hash">{entry.prev_hash}</dd>
-        </div>
-        <div className="al-wide">
-          <dt>Hash</dt>
-          <dd className="al-hash">{entry.hash}</dd>
-        </div>
-      </dl>
-      <p className="al-payload-h">Recorded payload</p>
-      <pre className="al-payload">
-        {JSON.stringify(entry.payload, null, 2)}
-      </pre>
+      <div className="al-detail-facts">
+        <Integrity seq={entry.seq} />
+        <dl className="records al-fields">
+          <div className="record">
+            <dt>Recorded</dt>
+            <dd className="fig">{entry.ts}</dd>
+          </div>
+          <div className="record">
+            <dt>By</dt>
+            <dd>
+              {entry.actor}
+              {entry.role && <span className="faint"> ({roleLabel(entry.role)})</span>}
+            </dd>
+          </div>
+          <div className="record">
+            <dt>Action</dt>
+            <dd className="mono">{entry.action}</dd>
+          </div>
+          <div className="record">
+            <dt>Fund</dt>
+            <dd>
+              {entry.fund ? (
+                <span className="mono">{entry.fund}</span>
+              ) : (
+                <span className="faint">None (a system entry)</span>
+              )}
+            </dd>
+          </div>
+          <div className="record al-wide">
+            <dt>Previous hash</dt>
+            <dd className="al-hash">{entry.prev_hash}</dd>
+          </div>
+          <div className="record al-wide">
+            <dt>Hash</dt>
+            <dd className="al-hash">{entry.hash}</dd>
+          </div>
+        </dl>
+      </div>
+      <div className="al-detail-payload">
+        <p className="al-payload-h">Recorded payload</p>
+        <pre className="al-payload">{JSON.stringify(entry.payload, null, 2)}</pre>
+      </div>
     </div>
   );
 }

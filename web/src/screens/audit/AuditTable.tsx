@@ -34,7 +34,7 @@ export function AuditTable({ entries, showFund }: { entries: AuditLogEntry[]; sh
   const columns = showFund ? 7 : 6;
 
   return (
-    <div className="table-wrap">
+    <div className="card al-card table-wrap">
       <table className="data-table al-table">
         <caption className="sr-only">Audit log entries, newest first</caption>
         <thead>
@@ -69,16 +69,24 @@ export function AuditTable({ entries, showFund }: { entries: AuditLogEntry[]; sh
                       onClick={() => toggle(entry.seq)}
                     >
                       <Icon name="chevron" className={expanded ? "al-chev open" : "al-chev"} />
-                      <span className="fig">#{entry.seq}</span>
+                      <span className="mono">#{entry.seq}</span>
                     </button>
                   </th>
-                  <td className="al-when">{timestamp(entry.ts)}</td>
+                  <td className="al-when fig">{timestamp(entry.ts)}</td>
                   <td>
                     {entry.actor}
                     {entry.role && <span className="faint"> ({roleLabel(entry.role)})</span>}
                   </td>
                   <td className="al-action">{auditActionLabel(entry.action)}</td>
-                  {showFund && <td>{entry.fund ?? <span className="faint">System</span>}</td>}
+                  {showFund && (
+                    <td>
+                      {entry.fund ? (
+                        <span className="al-fund">{entry.fund}</span>
+                      ) : (
+                        <span className="faint">System</span>
+                      )}
+                    </td>
+                  )}
                   <td>
                     {entry.case_id ? (
                       href ? (
@@ -86,7 +94,7 @@ export function AuditTable({ entries, showFund }: { entries: AuditLogEntry[]; sh
                           {entry.case_id}
                         </Link>
                       ) : (
-                        entry.case_id
+                        <span className="al-case">{entry.case_id}</span>
                       )
                     ) : null}
                   </td>

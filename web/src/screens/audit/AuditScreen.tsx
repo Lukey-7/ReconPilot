@@ -2,11 +2,12 @@
  * The audit log (spec section 8; section 10, screen 6), from `GET /api/audit`.
  *
  * One job: let anyone check what was done, by whom and when, and that the record has not
- * been altered. The header carries the two actions: "Verify chain" re-checks every hash on
- * the server (which records that it did), and "Export CSV" downloads the matching entries in
- * chain order. Then the server's verdict, when asked for; the filters; and the entries,
- * newest first, a page at a time, each entry's full record and the server's check of it on
- * demand. Filters and the page live in the address, so a view can be shared.
+ * been altered. The lead card carries the chain's integrity and the two actions: "Verify
+ * chain", the one primary, re-checks every hash on the server (which records that it did),
+ * and "Export CSV", a quiet chip, downloads the matching entries in chain order. Then the
+ * filters, and the entries, newest first, a page at a time, each entry's full record and the
+ * server's check of it on demand. Filters and the page live in the address, so a view can
+ * be shared.
  */
 import "./audit.css";
 
@@ -23,7 +24,7 @@ import { useCommand } from "../../keyboard/KeyboardProvider";
 import { useWorkspace } from "../../shell/workspace";
 import { AUDIT_EXPORT } from "../../vocabulary";
 import { AuditTable } from "./AuditTable";
-import { ChainVerdict } from "./ChainVerdict";
+import { ChainLead } from "./ChainVerdict";
 import { FilterBar, type FilterBarProps } from "./FilterBar";
 import { apiFilters, isFiltered, viewFrom, withAuditParam, withoutAuditFilters } from "./filters";
 
@@ -38,7 +39,7 @@ function ExportButton({ filters }: { filters: AuditFilters }) {
     <>
       <button
         type="button"
-        className="btn"
+        className="btn quiet"
         disabled={exporting.isPending}
         aria-busy={exporting.isPending}
         title="Download the entries these filters match, oldest first, with their hashes"
@@ -71,13 +72,13 @@ function Pager({ shown, total, newer, hasNewer, newerBefore, nextBefore, go }: P
         {count(newer + 1)} to {count(newer + shown)} of {plural(total, "entry", "entries")}, newest first
       </p>
       <div className="al-page-buttons">
-        <button type="button" className="btn ghost" disabled={!hasNewer} onClick={() => go(null)}>
+        <button type="button" className="btn quiet" disabled={!hasNewer} onClick={() => go(null)}>
           Newest
         </button>
-        <button type="button" className="btn ghost" disabled={!hasNewer} onClick={() => go(newerBefore)}>
+        <button type="button" className="btn quiet" disabled={!hasNewer} onClick={() => go(newerBefore)}>
           Newer
         </button>
-        <button type="button" className="btn ghost" disabled={nextBefore == null} onClick={() => go(nextBefore)}>
+        <button type="button" className="btn quiet" disabled={nextBefore == null} onClick={() => go(nextBefore)}>
           Older
         </button>
       </div>
@@ -146,22 +147,27 @@ export function AuditScreen() {
           {scope}
           {page ? `. The log holds ${plural(page.latest_seq, "entry", "entries")}.` : ""}
         </p>
-        <div className="al-actions" role="group" aria-label="Check and export the log">
-          <button
-            type="button"
-            className="btn primary"
-            disabled={verify.isPending}
-            aria-busy={verify.isPending}
-            title="Re-check every entry's hash on the server"
-            onClick={() => verify.mutate()}
-          >
-            {verify.isPending ? "Verifying…" : "Verify chain"}
-          </button>
-          <ExportButton filters={filters} />
-        </div>
       </ScreenHeader>
-      {verify.isError && <ErrorLine error={verify.error} />}
-      {verify.data && <ChainVerdict check={verify.data} me={user.username} />}
+      <ChainLead
+        check={verify.data}
+        error={verify.error}
+        me={user.username}
+        actions={
+          <div className="al-actions" role="group" aria-label="Check and export the log">
+            <button
+              type="button"
+              className="btn primary"
+              disabled={verify.isPending}
+              aria-busy={verify.isPending}
+              title="Re-check every entry's hash on the server"
+              onClick={() => verify.mutate()}
+            >
+              {verify.isPending ? "Verifying…" : "Verify chain"}
+            </button>
+            <ExportButton filters={filters} />
+          </div>
+        }
+      />
       <FilterBar view={view} fund={fundCode} asOf={asOf} set={set} clear={clear} filtered={filtered} />
       <section className="al-block" aria-label="Matching entries">
         {body}

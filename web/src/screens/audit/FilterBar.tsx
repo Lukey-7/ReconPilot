@@ -73,11 +73,11 @@ export function FilterBar({ view, fund, asOf, set, clear, filtered }: FilterBarP
       </label>
       <label className="al-field">
         <span>From</span>
-        <input type="date" value={view.from} max={view.to || undefined} onChange={(e) => set("from", e.target.value)} />
+        <input type="date" className="input" value={view.from} max={view.to || undefined} onChange={(e) => set("from", e.target.value)} />
       </label>
       <label className="al-field">
         <span>To</span>
-        <input type="date" value={view.to} min={view.from || undefined} onChange={(e) => set("to", e.target.value)} />
+        <input type="date" className="input" value={view.to} min={view.from || undefined} onChange={(e) => set("to", e.target.value)} />
       </label>
       <label className="al-field">
         <span>Who</span>
@@ -105,6 +105,7 @@ export function FilterBar({ view, fund, asOf, set, clear, filtered }: FilterBarP
         <span>Case</span>
         <input
           type="search"
+          className="input"
           ref={caseRef}
           aria-keyshortcuts="/"
           value={caseText}
@@ -123,7 +124,7 @@ export function FilterBar({ view, fund, asOf, set, clear, filtered }: FilterBarP
         />
       </label>
       {filtered && (
-        <button type="button" className="btn ghost al-clear" onClick={clear}>
+        <button type="button" className="btn quiet al-clear" onClick={clear}>
           Clear filters
         </button>
       )}

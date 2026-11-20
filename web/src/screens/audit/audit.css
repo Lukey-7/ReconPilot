@@ -1,135 +1,259 @@
-/* The audit log: a quiet filter row, a dense table, each record on demand. */
+/*
+ * The audit log, in Paper. The lead card (the chain's integrity, with "Verify chain" as the
+ * one primary and the CSV export as a quiet chip) first and full width; then the filters as
+ * pill fields and a chip; then the entries as one dense card of hairline rows, each entry's
+ * full record opening beneath it as records; then the pages as quiet pills.
+ */
 
+/* ===== Lead card: chain integrity ===== */
+.al-lead .lead-figure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 14px;
+  white-space: normal;
+}
+.al-lead-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+.al-lead-icon {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  stroke-width: 2.4;
+}
+.al-lead-intact .al-lead-word {
+  color: var(--green);
+}
+.al-lead-broken .al-lead-word {
+  color: var(--red);
+}
+.al-lead-seq {
+  font-family: var(--mono);
+  font-size: 0.8em;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.al-lead-count {
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--hero-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.al-lead .lead-caption {
+  max-width: 96ch;
+  margin-top: 4px;
+}
+.al-lead .lead-caption strong {
+  color: var(--hero-ink);
+  font-weight: 600;
+}
+.al-lead .lead-caption .state-line {
+  padding: 6px 0 0;
+}
+.al-lead .lead-foot {
+  margin-top: 16px;
+}
 .al-actions {
-  margin-inline-start: auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
-  gap: 6px 8px;
+  gap: 8px 10px;
 }
 .al-actions .state-line {
   flex-basis: 100%;
   margin: 0;
+  padding: 0;
 }
 .al-status {
-  flex-basis: 100%;
-  text-align: end;
   font-size: 12.5px;
-  min-height: 1em;
+  color: var(--hero-muted);
 }
 .al-status:empty {
   display: none;
 }
+@media (max-width: 479px) {
+  .al-lead .lead-figure {
+    font-size: 32px;
+    line-height: 38px;
+  }
+  .al-lead-icon {
+    width: 24px;
+    height: 24px;
+  }
+  .al-actions .btn.primary {
+    flex: 1 1 100%;
+  }
+}
 
-/* ===== The server's verdict on the chain ===== */
-.al-verdict {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  margin: 0 0 14px;
-  padding: 10px 12px;
-  border: 1px solid var(--rule);
-  border-left-width: 3px;
-  border-radius: var(--radius);
-  background: var(--panel);
-  font-size: 13px;
-  color: var(--ink);
-  max-width: 96ch;
-}
-.al-verdict > svg {
-  width: 14px;
-  height: 14px;
-  flex: none;
-  margin-top: 3px;
-}
-.al-verdict.tone-met {
-  border-left-color: var(--pos);
-}
-.al-verdict.tone-met > svg {
-  color: var(--pos);
-}
-.al-verdict.tone-broken {
-  border-left-color: var(--neg);
-  background: var(--neg-wash);
-}
-.al-verdict.tone-broken > svg {
-  color: var(--neg);
-}
+/* The first broken entry, opened inside the lead: an inset panel in the lead's own ink. */
 .al-broken-entry {
-  margin-top: 8px;
+  margin-top: 10px;
 }
 .al-broken-entry summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
   cursor: pointer;
-  color: var(--accent-ink);
+  color: var(--hero-ink);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.al-lead .al-detail {
+  margin-top: 8px;
+  padding: 12px 16px;
+  border-radius: var(--r-small);
+  background: color-mix(in srgb, var(--hero-ink) 5%, transparent);
+  color: var(--hero-ink);
+}
+.al-lead .record + .record {
+  border-top-color: color-mix(in srgb, var(--hero-ink) 12%, transparent);
+}
+.al-lead .record dt,
+.al-lead .al-payload-h,
+.al-lead .faint {
+  color: var(--hero-muted);
+}
+.al-lead .al-hash,
+.al-lead .al-check span {
+  color: var(--hero-ink);
+}
+.al-lead .al-payload {
+  background: color-mix(in srgb, var(--hero-ink) 6%, transparent);
+  border-color: color-mix(in srgb, var(--hero-ink) 12%, transparent);
+  color: var(--hero-ink);
 }
 
-/* ===== Filters ===== */
+/* ===== Filters: pill fields and a chip ===== */
 .al-filters {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 8px 14px;
-  margin-bottom: 14px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--rule);
+  gap: 12px;
+  margin: var(--s-8) 0 var(--s-6);
 }
 .al-field {
   display: grid;
-  gap: 3px;
+  gap: 4px;
   font-size: 12.5px;
-  color: var(--ink-2);
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.al-field > span {
+  padding-inline-start: 16px;
+}
+.al-field select,
+.al-field .input {
+  height: var(--field-h);
 }
 .al-field input[type="search"] {
-  width: 15ch;
+  width: 16ch;
 }
+/* "Only this day" is a filter chip with its checkbox inside, filled ink when on. */
 .al-check-field {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 30px;
+  gap: 8px;
+  min-height: var(--field-h);
+  padding: 0 16px 0 14px;
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: 22px;
   color: var(--ink);
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    background-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease);
 }
-.al-check-field input:disabled + span {
-  color: var(--ink-3);
+.al-check-field > span {
+  padding: 0;
+}
+.al-check-field input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent-ink);
+}
+.al-check-field:hover {
+  background: var(--surface-2);
+}
+.al-check-field:has(input:checked) {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: transparent;
+}
+.al-check-field:has(input:disabled) {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.al-check-field:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 .al-clear {
-  align-self: flex-end;
+  align-self: center;
+  margin-top: 20px;
+}
+@media (max-width: 767px) {
+  .al-field {
+    flex: 1 1 calc(50% - 6px);
+  }
+  .al-field select,
+  .al-field .input,
+  .al-field input[type="search"] {
+    width: 100%;
+  }
+  .al-check-field {
+    flex: 1 1 100%;
+  }
 }
 
-/* ===== Entries ===== */
-.al-table {
-  font-size: 13px;
+/* ===== Entries: one dense card, hairline rows ===== */
+.al-card {
+  position: relative;
+  padding: 4px 8px;
 }
 .al-table td,
 .al-table th {
-  vertical-align: top;
-  padding-top: 7px;
-  padding-bottom: 7px;
+  padding-top: 6px;
+  padding-bottom: 6px;
 }
-/* The entry number reads as the first column, not as a second header band. */
-.al-table th[scope="row"] {
-  background: transparent;
-  padding-top: 4px;
+.al-table td {
+  font-size: 14px;
+  color: var(--ink);
 }
 .al-seq {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 4px;
+  min-height: 32px;
+  padding: 0 8px 0 4px;
   border: 0;
-  border-radius: var(--radius);
+  border-radius: 10px;
   background: none;
   color: var(--accent-ink);
   font: inherit;
   cursor: pointer;
+  transition: background-color var(--t-fast) var(--ease);
+}
+.al-seq .mono {
+  font-size: 12px;
+  font-weight: 500;
 }
 .al-seq:hover {
   background: var(--accent-wash);
 }
 .al-chev {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   transform: rotate(-90deg);
   transition: transform var(--t-fast) var(--ease);
 }
@@ -138,6 +262,10 @@
 }
 .al-when {
   white-space: nowrap;
+  color: var(--ink-2);
+}
+.al-table .faint {
+  font-size: 12.5px;
 }
 .al-action {
   font-weight: 600;
@@ -145,94 +273,134 @@
 }
 .al-what {
   max-width: 48ch;
+  font-size: 13px;
   overflow-wrap: anywhere;
+}
+.al-screen .ov-case,
+.al-case,
+.al-fund {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.al-screen .ov-case {
+  color: var(--accent-ink);
+  text-decoration: none;
+}
+.al-screen .ov-case:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .al-row.open th,
 .al-row.open td {
   border-bottom-color: transparent;
 }
 .al-detail-row > td {
-  background: var(--panel-2);
+  height: auto;
+  padding: 0 0 8px;
 }
 
-/* ===== One entry's record ===== */
+/* ===== One entry's record: the server's check and the facts beside the payload ===== */
 .al-detail {
   display: grid;
-  gap: 10px;
-  padding: 6px 4px 8px;
+  gap: 14px 24px;
+  margin: 0 2px;
+  padding: 14px 16px;
+  border-radius: var(--r-small);
+  background: var(--surface-2);
+}
+@media (min-width: 1100px) {
+  .al-table .al-detail {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+.al-detail-facts,
+.al-detail-payload {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
 }
 .al-checks {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 3px;
+  gap: 4px;
 }
 .al-check {
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 8px;
+  font-size: 13.5px;
 }
 .al-check svg {
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
   flex: none;
+  align-self: center;
 }
 .al-check.tone-met {
-  color: var(--pos);
+  color: var(--green);
 }
 .al-check.tone-broken {
-  color: var(--neg);
+  color: var(--red);
 }
 .al-check span {
   color: var(--ink);
 }
-.al-fields {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 6px 18px;
-  margin: 0;
+.al-fields .record {
+  padding: 8px 0;
 }
-.al-fields dt {
-  font-size: 12px;
-  color: var(--ink-3);
+.al-fields .record dt {
+  font-size: 13px;
 }
-.al-fields dd {
-  margin: 0;
-}
-.al-fields .al-wide {
-  grid-column: 1 / -1;
+.al-fields .record dd {
+  font-size: 13.5px;
 }
 .al-hash {
-  font: 12px/1.5 var(--font-fig);
+  font: 11.5px/1.5 var(--mono);
   color: var(--ink-2);
   overflow-wrap: anywhere;
 }
 .al-payload-h {
-  font-size: 12px;
-  color: var(--ink-3);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 14px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 .al-payload {
   margin: 0;
-  padding: 8px 10px;
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  background: var(--bg);
+  padding: 10px 12px;
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--surface);
   color: var(--ink);
-  font: 12px/1.5 var(--font-fig);
+  font: 12px/1.55 var(--mono);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-/* ===== Pages ===== */
+/* ===== Pages: a position line and quiet pills ===== */
 .al-pager {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px 14px;
-  margin-top: 10px;
+  margin-top: 12px;
   font-size: 13px;
+}
+.al-position {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 .al-page-buttons {
   display: flex;
@@ -240,7 +408,40 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .al-chev {
+  .al-chev,
+  .al-seq {
     transition: none;
+  }
+}
+
+/* Entry numbers are codes: they line up on the left, chevron first. */
+.al-table th.num {
+  text-align: left;
+}
+.al-lead svg.al-lead-icon {
+  width: 30px;
+  height: 30px;
+}
+@media (max-width: 479px) {
+  .al-lead svg.al-lead-icon {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+/* On a narrow screen the log scrolls sideways in its card rather than squeezing each row tall. */
+@media (max-width: 1023px) {
+  .al-table {
+    min-width: 880px;
+  }
+}
+@media (max-width: 479px) {
+  .al-actions {
+    flex: 1 1 100%;
+  }
+}
+@media (max-width: 1023px) {
+  .al-table td:not(.al-what) {
+    white-space: nowrap;
   }
 }
