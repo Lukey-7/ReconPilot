@@ -4,7 +4,9 @@
  * unless asked for, so `npm run test:e2e:demo` does not rewrite the images.
  *
  * Each picture is taken at a 1440 by 900 desk screen with motion reduced, so nothing is
- * caught mid-animation. Every figure in them comes from the API, as on any visit.
+ * caught mid-animation, and at twice the pixel density, so small type stays crisp where the
+ * README scales them down (at one pixel per point a 13px Barlow i loses its dot and reads as
+ * a capital I). Every figure in them comes from the API, as on any visit.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -14,6 +16,8 @@ import { type Page, expect, test } from "@playwright/test";
 
 const FRIDAY = "2026-11-13";
 const IMAGES = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../docs/images");
+
+test.use({ deviceScaleFactor: 2 });
 
 test.skip(
   process.env.npm_lifecycle_event !== "screenshots" && !process.env.RP_SCREENSHOTS,
