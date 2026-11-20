@@ -7,6 +7,7 @@ import { StatusLabel } from "../../components/Labels";
 import { bp, count, money } from "../../format";
 import { FLAGS, causeLabel } from "../../vocabulary";
 import { CaseLink, securityText } from "../overview/caseLinks";
+import { SectionHead } from "../../components/Paper";
 
 function Flags({ c }: { c: MiTopCase }) {
   const flags: string[] = [];
@@ -28,16 +29,16 @@ function Flags({ c }: { c: MiTopCase }) {
 export function TopOpenSection({ cases, currency }: { cases: MiTopCase[]; currency: string }) {
   return (
     <section className="mi-block" aria-labelledby="mi-h-top">
-      <div className="mi-block-head">
-        <h2 id="mi-h-top">Largest open breaks</h2>
-        <span className="faint">top five by NAV impact, gains and losses alike</span>
-      </div>
+      <SectionHead label="By NAV impact" title="Largest open breaks" id="mi-h-top" />
+      <p className="mi-sub">top five by NAV impact, gains and losses alike</p>
       {cases.length === 0 ? (
-        <p className="mi-note muted">No case is open.</p>
+        <p className="card empty-state">No case is open.</p>
       ) : (
-        <div className="table-wrap">
+        <div className="card mi-card table-wrap">
           <table className="data-table">
-            <caption className="sr-only">The five open cases with the largest absolute NAV impact, largest first</caption>
+            <caption className="sr-only">
+              The five open cases with the largest absolute NAV impact, largest first
+            </caption>
             <thead>
               <tr>
                 <th scope="col">Case</th>

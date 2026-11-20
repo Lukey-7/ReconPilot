@@ -9,21 +9,20 @@ import { StatusLabel } from "../../components/Labels";
 import { count, dayLabel } from "../../format";
 import { FLAGS, causeLabel } from "../../vocabulary";
 import { CaseLink, securityText } from "../overview/caseLinks";
+import { SectionHead } from "../../components/Paper";
 
 export function SlaSection({ cases }: { cases: MiSlaCase[] }) {
   const open = cases.filter((c) => !c.cleared_on).length;
   return (
     <section className="mi-block" aria-labelledby="mi-h-sla">
-      <div className="mi-block-head">
-        <h2 id="mi-h-sla">SLA breaches</h2>
-        <span className="faint">
-          {cases.length ? `${count(open)} still open, ${count(cases.length - open)} since cleared` : "none so far"}
-        </span>
-      </div>
+      <SectionHead label="Over SLA" title="SLA breaches" id="mi-h-sla" />
+      <p className="mi-sub">
+        {cases.length ? `${count(open)} still open, ${count(cases.length - open)} since cleared` : "none so far"}
+      </p>
       {cases.length === 0 ? (
-        <p className="mi-note muted">No case has been open longer than its SLA.</p>
+        <p className="card empty-state">No case has been open longer than its SLA.</p>
       ) : (
-        <div className="table-wrap">
+        <div className="card mi-card table-wrap">
           <table className="data-table">
             <caption className="sr-only">Cases open longer than their SLA, open ones first</caption>
             <thead>

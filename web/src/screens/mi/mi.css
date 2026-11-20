@@ -1,37 +1,104 @@
 /*
- * Management information. Few blocks with space between them: breaks by cause and age
- * first, the trend across the width, then the detail. Wide screens use two columns;
- * narrow ones stack the blocks in reading order.
+ * Management information, in Paper. The lead card (gross open NAV impact across the period)
+ * first and full width, four headline tiles under it, then the registers: breaks by cause
+ * and age beside the time to resolve, the trend across the width, then the largest open
+ * breaks beside the SLA breaches. Narrow screens stack them in reading order. Each register
+ * is a mono label, a heading and one muted line above one card of hairline rows.
  */
 
+/* ===== Exports: two quiet chips in the header ===== */
 .mi-exports {
   margin-inline-start: auto;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 4px;
+  align-self: center;
 }
 .mi-export-buttons {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
-.mi-export-buttons .faint {
-  font-size: 11.5px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
+.mi-export-format {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
 }
 .mi-export-status {
   font-size: 12.5px;
   min-height: 1em;
 }
+.mi-export-status:empty {
+  display: none;
+}
 .mi-exports .state-line {
   margin: 0;
+  padding: 4px 0 0;
+}
+@media (max-width: 767px) {
+  .mi-exports {
+    margin-inline-start: 0;
+    align-items: flex-start;
+    flex-basis: 100%;
+  }
 }
 
+/* ===== Lead card and tiles ===== */
+.mi-lead .lead-caption {
+  max-width: 90ch;
+}
+.mi-lead-unit {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--hero-muted);
+}
+.mi-lead .lead-foot {
+  gap: 10px 14px;
+}
+/* The period at a glance: one thin bar per run day, the day on show in the lead's ink. */
+.mi-lead-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 26px;
+}
+.mi-lead-bar {
+  width: 6px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--hero-muted) 55%, transparent);
+}
+.mi-lead-bar.current {
+  background: var(--hero-ink);
+}
+.mi-lead-period {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--hero-muted);
+}
+@media (max-width: 479px) {
+  .mi-lead .lead-figure {
+    font-size: 32px;
+    line-height: 38px;
+  }
+}
+
+.mi-tiles {
+  margin-top: var(--s-5);
+}
+.mi-tile-unit {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* ===== Registers ===== */
 .mi-grid {
   display: grid;
-  gap: 18px;
+  gap: var(--s-8);
+  margin-top: var(--s-8);
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas:
     "cause"
@@ -43,7 +110,7 @@
 }
 @media (min-width: 1100px) {
   .mi-grid {
-    grid-template-columns: minmax(0, 1.75fr) minmax(300px, 1fr);
+    grid-template-columns: minmax(0, 1.75fr) minmax(320px, 1fr);
     grid-template-areas:
       "cause resolve"
       "trend trend"
@@ -52,6 +119,7 @@
 }
 .mi-grid-notrun {
   grid-template-areas: none;
+  margin-top: 0;
 }
 .mi-area-cause {
   grid-area: cause;
@@ -69,51 +137,53 @@
   grid-area: sla;
 }
 
-/* ===== A block ===== */
 .mi-block {
-  background: var(--panel);
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  padding: 14px 16px 16px;
   min-width: 0;
 }
-.mi-block h2 {
-  font-size: 15px;
-  font-weight: 600;
+.mi-block .section-head {
+  margin-bottom: 2px;
 }
-.mi-block-head {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  margin-bottom: 10px;
+.mi-sub {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--muted);
 }
-.mi-block-head .faint {
-  font-size: 12.5px;
+.mi-sub::first-letter {
+  text-transform: uppercase;
 }
 .mi-note {
   margin-top: 10px;
   font-size: 13px;
+  line-height: 18px;
 }
-.mi-notrun p + p {
-  margin-top: 10px;
-}
+
 .mi-notrun h2 {
   margin-bottom: 8px;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
+}
+.mi-notrun p {
+  color: var(--ink-2);
+}
+.mi-notrun p + p {
+  margin-top: 14px;
 }
 .mi-day-status {
   font-weight: 600;
+  color: var(--ink);
 }
 
-/* ===== Tables ===== */
-.mi-block .table-wrap {
-  position: relative;
+/* ===== Tables: one card, hairline rows, figures right-aligned ===== */
+.mi-card {
+  position: relative; /* keeps the sr-only captions inside the scrolling card */
+  padding: 4px 8px;
 }
 /* Row headers read as the first column, not as a second header band. */
 .mi-block .data-table th[scope="row"] {
-  background: transparent;
   color: var(--ink);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -122,30 +192,45 @@
 }
 .mi-matrix th.mi-group {
   text-align: center;
-  border-bottom-color: var(--rule-strong);
+  border-bottom-color: var(--line-strong);
 }
 .mi-block .data-table .mi-total th,
 .mi-block .data-table .mi-total td {
-  font-weight: 600;
-  border-top: 1px solid var(--rule-strong);
+  font-weight: 700;
+  border-top: var(--hairline) solid var(--line-strong);
   border-bottom: none;
 }
 .mi-strong {
-  font-weight: 600;
+  font-weight: 700;
 }
 .mi-case-cell {
   display: flex;
   flex-direction: column;
+  gap: 1px;
   line-height: 1.25;
-  padding: 4px 0;
+  padding: 6px 0;
 }
 .mi-case-cell .faint {
-  font-size: 12px;
-}
-.mi-case-id {
-  font-family: var(--font-fig);
   font-size: 12.5px;
+}
+.mi-screen .ov-case,
+.mi-case-id {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  width: fit-content;
+  font-family: var(--mono);
+  font-size: 12px;
   font-weight: 500;
+  white-space: nowrap;
+}
+.mi-screen .ov-case {
+  color: var(--accent-ink);
+  text-decoration: none;
+}
+.mi-screen .ov-case:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .mi-cause-cell,
 .mi-now {
@@ -156,69 +241,86 @@
 }
 .mi-flags {
   display: inline-flex;
+  flex-wrap: wrap;
   gap: 4px;
 }
+
+/* On demand: the impact by age, the figures behind the chart. */
 .mi-more {
-  margin-top: 12px;
+  margin-top: 10px;
 }
 .mi-more summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 4px;
   cursor: pointer;
   color: var(--accent-ink);
   font-size: 13px;
+  font-weight: 500;
   width: fit-content;
 }
 .mi-more summary:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
+  border-radius: 8px;
 }
 .mi-more[open] summary {
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
-/* ===== Trend ===== */
+/* ===== Trend: thin muted bars, the day on show in the accent ===== */
+.mi-chart-card {
+  padding: 14px 16px 10px;
+}
 .mi-measures {
-  display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin-bottom: 12px;
-}
-.mi-measure {
-  min-height: 28px;
-  font-size: 12.5px;
-}
-.mi-measure.active {
-  background: var(--accent-wash);
-  border-color: var(--accent-ink);
-  color: var(--ink);
+  max-width: 100%;
+  margin-bottom: 14px;
 }
 .mi-chart-wrap {
   overflow-x: auto;
 }
 .mi-chart {
   display: block;
+  font-family: var(--font);
+  font-variant-numeric: tabular-nums;
 }
 .mi-chart-base {
-  stroke: var(--rule-strong);
+  stroke: var(--line-strong);
   stroke-width: 1;
 }
+.mi-grid-line {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+.mi-axis text {
+  font-size: 11px;
+  fill: var(--muted);
+}
 .mi-bar rect {
-  fill: var(--bar);
-  transition: height var(--t-panel) var(--ease), y var(--t-panel) var(--ease);
+  fill: var(--muted);
+  fill-opacity: 0.5;
+  transition:
+    height var(--t-panel) var(--ease),
+    y var(--t-panel) var(--ease);
 }
 .mi-bar.current rect {
+  fill-opacity: 1;
   fill: var(--accent-ink);
 }
 .mi-bar text {
-  font-family: var(--font-fig);
-  font-size: 10.5px;
-  fill: var(--ink-3);
+  font-size: 11px;
+  fill: var(--muted);
 }
 .mi-bar .mi-bar-value {
+  font-weight: 600;
   fill: var(--ink-2);
 }
 .mi-bar.current text {
   fill: var(--ink);
-  font-weight: 600;
+  font-weight: 700;
 }
 .mi-trend-table th[scope="row"] {
   white-space: nowrap;

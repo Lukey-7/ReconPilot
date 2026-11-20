@@ -1,11 +1,13 @@
 /**
  * Management information (spec section 10, screen 5), from `GET .../mi`.
  *
- * One job: how the fund's breaks stand and are moving, up to the day on show. Open breaks
- * by cause and age come first (gross and net impact together), then the trend across run
- * days, then the time to resolve, the largest open breaks and the SLA breaches. The two
- * exports sit in the header. Figures behind the chart and the impact by age are on
- * demand. Every figure is the server's, computed by the engine's own MI.
+ * One job: how the fund's breaks stand and are moving, up to the day on show. The lead card
+ * carries the gross open NAV impact across the period and four tiles the headline figures
+ * (net impact, open breaks, average time to resolve, SLA breaches). Then open breaks by cause
+ * and age (gross and net impact together), the trend across run days, the time to resolve,
+ * the largest open breaks and the SLA breaches. The two exports sit in the header as quiet
+ * chips. Figures behind the chart and the impact by age are on demand. Every figure is the
+ * server's, computed by the engine's own MI.
  */
 import "./mi.css";
 
@@ -21,6 +23,7 @@ import { dayStatusLabel } from "../../vocabulary";
 import { ScreenContext } from "../ScreenContext";
 import { CauseAgeSection } from "./CauseAgeSection";
 import { ExportButtons } from "./ExportButtons";
+import { MiHeadline } from "./MiHeadline";
 import { MiTrendSection } from "./MiTrendSection";
 import { ResolveSection } from "./ResolveSection";
 import { SlaSection } from "./SlaSection";
@@ -29,7 +32,7 @@ import { TopOpenSection } from "./TopOpenSection";
 function NotRun({ mi }: { mi: Mi }) {
   const { href } = useWorkspace();
   return (
-    <section className="mi-block mi-notrun" aria-labelledby="mi-h-notrun">
+    <section className="card card-pad mi-notrun" aria-labelledby="mi-h-notrun">
       <h2 id="mi-h-notrun">Not run yet</h2>
       <p>
         <span className="mi-day-status">{dayStatusLabel(mi.day_status)}.</span> The figures for this day appear once it
@@ -57,23 +60,26 @@ function MiBody({ mi }: { mi: Mi }) {
     );
   }
   return (
-    <div className="mi-grid">
-      <div className="mi-area-cause">
-        <CauseAgeSection grid={mi.by_cause_age} currency={currency} />
+    <>
+      <MiHeadline mi={mi} />
+      <div className="mi-grid">
+        <div className="mi-area-cause">
+          <CauseAgeSection grid={mi.by_cause_age} currency={currency} />
+        </div>
+        <div className="mi-area-resolve">
+          <ResolveSection resolve={mi.time_to_resolve} />
+        </div>
+        <div className="mi-area-trend">
+          <MiTrendSection trend={mi.trend} asOf={mi.as_of} currency={currency} />
+        </div>
+        <div className="mi-area-top">
+          <TopOpenSection cases={mi.top_open} currency={currency} />
+        </div>
+        <div className="mi-area-sla">
+          <SlaSection cases={mi.sla_breaches} />
+        </div>
       </div>
-      <div className="mi-area-resolve">
-        <ResolveSection resolve={mi.time_to_resolve} />
-      </div>
-      <div className="mi-area-trend">
-        <MiTrendSection trend={mi.trend} asOf={mi.as_of} currency={currency} />
-      </div>
-      <div className="mi-area-top">
-        <TopOpenSection cases={mi.top_open} currency={currency} />
-      </div>
-      <div className="mi-area-sla">
-        <SlaSection cases={mi.sla_breaches} />
-      </div>
-    </div>
+    </>
   );
 }
 

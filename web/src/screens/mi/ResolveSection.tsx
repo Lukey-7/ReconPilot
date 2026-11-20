@@ -5,19 +5,18 @@
 import type { Mi } from "../../api/types";
 import { count, money, plural } from "../../format";
 import { causeLabel } from "../../vocabulary";
+import { SectionHead } from "../../components/Paper";
 
 export function ResolveSection({ resolve }: { resolve: Mi["time_to_resolve"] }) {
   const { rows, all } = resolve;
   return (
     <section className="mi-block" aria-labelledby="mi-h-resolve">
-      <div className="mi-block-head">
-        <h2 id="mi-h-resolve">Time to resolve</h2>
-        <span className="faint">{all.cleared ? `${plural(all.cleared, "case")} cleared so far` : "nothing cleared yet"}</span>
-      </div>
+      <SectionHead label="Cleared cases" title="Time to resolve" id="mi-h-resolve" />
+      <p className="mi-sub">{all.cleared ? `${plural(all.cleared, "case")} cleared so far` : "nothing cleared yet"}</p>
       {rows.length === 0 ? (
-        <p className="mi-note muted">No case has cleared yet, so there is no time to resolve.</p>
+        <p className="card empty-state">No case has cleared yet, so there is no time to resolve.</p>
       ) : (
-        <div className="table-wrap">
+        <div className="card mi-card table-wrap">
           <table className="data-table">
             <caption className="sr-only">Cases cleared and their average business days open, by cause</caption>
             <thead>

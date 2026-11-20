@@ -6,6 +6,7 @@
 import type { Mi, MiBlock } from "../../api/types";
 import { count, money, plural } from "../../format";
 import { ageBucketLabel, causeLabel } from "../../vocabulary";
+import { SectionHead } from "../../components/Paper";
 
 type Grid = Mi["by_cause_age"];
 
@@ -49,18 +50,19 @@ export function CauseAgeSection({ grid, currency }: { grid: Grid; currency: stri
   const { buckets, rows, total } = grid;
   return (
     <section className="mi-block" aria-labelledby="mi-h-cause">
-      <div className="mi-block-head">
-        <h2 id="mi-h-cause">Open breaks by cause and age</h2>
-        <span className="faint">{total.count ? `${plural(total.count, "open case")}, age in business days` : "None open"}</span>
-      </div>
+      <SectionHead label="Open breaks" title="Open breaks by cause and age" id="mi-h-cause" />
+      <p className="mi-sub">
+        {total.count ? `${plural(total.count, "open case")}, age in business days` : "None open"}
+      </p>
       {rows.length === 0 ? (
-        <p className="mi-note muted">No case is open at the end of the day.</p>
+        <p className="card empty-state">No case is open at the end of the day.</p>
       ) : (
         <>
-          <div className="table-wrap">
+          <div className="card mi-card table-wrap">
             <table className="data-table mi-matrix">
               <caption className="sr-only">
-                Open cases by cause and by business days open, with each cause&rsquo;s gross and net NAV impact in {currency}
+                Open cases by cause and by business days open, with each cause&rsquo;s gross and net NAV impact in{" "}
+                {currency}
               </caption>
               <thead>
                 <tr>
@@ -93,9 +95,11 @@ export function CauseAgeSection({ grid, currency }: { grid: Grid; currency: stri
           </div>
           <details className="mi-more">
             <summary>Show the impact by age</summary>
-            <div className="table-wrap">
+            <div className="card mi-card table-wrap">
               <table className="data-table mi-matrix">
-                <caption className="sr-only">Gross and net NAV impact in {currency} by cause and business days open</caption>
+                <caption className="sr-only">
+                  Gross and net NAV impact in {currency} by cause and business days open
+                </caption>
                 <thead>
                   <tr>
                     <th scope="col" rowSpan={2}>

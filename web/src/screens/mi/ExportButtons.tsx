@@ -24,13 +24,13 @@ export function ExportButtons({ fund, asOf }: { fund: string; asOf: string }) {
           <button
             key={kind}
             type="button"
-            className="btn"
+            className="btn quiet"
             disabled={exporting.isPending}
             aria-busy={busy === kind}
             onClick={() => exporting.mutate(kind)}
           >
             {busy === kind ? "Preparing…" : EXPORTS[kind]}
-            <span className="faint">{EXPORT_FORMATS[kind]}</span>
+            <span className="mi-export-format">{EXPORT_FORMATS[kind]}</span>
           </button>
         ))}
       </div>
