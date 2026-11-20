@@ -31,6 +31,8 @@ interface QueueRow {
 }
 
 const strip = (page: Page) => page.getByRole("region", { name: "NAV and release status" });
+/** The overview's lead card: NAV per share, NAV and the release status (the strip is not shown there). */
+const overviewLead = (page: Page) => page.getByRole("region", { name: "Release status" });
 const banner = (page: Page) => page.getByRole("note", { name: "Demo notice" });
 const decisionOutcome = (page: Page) => page.locator(".wb-outcome-done");
 const decisionButton = (page: Page, name: RegExp) => page.locator(".wb-decision").getByRole("button", { name });
@@ -72,7 +74,10 @@ test("a recruiter's two-minute visit", async ({ page, browser }) => {
     await expect(page.getByRole("heading", { level: 1, name: "Morning overview" })).toBeVisible();
     await expect(banner(page)).toBeVisible();
     await expect(page.getByLabel("Working as").locator("option:checked")).toHaveText("Priya Shah · Analyst");
-    await expect(strip(page).getByText("Blocked")).toBeVisible();
+    await expect(overviewLead(page).getByText("Blocked", { exact: true })).toBeVisible();
+    await expect(overviewLead(page).getByTestId("ov-nps")).toHaveText(/^\d[\d,]*\.\d{6}$/);
+    await expect(overviewLead(page).getByText(/^NAV [\d,]+\.\d{2} USD$/)).toBeVisible();
+    await expect(strip(page)).toHaveCount(0);
     await expect(page.getByRole("heading", { name: /Every break accounted for/ })).toBeVisible();
     await expectAccessible(page, "Overview, demo");
   });

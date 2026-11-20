@@ -1,11 +1,12 @@
 /**
- * The frame around every signed-in screen: the top bar, the sticky NAV strip, the screen
+ * The frame around every signed-in screen: the top bar, the sticky NAV strip (on every screen
+ * but the overview, whose lead card already carries NAV and the release status), the screen
  * itself, the shell's shortcuts (g o, g u, g q, g s, g m, g l, g f, ?, Ctrl+K) and the
  * actions any screen offers in the command palette (theme, shortcuts, sign out, and the
  * demo's "Work as").
  */
 import { useState } from "react";
-import { Outlet, useNavigate } from "react-router";
+import { Outlet, useMatch, useNavigate } from "react-router";
 
 import type { DemoMember } from "../api/types";
 import { useAuth, useUser } from "../auth/AuthContext";
@@ -96,6 +97,7 @@ export function AppShell() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const user = useUser();
+  const onOverview = useMatch("/overview") !== null;
   return (
     <WorkspaceProvider>
       <AnnouncerProvider>
@@ -105,7 +107,7 @@ export function AppShell() {
         {user.demo && <DemoBanner />}
         <div className="chrome">
           <TopBar onShowHelp={() => setHelpOpen(true)} onOpenPalette={() => setPaletteOpen(true)} />
-          <NavStrip />
+          {!onOverview && <NavStrip />}
         </div>
         <main id="main" className="main" tabIndex={-1}>
           <Body />

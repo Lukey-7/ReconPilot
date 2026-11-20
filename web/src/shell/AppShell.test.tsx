@@ -2,8 +2,43 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
+import type { Overview } from "../api/types";
 import { mockApi } from "../test/mockApi";
 import { approver, location, renderApp, signedInRoutes } from "../test/render";
+
+/** A run day's overview with its NAV and nothing open, enough for the lead card. */
+function overviewFor(asOf: string, overrides: Partial<Overview> = {}): Overview {
+  return {
+    fund: { code: "GEF1", name: "Global Equity Fund", base_currency: "USD", materiality_bp: 1 },
+    as_of: asOf,
+    day_status: "ready",
+    has_run: true,
+    run_at: `${asOf}T08:00:00+00:00`,
+    run_by: "analyst1",
+    signed_off_by: null,
+    signed_off_at: null,
+    nav: {
+      nav: 251234567.89,
+      nav_per_share: 102.345678,
+      prior_nav_per_share: 102.3,
+      movement: 0.000446,
+      gross_assets: 250000000,
+      cash: 1500000,
+      liabilities: 265432.11,
+    },
+    checks: [],
+    release: { ready: false, reasons: [{ code: "PENDING_DECISIONS", message: "1 case still pending a decision.", case_ids: [] }] },
+    run: { matches: 120, breaks: 0, new_cases: 0, carried_cases: 0 },
+    accounted: null,
+    impact: null,
+    ageing: [],
+    sla_breaches: [],
+    escalations: [],
+    cleared_today: [],
+    trend: [],
+    ...overrides,
+  };
+}
 
 describe("app shell", () => {
   it("opens the first fund's latest day and writes it into the address", async () => {
@@ -24,15 +59,38 @@ describe("app shell", () => {
     expect(options).toEqual(["Tue 10 Nov 2026 · Ready for review", "Mon 9 Nov 2026 · Signed off"]);
   });
 
-  it("switching the day updates the address and the strip", async () => {
-    const api = mockApi(signedInRoutes());
+  it("switching the day updates the address and the overview's lead card", async () => {
+    const api = mockApi({
+      ...signedInRoutes(),
+      "GET /api/funds/GEF1/days/2026-11-10/overview": { body: overviewFor("2026-11-10") },
+      "GET /api/funds/GEF1/days/2026-11-09/overview": {
+        body: overviewFor("2026-11-09", {
+          day_status: "signed_off",
+          signed_off_by: "approver2",
+          signed_off_at: "2026-11-09T18:02:00+00:00",
+          release: { ready: true, reasons: [] },
+        }),
+      },
+    });
     renderApp("/overview?fund=GEF1&day=2026-11-10");
     const user = userEvent.setup();
     await user.selectOptions(await screen.findByLabelText("Business day"), "2026-11-09");
     await waitFor(() => expect(location()).toBe("/overview?fund=GEF1&day=2026-11-09"));
-    const strip = screen.getByRole("region", { name: "NAV and release status" });
-    expect(await within(strip).findByText("Signed off")).toBeInTheDocument();
+    // On the overview the lead card carries NAV and the release status, so the strip is not shown.
+    const lead = await screen.findByRole("region", { name: "Release status" });
+    expect(await within(lead).findByText("Signed off")).toBeInTheDocument();
+    expect(within(lead).getByText(/^Signed off by approver2,/)).toBeInTheDocument();
+    expect(within(lead).getByText("251,234,567.89")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "NAV and release status" })).not.toBeInTheDocument();
+    expect(api.calls("GET /api/funds/GEF1/days/2026-11-09/overview")).toHaveLength(1);
     expect(api.calls("GET /api/funds/GEF1/days/2026-11-09/release")).toHaveLength(1);
+  });
+
+  it("shows the NAV strip on every screen but the overview", async () => {
+    mockApi(signedInRoutes());
+    renderApp("/upload?fund=GEF1&day=2026-11-09");
+    const strip = await screen.findByRole("region", { name: "NAV and release status" });
+    expect(await within(strip).findByText("Signed off")).toBeInTheDocument();
   });
 
   it("switching the fund opens that fund's latest day, offering the next day to load", async () => {

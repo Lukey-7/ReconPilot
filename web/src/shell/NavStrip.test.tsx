@@ -5,7 +5,8 @@ import { describe, expect, it } from "vitest";
 import { mockApi } from "../test/mockApi";
 import { dayRecord, releaseFor, renderApp, signedInRoutes } from "../test/render";
 
-const URL_DAY2 = "/overview?fund=GEF1&day=2026-11-10";
+// The strip sits under the top bar on every screen but the overview; upload is one of them.
+const URL_DAY2 = "/upload?fund=GEF1&day=2026-11-10";
 
 function strip() {
   return screen.findByRole("region", { name: "NAV and release status" });
@@ -56,7 +57,7 @@ describe("NAV strip", () => {
 
   it("shows who signed off a signed-off day", async () => {
     mockApi(signedInRoutes());
-    renderApp("/overview?fund=GEF1&day=2026-11-09");
+    renderApp("/upload?fund=GEF1&day=2026-11-09");
     const s = await strip();
     expect(await within(s).findByText("Signed off")).toBeInTheDocument();
     expect(within(s).getByText(/by approver2/)).toBeInTheDocument();
@@ -92,7 +93,7 @@ describe("NAV strip", () => {
       }),
     };
     mockApi(routes);
-    renderApp("/overview?fund=GEF1&day=2026-11-11");
+    renderApp("/upload?fund=GEF1&day=2026-11-11");
     const s = await strip();
     expect(await within(s).findByText("No files loaded")).toBeInTheDocument();
     expect(within(s).getByText("The day has no files.")).toBeInTheDocument();
