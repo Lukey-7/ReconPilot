@@ -66,6 +66,9 @@ export function DropZone({
       onDragLeave={() => setOver(false)}
       onDrop={onDrop}
     >
+      <span className="tile-box up-drop-icon" aria-hidden="true">
+        <Icon name="upload" />
+      </span>
       <label htmlFor={inputId} className="up-drop-label">
         Choose the day&rsquo;s files
       </label>

@@ -5,6 +5,7 @@
  */
 import type { Day, ExpectedFile, ValidationIssue, ValidationReport } from "../../api/types";
 import { Icon } from "../../components/Icon";
+import { StatusPill } from "../../components/Labels";
 import { count, dayLabel, plural, timestamp } from "../../format";
 
 export function sizeText(bytes: number): string {
@@ -47,11 +48,11 @@ function byFileAndRow(issues: ValidationIssue[], order: string[]): ValidationIss
 
 function IssueList({ issues }: { issues: ValidationIssue[] }) {
   return (
-    <ul className="up-issues">
+    <ul className="records up-issues">
       {issues.map((issue, i) => (
-        <li key={`${issue.file}-${issue.row ?? "file"}-${i}`}>
+        <li key={`${issue.file}-${issue.row ?? "file"}-${i}`} className="record">
           <span className="up-issue-where mono">{issueWhere(issue)}</span>
-          <span>{issue.message}</span>
+          <span className="up-issue-what">{issue.message}</span>
         </li>
       ))}
     </ul>
@@ -84,27 +85,19 @@ function rowsFor(day: Day | undefined, expected: ExpectedFile[] | null, report: 
 
 function Result({ row, checked }: { row: Row; checked: boolean }) {
   if (!row.held) {
-    if (row.required === false) return <span className="faint">Not uploaded (optional)</span>;
-    return (
-      <span className="up-res up-res-bad">
-        <Icon name="cross" /> Missing{row.required ? ", needed for the run" : ""}
-      </span>
-    );
+    if (row.required === false) return <StatusPill kind="neutral">Not uploaded (optional)</StatusPill>;
+    return <StatusPill kind="late">Missing{row.required ? ", needed for the run" : ""}</StatusPill>;
   }
-  if (!checked) return <span className="faint">Not checked yet</span>;
+  if (!checked) return <StatusPill kind="neutral">Not checked yet</StatusPill>;
   if (row.errors) {
     return (
-      <span className="up-res up-res-bad">
-        <Icon name="cross" /> {plural(row.errors, "error")}
+      <StatusPill kind="late">
+        {plural(row.errors, "error")}
         {row.warnings ? `, ${plural(row.warnings, "warning")}` : ""}
-      </span>
+      </StatusPill>
     );
   }
-  return (
-    <span className="up-res up-res-ok">
-      <Icon name="check" /> Valid{row.warnings ? `, ${plural(row.warnings, "warning")}` : ""}
-    </span>
-  );
+  return <StatusPill kind="done">Valid{row.warnings ? `, ${plural(row.warnings, "warning")}` : ""}</StatusPill>;
 }
 
 export function FileChecklist({
@@ -138,7 +131,7 @@ export function FileChecklist({
             <tr key={row.filename} className={row.held ? undefined : "up-missing"}>
               <th scope="row">
                 <span className="mono">{row.filename}</span>
-                {row.required === false && <span className="up-optional">optional</span>}
+                {row.required === false && <span className="tag up-optional">optional</span>}
               </th>
               <td className="num">{row.held ? sizeText(row.held.size_bytes) : ""}</td>
               <td>

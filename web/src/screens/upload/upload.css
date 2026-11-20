@@ -1,140 +1,279 @@
 /*
- * Upload and run: the day's files and their validation on the left, the run on the right
- * on wide screens; stacked, files first, on narrow ones.
+ * Upload and run, in Paper. The lead card (the day's run status) first and full width;
+ * then the day's files and their validation on the left and the run on the right on wide
+ * screens; stacked, files first, on narrow ones.
  */
+
+/* ===== Lead: the day's run status; while it runs, the top edge is the progress line ===== */
+.up-lead {
+  margin-bottom: var(--s-8);
+}
+.up-lead.running::before {
+  opacity: 0;
+}
+.up-lead .progress-line {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  border-radius: 0;
+}
+@media (max-width: 479px) {
+  .up-lead .lead-figure {
+    font-size: 32px;
+    line-height: 38px;
+  }
+}
 
 .up-grid {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: var(--s-8);
 }
 @media (min-width: 1100px) {
   .up-grid {
     display: grid;
-    grid-template-columns: minmax(0, 7fr) minmax(300px, 4fr);
+    grid-template-columns: minmax(0, 7fr) minmax(340px, 5fr);
     align-items: start;
   }
 }
 
 .up-block {
-  background: var(--panel);
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  padding: 18px 20px 20px;
 }
-.up-block h2 {
-  font-size: 15px;
-  font-weight: 600;
-}
-.up-block-head {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 4px 10px;
+.up-block > .section-head {
+  margin: 0;
 }
 
-.up-files caption {
-  text-align: left;
-}
-
-/* ===== Drop zone ===== */
+/* ===== Drop zone: a calm dashed card ===== */
 .up-drop {
-  border: 1px dashed var(--field);
-  border-radius: 4px;
-  padding: 14px;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 8px;
-  transition: background-color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+  padding: 22px 20px 20px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-card);
+  background: color-mix(in srgb, var(--surface-2) 35%, transparent);
+  text-align: center;
+  transition:
+    background-color var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease);
 }
 .up-drop.over {
   border-color: var(--accent-ink);
   background: var(--accent-wash);
 }
+.up-drop-icon {
+  margin-bottom: 2px;
+}
 .up-drop-label {
+  font-size: 16px;
+  line-height: 21px;
   font-weight: 600;
+  color: var(--ink);
+}
+.up-drop > p.muted {
+  max-width: 54ch;
+  font-size: 13px;
+  line-height: 18px;
 }
 .up-drop input[type="file"] {
-  color: var(--ink-2);
-  font: inherit;
+  max-width: 100%;
+  margin-top: 6px;
+  color: var(--muted);
+  font: 400 13px var(--font);
 }
 .up-drop input[type="file"]::file-selector-button {
-  font: inherit;
+  height: 36px;
+  margin-right: 12px;
+  padding: 0 16px;
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: 18px;
+  background: var(--surface);
   color: var(--ink);
-  background: var(--raise);
-  border: 1px solid var(--field);
-  border-radius: var(--radius);
-  padding: 4px 10px;
-  margin-right: 10px;
+  font: 600 14px var(--font);
   cursor: pointer;
 }
+.up-drop input[type="file"]::file-selector-button:hover {
+  background: var(--surface-2);
+}
+.up-drop .state-line {
+  justify-content: center;
+  padding: 4px 0 0;
+  text-align: left;
+}
 
-/* ===== Validation ===== */
+/* ===== Validation: the verdict, then problems by file and row as records ===== */
 .up-validation {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 .up-verdict,
-.up-done,
-.up-locked p {
+.up-done {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 20px;
   font-weight: 600;
 }
 .up-verdict svg,
-.up-done svg,
-.up-locked svg {
-  width: 14px;
-  height: 14px;
+.up-done svg {
   flex: none;
+  margin-top: 3px;
 }
 .up-ok,
 .up-done {
-  color: var(--pos);
+  color: var(--green);
+}
+.up-errors {
+  padding: 12px 16px 4px;
+  border-radius: var(--r-small);
+  background: var(--red-soft);
 }
 .up-errors .up-verdict {
-  color: var(--neg);
+  color: var(--red);
 }
+.up-issues {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  max-height: 320px;
+  overflow: auto;
+}
+.up-issues .record {
+  display: grid;
+  grid-template-columns: minmax(150px, 38%) minmax(0, 1fr);
+  gap: 2px 16px;
+  align-items: baseline;
+  padding: 9px 0;
+  font-size: 13.5px;
+  line-height: 19px;
+}
+.up-errors .up-issues .record + .record {
+  border-top-color: color-mix(in srgb, var(--red) 18%, transparent);
+}
+.up-issue-where {
+  color: var(--muted);
+  font-size: 12px;
+}
+.up-issue-what {
+  color: var(--ink);
+}
+@media (max-width: 639px) {
+  .up-issues .record {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.up-warnings summary,
+.up-hashes summary,
+.up-held > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  cursor: pointer;
+  color: var(--accent-ink);
+  font-size: 13.5px;
+}
+.up-warnings[open] > summary {
+  margin-bottom: 2px;
+}
+
+/* ===== The files, one row per file the engine reads ===== */
+.up-files caption {
+  padding-top: 0;
+}
+.up-files th[scope="row"] {
+  background: none;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 400;
+  text-align: left;
+  white-space: nowrap;
+}
+.up-files .mono {
+  font-size: 12px;
+}
+.up-optional {
+  margin-inline-start: 8px;
+}
+.up-missing th[scope="row"] .mono {
+  color: var(--muted);
+}
+.up-hashes {
+  margin-top: 10px;
+  font-size: 12.5px;
+}
+.up-hashes ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+}
+.up-hashes li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+}
+.up-hashes .mono {
+  color: var(--ink-2);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+/* Once the day has run, its files fold away behind one line. */
+.up-held[open] > summary {
+  margin-bottom: 8px;
+}
+
+/* ===== Locked, and why the day cannot take files ===== */
 .up-locked {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 14px;
+  gap: 10px 14px;
 }
-.up-issues {
-  list-style: none;
+.up-locked p {
+  flex: 1 1 220px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.up-order {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   margin: 0;
-  padding: 0;
-  border-top: 1px solid var(--rule);
-  max-height: 320px;
-  overflow: auto;
+  padding: 14px 16px;
+  border-radius: var(--r-small);
+  background: var(--surface-2);
+  font-size: 14px;
+  line-height: 20px;
 }
-.up-issues li {
-  display: grid;
-  grid-template-columns: minmax(150px, 2fr) minmax(0, 5fr);
-  gap: 2px 12px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--rule);
-  font-size: 13px;
-  color: var(--ink-2);
+.up-order.notice {
+  background: var(--amber-soft);
 }
-.up-issue-where {
-  color: var(--ink);
+.up-order > svg {
+  flex: none;
+  margin-top: 3px;
 }
-@media (max-width: 640px) {
-  .up-issues li {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.up-order > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
-.up-warnings summary {
-  cursor: pointer;
-  color: var(--ink-2);
+.up-order-title {
+  font-weight: 600;
+}
+.up-order-act {
+  margin-top: 8px;
 }
 
 /* ===== Run ===== */
@@ -142,102 +281,63 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 6px;
+  gap: 8px;
+}
+.up-run .btn.primary {
+  align-self: stretch;
+}
+.up-run p {
+  font-size: 13px;
+  line-height: 18px;
 }
 .up-next {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
-
-/* ===== Why the day cannot take files ===== */
-.up-order {
-  margin-bottom: 0;
+.up-next .btn.primary {
+  flex: 1 1 auto;
 }
-.up-order svg {
-  width: 14px;
-  height: 14px;
-  flex: none;
+.up-next-day {
+  font-size: 13px;
+  line-height: 18px;
 }
-.up-order > div {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.up-order-title {
-  font-weight: 600;
-}
-.up-order-act {
-  margin-top: 4px;
+.up-next-day a {
+  color: var(--accent-ink);
 }
 
-/* ===== The files, one row per file the engine reads ===== */
-.up-files th[scope="row"] {
-  font-weight: 400;
-  text-align: left;
-  white-space: nowrap;
-}
-.up-optional {
-  margin-inline-start: 6px;
-  font-size: 12px;
-  color: var(--ink-2);
-}
-.up-missing th[scope="row"] .mono {
-  color: var(--ink-2);
-}
-.up-res {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  white-space: nowrap;
-}
-.up-res svg {
-  width: 13px;
-  height: 13px;
-  flex: none;
-}
-.up-res-ok {
-  color: var(--pos);
-}
-.up-res-bad {
-  color: var(--neg);
-}
-.up-skipped svg {
-  width: 14px;
-  height: 14px;
-  flex: none;
-}
-
-/* ===== Run progress ===== */
+/* Run progress: the steps as a quiet checklist, then the spinner and its sentence. */
 .up-progress {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 .up-steps {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
 }
 .up-step {
   display: flex;
   align-items: center;
-  gap: 7px;
-  color: var(--ink-3);
+  gap: 10px;
+  min-height: 36px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.up-step + .up-step {
+  border-top: var(--hairline) solid var(--line);
 }
 .up-step svg {
-  width: 12px;
-  height: 12px;
   flex: none;
+  width: 14px;
+  height: 14px;
 }
 .up-step-done {
   color: var(--ink-2);
 }
 .up-step-done svg {
-  color: var(--pos);
+  color: var(--green);
 }
 .up-step-now {
   color: var(--ink);
@@ -249,83 +349,60 @@
 .up-retry {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--r-small);
+  background: var(--amber-soft);
   font-size: 13px;
-  color: var(--ink-2);
+  line-height: 18px;
+  color: var(--ink);
 }
 .up-retry svg {
-  width: 14px;
-  height: 14px;
   flex: none;
   margin-top: 2px;
-}
-.up-next-day a {
-  color: var(--accent-ink);
+  color: var(--amber);
 }
 
-/* ===== The day's runs ===== */
+/* ===== The day's runs: a hairline list under the run ===== */
 .up-history {
-  border-top: 1px solid var(--rule);
-  padding-top: 10px;
+  padding-top: 12px;
+  border-top: var(--hairline) solid var(--line);
 }
-.up-history summary {
+.up-history > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
   cursor: pointer;
-  color: var(--ink-2);
-  margin-bottom: 6px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+.up-history[open] > summary {
+  margin-bottom: 4px;
+}
+.up-runs th,
+.up-runs td {
+  padding-inline: 0 12px;
+}
+.up-runs th:last-child,
+.up-runs td:last-child {
+  padding-inline-end: 0;
 }
 .up-runs td {
+  height: auto;
+  padding-block: 10px;
   vertical-align: top;
   font-size: 13px;
+  line-height: 18px;
+}
+.up-runs td.num {
+  white-space: nowrap;
 }
 .up-by {
   display: block;
-  color: var(--ink-2);
+  color: var(--muted);
   font-size: 12px;
 }
 .up-rerun {
   color: var(--ink-2);
-}
-
-/* Row headings read as ordinary cells: the file name is the row's label, not a header band. */
-.up-files th[scope="row"] {
-  background: none;
-  color: var(--ink);
-  font-size: 13px;
-}
-.up-hashes {
-  margin-top: 8px;
-  font-size: 12.5px;
-}
-.up-hashes summary {
-  cursor: pointer;
-  color: var(--ink-2);
-}
-.up-hashes ul {
-  list-style: none;
-  margin: 6px 0 0;
-  padding: 0;
-  display: grid;
-  gap: 2px;
-}
-.up-hashes li {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 12px;
-}
-.up-hashes .mono {
-  color: var(--ink-2);
-  overflow-wrap: anywhere;
-}
-
-/* Once the day has run, its files fold away behind one line. */
-.up-held {
-  margin-top: 10px;
-}
-.up-held > summary {
-  cursor: pointer;
-  color: var(--accent-ink);
-  font-size: 13px;
-}
-.up-held[open] > summary {
-  margin-bottom: 8px;
 }

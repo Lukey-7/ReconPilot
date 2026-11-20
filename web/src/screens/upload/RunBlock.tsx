@@ -12,6 +12,7 @@ import { FINISHED_JOB_STATUSES, invalidateDay, useJob, useStartRun } from "../..
 import type { Day, FundSummary, Job, User } from "../../api/types";
 import { useAnnounce } from "../../components/Announcer";
 import { Icon } from "../../components/Icon";
+import { SectionHead } from "../../components/Paper";
 import { ErrorLine, Loading } from "../../components/QueryState";
 import { dayLabel, plural, timestamp } from "../../format";
 import { useCommand } from "../../keyboard/KeyboardProvider";
@@ -187,7 +188,7 @@ export function RunBlock({
               {status === "validated" ? "Run the day" : "Run again"}
             </button>
             {status === "ready" && (
-              <p className="faint">Running again keeps the decisions that still apply and records the rest as voided.</p>
+              <p className="muted">Running again keeps the decisions that still apply and records the rest as voided.</p>
             )}
           </div>
         )}
@@ -203,8 +204,8 @@ export function RunBlock({
   }
 
   return (
-    <section className="up-block" aria-labelledby="up-h-run">
-      <h2 id="up-h-run">Run</h2>
+    <section className="card up-block up-run-block" aria-labelledby="up-h-run">
+      <SectionHead label="Engine" title="Run" id="up-h-run" />
       {body}
       <RunHistory fund={fund.code} asOf={day.as_of} />
     </section>

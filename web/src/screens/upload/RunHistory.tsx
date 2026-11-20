@@ -5,7 +5,7 @@
  */
 import { useDayRuns } from "../../api/queries";
 import type { DayRun } from "../../api/types";
-import { Icon } from "../../components/Icon";
+import { StatusPill } from "../../components/Labels";
 import { count, dayLabel, plural, timestamp } from "../../format";
 import { runStatusLabel } from "../../vocabulary";
 
@@ -17,17 +17,12 @@ function seconds(value: number | null): string {
 }
 
 function StatusWord({ run }: { run: DayRun }) {
-  const icon = run.status === "done" ? "check" : run.status === "failed" ? "cross" : "clock";
-  const tone = run.status === "done" ? "up-res-ok" : run.status === "failed" ? "up-res-bad" : "";
-  return (
-    <span className={`up-res ${tone}`}>
-      <Icon name={icon} /> {runStatusLabel(run.status)}
-    </span>
-  );
+  const kind = run.status === "done" ? "done" : run.status === "failed" ? "late" : "wait";
+  return <StatusPill kind={kind}>{runStatusLabel(run.status)}</StatusPill>;
 }
 
 function Outcome({ run }: { run: DayRun }) {
-  if (run.skipped) return <span className="faint">Not needed: {run.skipped}.</span>;
+  if (run.skipped) return <span className="muted">Not needed: {run.skipped}.</span>;
   if (run.status === "failed") return <span>{run.error ?? "The run failed."}</span>;
   if (!run.outcome) {
     if (run.error) {
@@ -37,7 +32,7 @@ function Outcome({ run }: { run: DayRun }) {
         </span>
       );
     }
-    return <span className="faint">Under way</span>;
+    return <span className="muted">Under way</span>;
   }
   const o = run.outcome;
   const parts = [`${plural(o.open_cases ?? 0, "open case")}`];
