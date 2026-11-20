@@ -653,9 +653,27 @@
   display: block;
 }
 /* Break ids and references are codes. */
-.wb-ev-table tbody th .wb-sub:first-of-type {
+.wb-ev-table tbody th .wb-sub:first-of-type,
+.wb-ev-id,
+.wb-ev-ref {
   font-family: var(--mono);
   font-size: 11.5px;
+}
+/* A break: its kind and reference across the full width, then its id beside the figures. */
+.wb-ev-table {
+  position: relative; /* keeps the row headers' sr-only text inside the pane */
+}
+.wb-ev-break td {
+  padding-bottom: 0;
+}
+.wb-ev-break .wb-sub {
+  display: block;
+  color: var(--muted);
+}
+.wb-ev-table tr.wb-ev-figs > th,
+.wb-ev-table tr.wb-ev-figs > td {
+  border-top: 0;
+  padding-top: 4px;
 }
 .wb-diff {
   font-weight: 700;
@@ -788,9 +806,7 @@
 }
 .wb-ev-pane .wb-pane-meta {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 16px; /* wraps to a second line rather than being cut short */
 }
 .wb-ev-pane .wb-pane-head h2 {
   flex: none;

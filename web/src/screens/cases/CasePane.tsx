@@ -420,7 +420,9 @@ export function CasePane({
         </div>
         <Records className="wb-facts">
           <Record label="Gross exposure">
-            <span className="fig">{money(c.gross_exposure)}</span> <span className="wb-unit">{currency}</span>
+            <span className="wb-fact-line">
+              <span className="fig">{money(c.gross_exposure)}</span> <span className="wb-unit">{currency}</span>
+            </span>
           </Record>
           <Record label="Age">
             <span className="wb-fact-line">
@@ -434,17 +436,19 @@ export function CasePane({
             />
           </Record>
           <Record label="SLA">
-            {c.sla_breached ? (
-              <span className="st tone-neg">
-                <Icon name="clock" />
-                Breached
-              </span>
-            ) : (
-              <>
-                <span className="fig">{count(c.sla_days)}</span> {c.sla_days === 1 ? "day" : "days"}
-              </>
-            )}
-            <span className="wb-sub">, {c.material ? "material case" : "standard case"}</span>
+            <span className="wb-fact-line">
+              {c.sla_breached ? (
+                <span className="st tone-neg">
+                  <Icon name="clock" />
+                  Breached
+                </span>
+              ) : (
+                <>
+                  <span className="fig">{count(c.sla_days)}</span> {c.sla_days === 1 ? "day" : "days"}
+                </>
+              )}
+              <span className="wb-sub">, {c.material ? "material case" : "standard case"}</span>
+            </span>
           </Record>
         </Records>
         <Opinions detail={detail} />

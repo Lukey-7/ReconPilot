@@ -6,7 +6,7 @@
  * The pane collapses to a rail (more room for the case and long AI text) or widens (more
  * room for the figures); the choice is the viewer's own and is remembered in this browser.
  */
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
 import type { CaseDetail } from "../../api/types";
 import { Icon } from "../../components/Icon";
@@ -133,21 +133,30 @@ function Breaks({ detail, currency }: { detail: CaseDetail; currency: string }) 
       <tbody>
         {detail.breaks.map((b) => {
           const f = breakFormat(b.kind);
+          const kind = `${breakKindLabel(b.kind)}${b.kind.startsWith("CASH") && currency ? `, ${currency}` : ""}`;
           return (
-            <tr key={b.break_id}>
-              <th scope="row">
-                <span className="wb-ev-kind">
-                  {breakKindLabel(b.kind)}
-                  {b.kind.startsWith("CASH") && currency ? `, ${currency}` : ""}
-                </span>
-                <span className="wb-sub">{b.break_id}</span>
-                {b.reference && <span className="wb-sub">Ref {b.reference}</span>}
-                {b.note && <span className="wb-sub">{b.note}</span>}
-              </th>
-              <td className="num">{b.book_value == null ? <span className="faint">none</span> : f(b.book_value)}</td>
-              <td className="num">{b.custodian_value == null ? <span className="faint">none</span> : f(b.custodian_value)}</td>
-              <td className="num wb-diff">{f(b.difference, true)}</td>
-            </tr>
+            <Fragment key={b.break_id}>
+              {/* The kind, reference and note across the full width, so long codes never break; the
+                  figures' row header carries them for screen readers. */}
+              <tr className="wb-ev-break" aria-hidden="true">
+                <td colSpan={4}>
+                  <span className="wb-ev-kind">{kind}</span>
+                  {b.reference && <span className="wb-sub wb-ev-ref">Ref {b.reference}</span>}
+                  {b.note && <span className="wb-sub">{b.note}</span>}
+                </td>
+              </tr>
+              <tr className="wb-ev-figs">
+                <th scope="row" className="wb-ev-id">
+                  <span className="sr-only">{kind}, </span>
+                  {b.break_id}
+                  {b.reference && <span className="sr-only">, ref {b.reference}</span>}
+                  {b.note && <span className="sr-only">, {b.note}</span>}
+                </th>
+                <td className="num">{b.book_value == null ? <span className="faint">none</span> : f(b.book_value)}</td>
+                <td className="num">{b.custodian_value == null ? <span className="faint">none</span> : f(b.custodian_value)}</td>
+                <td className="num wb-diff">{f(b.difference, true)}</td>
+              </tr>
+            </Fragment>
           );
         })}
       </tbody>
