@@ -26,6 +26,18 @@ export function safeDestination(from: string | undefined): string {
   return from;
 }
 
+/** The product's name on the page's one contrast card. */
+function Brand() {
+  return (
+    <div className="lead signin-brand">
+      <p className="lead-figure signin-name">
+        <span className="brand-mark" aria-hidden="true" />
+        ReconPilot
+      </p>
+    </div>
+  );
+}
+
 export function SignInScreen() {
   const { state, signIn } = useAuth();
   const location = useLocation();
@@ -58,13 +70,15 @@ export function SignInScreen() {
           <ThemeToggle />
         </div>
         <main className="signin-card" aria-labelledby="signin-title">
-          <p className="signin-brand">ReconPilot</p>
-          {nav.expired && (
-            <p className="notice" role="status">
-              <Icon name="clock" /> Your demo session ended. Start a new demo to carry on.
-            </p>
-          )}
-          <TryDemo instance={demo} onBusy={setBusy} />
+          <Brand />
+          <div className="card signin-body">
+            {nav.expired && (
+              <p className="notice" role="status">
+                <Icon name="clock" /> Your demo session ended. Start a new demo to carry on.
+              </p>
+            )}
+            <TryDemo instance={demo} onBusy={setBusy} />
+          </div>
         </main>
       </div>
     );
@@ -95,49 +109,51 @@ export function SignInScreen() {
         <ThemeToggle />
       </div>
       <main className="signin-card" aria-labelledby="signin-title">
-        <p className="signin-brand">ReconPilot</p>
-        <h1 id="signin-title">Sign in</h1>
-        <p className="muted signin-lede">Fund reconciliation, break triage and NAV sign-off.</p>
-        {nav.expired && !error && (
-          <p className="notice" role="status">
-            <Icon name="clock" /> Your session ended. Sign in again to carry on where you were.
-          </p>
-        )}
-        {error && (
-          <p className="form-error" role="alert" tabIndex={-1} ref={errorRef}>
-            <Icon name="warn" /> {error}
-          </p>
-        )}
-        <form onSubmit={submit} noValidate>
-          <label className="field">
-            <span>Username</span>
-            <input
-              className="input"
-              name="username"
-              autoComplete="username"
-              autoCapitalize="none"
-              spellCheck={false}
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              disabled={busy}
-            />
-          </label>
-          <label className="field">
-            <span>Password</span>
-            <input
-              className="input"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={busy}
-            />
-          </label>
-          <button type="submit" className="btn primary signin-submit" disabled={busy}>
-            {busy ? "Signing in…" : "Sign in"}
-          </button>
-        </form>
+        <Brand />
+        <div className="card signin-body">
+          <h1 id="signin-title">Sign in</h1>
+          <p className="muted signin-lede">Fund reconciliation, break triage and NAV sign-off.</p>
+          {nav.expired && !error && (
+            <p className="notice" role="status">
+              <Icon name="clock" /> Your session ended. Sign in again to carry on where you were.
+            </p>
+          )}
+          {error && (
+            <p className="form-error" role="alert" tabIndex={-1} ref={errorRef}>
+              <Icon name="warn" /> {error}
+            </p>
+          )}
+          <form onSubmit={submit} noValidate>
+            <label className="field">
+              <span>Username</span>
+              <input
+                className="input"
+                name="username"
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                disabled={busy}
+              />
+            </label>
+            <label className="field">
+              <span>Password</span>
+              <input
+                className="input"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={busy}
+              />
+            </label>
+            <button type="submit" className="btn primary signin-submit" disabled={busy}>
+              {busy ? "Signing in…" : "Sign in"}
+            </button>
+          </form>
+        </div>
       </main>
     </div>
   );

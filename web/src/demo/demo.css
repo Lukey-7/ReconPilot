@@ -1,39 +1,56 @@
-/* The public demo: its permanent notice, the way in, the role switcher and generated days. */
+/* The public demo (Paper): its permanent notice, the way in, the role switcher and generated days. */
 
+/* The notice: a quiet amber line across the top, its icon and its word ("Demo."). */
 .demo-banner {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 6px var(--gutter);
+  gap: 10px;
+  padding: 9px var(--gutter);
   font-size: 13px;
-  color: var(--ink);
-  background: var(--signal-wash);
-  border-bottom: 1px solid color-mix(in srgb, var(--signal) 45%, transparent);
+  line-height: 18px;
+  color: var(--ink-2);
+  background: var(--amber-soft);
+  border-bottom: var(--hairline) solid color-mix(in srgb, var(--amber) 30%, transparent);
 }
 .demo-banner svg {
   flex: none;
   margin-top: 2px;
-  color: var(--signal);
+  color: var(--amber);
 }
 .demo-banner p {
   margin: 0;
 }
-.signin-page .demo-banner {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  padding-right: 120px; /* clear of the theme toggle */
+.demo-banner strong {
+  color: var(--amber);
+}
+.signin-page > .demo-banner {
+  margin: 0 calc(-1 * var(--gutter)) 24px;
+  padding-right: 72px; /* clear of the theme button */
 }
 
 .demo-points {
+  display: grid;
+  gap: 8px;
   margin: 0 0 18px;
-  padding-left: 18px;
-  font-size: 13.5px;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  line-height: 20px;
   color: var(--ink-2);
 }
-.demo-points li + li {
-  margin-top: 6px;
+.demo-points li {
+  position: relative;
+  padding-left: 18px;
+}
+.demo-points li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--muted);
 }
 
 .role-switch {
@@ -41,20 +58,23 @@
   align-items: center;
   gap: 8px;
 }
+.role-switch select {
+  max-width: 220px;
+}
 .role-switch-error {
-  color: var(--neg);
+  color: var(--red);
   font-size: 12.5px;
 }
 
 .signin-submit + .signin-submit {
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 /* The upload screen's demo note: its icon beside the words, as in the other notices. */
 .demo-generate {
   display: flex;
   align-items: flex-start;
-  gap: 7px;
+  gap: 8px;
 }
 .demo-generate > svg {
   margin-top: 3px;
