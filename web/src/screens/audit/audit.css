@@ -233,6 +233,7 @@
 .al-seq {
   display: inline-flex;
   align-items: center;
+  vertical-align: middle; /* level with the row's text, not with the chevron's foot */
   gap: 4px;
   min-height: 32px;
   padding: 0 8px 0 4px;
@@ -281,6 +282,7 @@
 .al-fund {
   display: inline-flex;
   align-items: center;
+  vertical-align: middle;
   min-height: 24px;
   font-family: var(--mono);
   font-size: 12px;
