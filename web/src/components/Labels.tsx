@@ -1,11 +1,13 @@
 /**
- * Status, cause, check and release labels. Each pairs an icon with the vocabulary's word;
- * colour only reinforces it. Amber (signal) is reserved for what needs someone.
+ * Status, cause, check and release labels. Each carries the vocabulary's word; colour only
+ * reinforces it. Case statuses are Paper status pills (a dot and the word): Pending amber,
+ * Approved and Cleared green, Rejected red, Reclassified info blue.
  */
+import type { ReactNode } from "react";
+
 import type { Release } from "../api/types";
 import {
   RELEASE_LABELS,
-  STATUS_TONES,
   type CaseStatus,
   causeLabel,
   checkLabel,
@@ -14,19 +16,26 @@ import {
 } from "../vocabulary";
 import { Icon, type IconName } from "./Icon";
 
-const STATUS_ICONS: Record<CaseStatus, IconName> = {
-  PENDING: "dot",
-  APPROVED: "check",
-  REJECTED: "cross",
-  RECLASSIFIED: "reclass",
-  CLEARED: "ring",
+/** The status pill kinds in components.css (`.status.late` and so on). */
+export type StatusKind = "late" | "wait" | "done" | "info" | "neutral";
+
+const STATUS_KINDS: Record<CaseStatus, StatusKind> = {
+  PENDING: "wait",
+  APPROVED: "done",
+  REJECTED: "late",
+  RECLASSIFIED: "info",
+  CLEARED: "done",
 };
+
+/** A status pill: the dot and the word, coloured by kind. */
+export function StatusPill({ kind, children, className = "" }: { kind: StatusKind; children: ReactNode; className?: string }) {
+  return <span className={`status ${kind} ${className}`.trim()}>{children}</span>;
+}
 
 export function StatusLabel({ status }: { status: string }) {
   const known: CaseStatus = isStatus(status) ? status : "PENDING";
   return (
-    <span className={`pill tone-${STATUS_TONES[known]}`} data-status={known}>
-      <Icon name={STATUS_ICONS[known]} />
+    <span className={`status ${STATUS_KINDS[known]}`} data-status={known}>
       {statusLabel(isStatus(status) ? status : known)}
     </span>
   );

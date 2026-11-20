@@ -32,5 +32,5 @@ export function ErrorLine({ error, retry }: { error: unknown; retry?: () => void
 }
 
 export function Empty({ children }: { children: ReactNode }) {
-  return <p className="state-line empty">{children}</p>;
+  return <p className="empty-state">{children}</p>;
 }

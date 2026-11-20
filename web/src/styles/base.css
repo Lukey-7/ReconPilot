@@ -1,4 +1,4 @@
-/* Base elements, type and controls. Figures are tabular everywhere. */
+/* Base elements, type and controls (Paper). Figures are tabular everywhere. */
 *,
 *::before,
 *::after {
@@ -6,14 +6,22 @@
 }
 html {
   -webkit-text-size-adjust: 100%;
+  background-color: var(--bg);
 }
+/* The page glow: two soft washes of the accent at the top (ambient, not a gradient touch). */
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(80% 300px at 12% 0%, rgba(91, 140, 255, var(--glow)), transparent 70%),
+    radial-gradient(60% 260px at 100% 0%, rgba(164, 124, 255, calc(var(--glow) * 0.8)), transparent 70%);
+  background-repeat: no-repeat;
   color: var(--ink);
-  font: 400 14px/1.45 var(--font-ui);
+  font: 400 15px/1.4 var(--font);
   font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 h1,
 h2,
@@ -21,7 +29,7 @@ h3,
 h4 {
   margin: 0;
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.25;
 }
 p {
   margin: 0;
@@ -34,7 +42,7 @@ textarea {
   color: inherit;
 }
 a {
-  color: var(--accent);
+  color: var(--accent-ink);
   text-underline-offset: 3px;
 }
 ::selection {
@@ -43,29 +51,70 @@ a {
 :focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
-  border-radius: 2px;
 }
 [tabindex="-1"]:focus {
   outline: none;
 }
 
-/* Figures */
-.fig,
-.mono {
-  font-family: var(--font-fig);
-  font-variant-numeric: tabular-nums slashed-zero;
-  letter-spacing: -0.01em;
+/* ===== Type roles (section 3) ===== */
+.t-title {
+  font-size: 32px;
+  line-height: 38px;
+  font-weight: 700;
+}
+.t-section {
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
+}
+.t-row {
+  font-size: 16px;
+  line-height: 21px;
+  font-weight: 500;
+}
+.t-body {
+  font-size: 15px;
+  line-height: 21px;
+}
+.t-caption {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--muted);
+}
+
+/* Figures: Barlow, tabular, never wrapped. */
+.fig {
+  font-family: var(--font);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .num {
   text-align: right;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+/* Codes (case ids, refs, ISINs, file names, hashes) in mono, at the size around them. */
+.mono {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  font-variant-numeric: tabular-nums slashed-zero;
+  letter-spacing: 0;
+}
+/* The small uppercase mono label (OPEN BREAKS, EVIDENCE, month headers, fund codes). */
+.mono-label {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 14px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
 .muted {
-  color: var(--ink-2);
+  color: var(--muted);
 }
 .faint {
-  color: var(--ink-3);
+  color: var(--muted); /* still AA: --faint is for chevrons and disabled controls only */
 }
 .sr-only {
   position: absolute;
@@ -79,111 +128,174 @@ a {
   border: 0;
 }
 
-/* Icons */
+/* Icons (Lucide): the size here, the stroke from the component. */
 svg.i {
   width: 14px;
   height: 14px;
   flex: none;
   vertical-align: -2px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.7;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 svg.i.solid {
-  fill: currentColor;
-  stroke: none;
+  transform: scale(0.55);
 }
 
 kbd {
   display: inline-block;
-  font: 500 11px/1 var(--font-fig);
-  color: var(--ink-3);
-  border: 1px solid var(--rule-strong);
-  border-bottom-width: 2px;
-  border-radius: 3px;
-  padding: 2px 4px;
-  background: transparent;
+  min-width: 18px;
+  font: 500 10.5px/1 var(--mono);
+  text-align: center;
+  color: var(--muted);
+  border: var(--hairline) solid var(--line-strong);
+  border-bottom-width: 1.5px;
+  border-radius: 6px;
+  padding: 3px 4px;
+  background: var(--surface-2);
 }
 kbd + kbd {
   margin-inline-start: 3px;
 }
 
-/* Controls */
+/* ===== Fields (6.6): one shape, 44px pill ===== */
 select,
 .input,
 textarea {
-  background: var(--bg);
+  min-height: var(--field-h);
+  padding: 0 16px;
+  background: var(--surface);
   border: 1px solid var(--field);
-  border-radius: var(--radius);
-  padding: 4px 8px;
-  min-height: 30px;
+  border-radius: 22px;
   color: var(--ink);
+  font-size: 16px;
+  max-width: 100%;
+  transition: border-color var(--t-fast) var(--ease);
+}
+select {
+  padding-inline-end: 36px;
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position:
+    right 19px center,
+    right 14px center;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+textarea {
+  padding: 10px 16px;
+  border-radius: var(--r-small);
+  line-height: 1.45;
+}
+input[type="date"],
+input[type="month"],
+input[type="time"] {
+  text-align: center;
+}
+input[type="file"]::file-selector-button {
+  height: 32px;
+  margin-inline-end: 10px;
+  padding: 0 14px;
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: 16px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font: 500 13px var(--font);
+  cursor: pointer;
 }
 select:hover,
 .input:hover,
 textarea:hover {
-  border-color: var(--ink-3);
+  border-color: var(--muted);
+}
+select:disabled,
+.input:disabled,
+textarea:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 ::placeholder {
-  color: var(--ink-3);
+  color: var(--muted);
   opacity: 1;
 }
 
+/* ===== Buttons (6.5): pills ===== */
+/* .btn is the secondary pill; .btn.primary the one per screen; .btn.ghost and .btn.quiet the
+   quiet 32px chip (exports, small actions); .btn.small a compact secondary. */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: 30px;
-  padding: 4px 10px;
-  border-radius: var(--radius);
+  gap: 8px;
+  min-height: var(--btn-h);
+  padding: 0 22px;
+  border-radius: var(--r-pill);
   cursor: pointer;
-  background: var(--panel-2);
-  border: 1px solid var(--rule-strong);
+  background: transparent;
+  border: var(--hairline) solid var(--line-strong);
   color: var(--ink);
-  font-weight: 500;
+  font: 600 15px/1 var(--font);
   text-decoration: none;
   white-space: nowrap;
   transition:
     background-color var(--t-fast) var(--ease),
-    border-color var(--t-fast) var(--ease);
+    border-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease),
+    transform var(--t-press) ease-out;
 }
 .btn:hover {
-  background: var(--raise);
-  border-color: var(--ink-3);
+  background: var(--surface-2);
+}
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
 }
 .btn.primary {
   background: var(--ink);
   color: var(--bg);
-  border-color: var(--ink);
-  font-weight: 600;
+  border-color: transparent;
+  box-shadow: var(--primary-shadow);
 }
 .btn.primary:hover {
   background: var(--ink-2);
-  border-color: var(--ink-2);
+}
+.btn.ghost,
+.btn.quiet {
+  min-height: 32px;
+  padding: 0 12px;
+  gap: 6px;
+  border-radius: 16px;
+  color: var(--muted);
+  font: 500 13px/1 var(--font);
 }
 .btn.ghost {
-  background: transparent;
   border-color: transparent;
-  color: var(--ink-2);
 }
-.btn.ghost:hover {
+.btn.quiet {
+  border-color: var(--line-strong);
+}
+.btn.ghost:hover,
+.btn.quiet:hover {
   color: var(--ink);
-  background: var(--panel-2);
+  background: var(--surface-2);
+}
+.btn.small {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 14px;
 }
 .btn:disabled,
 .btn[aria-disabled="true"] {
-  opacity: 0.55;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 .btn kbd {
   margin-inline-start: 2px;
 }
 .icon-btn {
-  min-width: 30px;
-  padding: 4px 7px;
+  min-width: 32px;
+  padding: 0 8px;
+}
+.btn.ghost.icon-btn {
+  min-width: 32px;
 }
 
 @media (pointer: coarse) {

@@ -1,70 +1,560 @@
-/* Shared components: labels, tables, states, the sign-in page. */
+/*
+ * Shared components (Paper). Screens build on these rather than restyling their own.
+ *
+ * Type and figures (base.css)
+ *   .t-title .t-section .t-row .t-body .t-caption   type roles
+ *   .fig .num             tabular figures (Barlow), .num right-aligned
+ *   .mono                 a code in mono at the size around it (case ids, refs, hashes)
+ *   .mono-label           10.5px uppercase mono label (OPEN BREAKS, EVIDENCE)
+ *   .muted                secondary text (AA on every surface)
+ * Buttons and fields (base.css)
+ *   .btn                  secondary pill (54px under 1024px, 44px on desktop)
+ *   .btn.primary          the one primary per screen
+ *   .btn.quiet            32px chip with a hairline (exports, small actions)
+ *   .btn.ghost            32px chip without a border (icon buttons, close)
+ *   .btn.small            36px secondary; .icon-btn square-ish icon button
+ *   select .input textarea   44px pill fields; .field = label + control stack
+ * Surfaces
+ *   .card                 surface, radius 20, hairline, card shadow; .card-pad adds 16-20px
+ *   .lead                 the one contrast card per screen: .lead-label .lead-figure
+ *                         .lead-caption .lead-foot (2px gradient edge, halo, pop-in)
+ *   .tiles > .tile        figure tiles: .tile-label .tile-figure .tile-note .tile-foot
+ *                         (.tiles-3 / .tiles-4 for more per row on desktop)
+ *   .tile-box             38px icon box
+ *   .list > .row          one card, hairline rows: .row-lead .row-main .row-title
+ *                         .row-sub .row-value .row-chev; .list.dense for 44px work rows
+ *   .records > .record    facts: dt label left (muted), dd value right
+ *   .section-head         .mono-label above an h2 with an optional .section-count
+ * Status and selection
+ *   .status.late|wait|done|info|neutral   pill with dot and word (StatusLabel)
+ *   .st.tone-pos|neg|neutral              inline icon + word (CheckLabel)
+ *   .tag (.tag.signal)                    small neutral tag (Material, Escalated, Past SLA)
+ *   .count-pill                           gradient count with a white number
+ *   .seg > button[aria-pressed|aria-selected]   segmented control (.seg-count badge)
+ *   .chips > .chip[aria-pressed]          filter chips, current one filled ink
+ *   .avatar (.avatar-1..4)                gradient initials circle
+ * States and feedback
+ *   .empty-state          centred sentence and at most one action (Empty)
+ *   .state-line           one calm line: loading (Loading), error (ErrorLine)
+ *   .spinner .shimmer .progress-line      loading
+ *   .toast (.toast-region)                dark pill, bottom centre
+ *   .track > .track-fill (.late|.done)    6px ageing / SLA track; .track-today tick
+ *   .notice .form-error                   inline amber / red notes
+ * Motion
+ *   .rise (.rise-1..6 stagger)  .pop   .release-changed   .list-enter
+ * Tables (DataTable)
+ *   .data-table (.dense)  sortable, 44px rows, right-aligned tabular .num cells
+ */
 
-/* ===== Status, cause and check labels: icon + word, colour only reinforces ===== */
-.pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 1px 7px 1px 5px;
-  border-radius: var(--radius);
-  border: 1px solid transparent;
-  font-size: 12.5px;
-  font-weight: 600;
+/* ===== Cards ===== */
+.card {
+  background: var(--surface-fill);
+  background-color: var(--surface);
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--card-shadow);
+}
+.card-pad {
+  padding: 16px 18px;
+}
+@media (min-width: 1024px) {
+  .card-pad {
+    padding: 18px 20px;
+  }
+}
+.card.small {
+  border-radius: var(--r-small);
+}
+
+/* ===== Lead card (6.1): the screen's headline figure ===== */
+.lead {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  padding: 18px 20px;
+  border-radius: var(--r-lead);
+  background: var(--hero);
+  color: var(--hero-ink);
+  box-shadow: var(--lead-shadow);
+  animation: pop var(--t-pop) var(--spring) both;
+}
+.lead::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: var(--accent-line);
+}
+.lead::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  right: -60px;
+  top: -80px;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(124, 132, 255, 0.24), transparent 65%);
+  pointer-events: none;
+}
+.lead-label {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  color: var(--hero-muted);
+}
+.lead .mono-label {
+  color: var(--hero-muted);
+}
+.lead-figure {
+  margin: 2px 0;
+  font-size: 40px;
+  line-height: 46px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.pill svg {
-  width: 12px;
-  height: 12px;
+.lead-caption {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--hero-muted);
 }
-.pill.tone-signal {
-  background: var(--signal-fill);
-  color: var(--signal-ink);
+.lead-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 12px;
 }
-.pill.tone-pos {
-  color: var(--pos);
-  border-color: color-mix(in srgb, var(--pos) 40%, transparent);
+.lead a {
+  color: inherit;
 }
-.pill.tone-neg {
-  color: var(--neg);
-  border-color: color-mix(in srgb, var(--neg) 40%, transparent);
+.lead .btn {
+  color: var(--hero-ink);
+  border-color: color-mix(in srgb, var(--hero-ink) 22%, transparent);
 }
-.pill.tone-neutral {
+.lead .btn:hover {
+  background: color-mix(in srgb, var(--hero-ink) 8%, transparent);
+}
+.lead .btn.primary {
+  background: var(--hero-ink);
+  color: var(--hero);
+}
+.lead :focus-visible {
+  outline-color: var(--hero-ink);
+}
+/* Status pills on the contrast card keep their own soft fills. */
+.lead .status.neutral {
+  background: color-mix(in srgb, var(--hero-ink) 10%, transparent);
+  color: var(--hero-ink);
+}
+
+/* ===== Figure tiles (6.2) ===== */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (min-width: 1024px) {
+  .tiles-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .tiles-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 92px;
+  padding: 14px;
+  background: var(--surface-fill);
+  background-color: var(--surface);
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--card-shadow);
+}
+.tiles:not(.tiles-3, .tiles-4) > .tile:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+.tile-label {
+  min-height: 36px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tile-figure {
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tile-figure.long {
+  font-size: 16px;
+}
+.tile-note {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--muted);
+}
+.tile-foot {
+  margin-top: auto;
+  padding-top: 6px;
+}
+.tile-box {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-tile-box);
+  background: var(--tile-box);
+  box-shadow: var(--tile-box-edge);
   color: var(--ink);
-  border-color: var(--rule-strong);
 }
+.tile-box svg.i {
+  width: 18px;
+  height: 18px;
+}
+
+/* ===== Section heading ===== */
+.section-head {
+  display: grid;
+  gap: 2px;
+  margin: 22px 0 10px;
+}
+.section-head:first-child {
+  margin-top: 0;
+}
+.section-head h2 {
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
+}
+.section-count {
+  margin-inline-start: 6px;
+  color: var(--muted);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== Lists and rows (6.3) ===== */
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--surface-fill);
+  background-color: var(--surface);
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+.row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-height: 60px;
+  padding: 10px 14px 10px 16px;
+  color: inherit;
+  text-decoration: none;
+}
+.row + .row {
+  border-top: var(--hairline) solid var(--line);
+}
+.list.dense .row {
+  min-height: 44px;
+  padding-block: 6px;
+}
+a.row,
+button.row {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--t-fast) var(--ease);
+}
+a.row:hover,
+button.row:hover {
+  background: color-mix(in srgb, var(--surface-2) 55%, transparent);
+}
+a.row:active,
+button.row:active {
+  background: var(--surface-2);
+}
+a.row:focus-visible,
+button.row:focus-visible {
+  outline-offset: -2px;
+}
+.row-main {
+  display: grid;
+  gap: 2px;
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.row-title {
+  font-size: 16px;
+  line-height: 21px;
+  font-weight: 500;
+}
+.row-sub {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--muted);
+}
+.row-value {
+  margin-inline-start: auto;
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+.row-chev {
+  color: var(--faint);
+}
+
+/* ===== Records (6.4): label left, value right ===== */
+.records {
+  margin: 0;
+}
+.record {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 10px 0;
+}
+.record + .record {
+  border-top: var(--hairline) solid var(--line);
+}
+.record dt {
+  flex: 0 1 auto;
+  max-width: 45%;
+  color: var(--muted);
+  font-size: 14px;
+}
+.record dd {
+  margin: 0;
+  min-width: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== Status pills (6.9): dot and word ===== */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 12px;
+  font: 600 12.5px/1 var(--font);
+  white-space: nowrap;
+  color: var(--neutral);
+  background: var(--neutral-soft);
+}
+.status::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: currentColor;
+}
+.status.late {
+  color: var(--red);
+  background: var(--red-soft);
+}
+.status.wait {
+  color: var(--amber);
+  background: var(--amber-soft);
+}
+.status.done {
+  color: var(--green);
+  background: var(--green-soft);
+}
+.status.info {
+  color: var(--info);
+  background: var(--info-soft);
+}
+.status.neutral {
+  color: var(--neutral);
+  background: var(--neutral-soft);
+}
+/* On a surface-2 background the neutral and info fills would vanish: give them a hairline. */
+.status.neutral,
+.status.info {
+  box-shadow: inset 0 0 0 var(--hairline) var(--line-strong);
+}
+
+/* Inline check result: icon and word. */
 .st {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
 }
 .st.tone-pos {
-  color: var(--pos);
+  color: var(--green);
 }
 .st.tone-neg {
-  color: var(--neg);
+  color: var(--red);
 }
 .st.tone-neutral {
-  color: var(--ink-2);
+  color: var(--muted);
 }
+
+/* Neutral tags: Material, Escalated, Past SLA, "This fund". */
 .tag {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 0 5px;
-  border: 1px solid var(--rule-strong);
-  border-radius: 2px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 11px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--ink-2);
+  color: var(--neutral);
+  background: var(--neutral-soft);
+  box-shadow: inset 0 0 0 var(--hairline) var(--line-strong);
   white-space: nowrap;
 }
 .tag.signal {
-  color: var(--signal);
-  border-color: color-mix(in srgb, var(--signal) 55%, transparent);
-  background: var(--signal-wash);
+  color: var(--amber);
+  background: var(--amber-soft);
+  box-shadow: none;
+}
+
+/* Gradient count (unread, pending): the deeper gradient keeps the white number at AA. */
+.count-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  font: 700 11.5px/1 var(--font);
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  background: var(--accent-strong);
+}
+
+/* ===== Segmented control (6.7) ===== */
+.seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 19px;
+  background: var(--surface-2);
+}
+.seg > button,
+.seg > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--muted);
+  font: 500 14px/1 var(--font);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--t-lens) var(--spring),
+    color var(--t-fast) var(--ease);
+}
+.seg > button:hover,
+.seg > a:hover {
+  color: var(--ink);
+}
+.seg > [aria-pressed="true"],
+.seg > [aria-selected="true"],
+.seg > [aria-current="page"] {
+  background: var(--ink);
+  color: var(--bg);
+}
+.seg-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 600;
+  background: color-mix(in srgb, currentColor 16%, transparent);
+}
+
+/* ===== Filter chips ===== */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 14px;
+  border: var(--hairline) solid transparent;
+  border-radius: 17px;
+  background: transparent;
+  color: var(--muted);
+  font: 500 14px/1 var(--font);
+  cursor: pointer;
+  transition:
+    background-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease);
+}
+.chip:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+.chip[aria-pressed="true"],
+.chip[aria-selected="true"],
+.chip.current {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+/* ===== Avatars ===== */
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #fff;
+  font: 600 13px/1 var(--font);
+  background: var(--accent-strong);
+}
+.avatar-2 {
+  background: linear-gradient(135deg, #1f8a76, #2f68c4);
+}
+.avatar-3 {
+  background: linear-gradient(135deg, #b06f1c, #b8403c);
+}
+.avatar-4 {
+  background: linear-gradient(135deg, #a83d80, #6b45d6);
 }
 
 /* ===== Data table ===== */
@@ -78,34 +568,37 @@
 .data-table caption {
   caption-side: top;
   text-align: left;
-  padding: 6px 0;
-  color: var(--ink-3);
-  font-size: 12.5px;
+  padding: 6px 0 8px;
+  color: var(--muted);
+  font-size: 13px;
 }
 .data-table th,
 .data-table td {
-  padding: 0 8px;
-  height: 36px;
-  font-size: 13px;
+  padding: 0 10px;
+  height: 44px;
+  font-size: 14px;
   text-align: left;
   vertical-align: middle;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: var(--hairline) solid var(--line);
 }
 .data-table th {
-  height: 32px;
+  height: 36px;
   font-size: 12.5px;
   font-weight: 500;
-  color: var(--ink-2);
+  color: var(--muted);
   white-space: nowrap;
-  background: var(--panel-2);
+}
+.data-table tbody tr:last-child td {
+  border-bottom: 0;
 }
 .data-table .num {
   text-align: right;
-  font-family: var(--font-fig);
-  font-variant-numeric: tabular-nums slashed-zero;
+  font-family: var(--font);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 .data-table th.num {
-  font-family: var(--font-ui);
+  font-weight: 500;
 }
 .sort-btn {
   all: unset;
@@ -113,17 +606,23 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-height: 24px;
   cursor: pointer;
+}
+.sort-btn:hover {
+  color: var(--ink);
 }
 .sort-btn:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
+  border-radius: 4px;
 }
 .data-table th.num .sort-btn {
   justify-content: flex-end;
 }
 .sort-icon {
   opacity: 0.35;
+  transition: transform var(--t-fast) var(--ease);
 }
 .sort-icon.sorted-asc {
   opacity: 1;
@@ -137,38 +636,43 @@
   transition: background-color var(--t-fast) var(--ease);
 }
 .data-table tr.activatable:hover {
-  background: var(--panel-2);
+  background: color-mix(in srgb, var(--surface-2) 55%, transparent);
 }
 .data-table tr.selected {
   background: var(--accent-wash);
-  box-shadow: inset 3px 0 0 var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent-ink);
 }
 .data-table tr:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: -2px;
 }
 .empty-cell {
-  color: var(--ink-3);
+  color: var(--ink-2);
   text-align: center;
-  height: 64px;
+  height: 72px;
 }
 
 /* ===== States ===== */
 .state-line {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 12px 0;
-  color: var(--ink-2);
+  color: var(--muted);
 }
 .state-line.error {
-  color: var(--neg);
+  color: var(--red);
+}
+.state-line.error .btn {
+  color: var(--ink);
 }
 .spinner {
+  flex: none;
   width: 14px;
   height: 14px;
-  border: 2px solid var(--rule-strong);
-  border-top-color: var(--accent);
+  border: 2px solid var(--line-strong);
+  border-top-color: var(--accent-ink);
   border-radius: 50%;
   animation: spin 800ms linear infinite;
 }
@@ -177,16 +681,67 @@
     transform: rotate(360deg);
   }
 }
+/* Empty state (6.10): centred, one short sentence, one action at most. */
+.empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--ink-2);
+}
+/* Shimmer rows in the shape of what is coming. */
+.shimmer {
+  display: block;
+  min-height: 14px;
+  border-radius: 7px;
+  background: linear-gradient(90deg, var(--shimmer-a), var(--shimmer-b), var(--shimmer-a));
+  background-size: 760px 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+@keyframes shimmer {
+  from {
+    background-position: -380px 0;
+  }
+  to {
+    background-position: 380px 0;
+  }
+}
+/* The 3px gradient progress line sliding across the top of whatever holds it. */
+.progress-line {
+  position: relative;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 2px;
+}
+.progress-line::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  border-radius: 2px;
+  background: var(--accent-line);
+  animation: progress-slide 1.1s var(--ease) infinite;
+}
+@keyframes progress-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
 .placeholder {
   max-width: 640px;
-  padding: 18px 20px;
-  background: var(--panel);
-  border: 1px dashed var(--rule-strong);
-  border-radius: 4px;
+  padding: 20px 22px;
+  background: var(--surface);
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--card-shadow);
   color: var(--ink-2);
 }
 .placeholder h1 {
-  font-size: 17px;
+  font-size: 20px;
   margin-bottom: 6px;
   color: var(--ink);
 }
@@ -194,84 +749,207 @@
   margin: 10vh auto;
 }
 
-/* ===== Sign-in ===== */
-.signin-page {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 24px var(--gutter);
-}
-.signin-theme {
+/* ===== Toast (6.13): dark pill, bottom centre ===== */
+.toast-region {
   position: fixed;
-  top: 12px;
-  right: 12px;
-}
-.signin-card {
-  width: min(380px, 100%);
-  padding: 26px 26px 24px;
-  background: var(--panel);
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-}
-.signin-brand {
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  color: var(--ink-2);
-  margin-bottom: 14px;
-}
-.signin-card h1 {
-  font-size: 22px;
-}
-.signin-lede {
-  margin: 4px 0 18px;
-  font-size: 13.5px;
-}
-.field {
+  z-index: 60;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
   display: grid;
-  gap: 4px;
-  margin-bottom: 12px;
-  font-size: 13px;
-  color: var(--ink-2);
+  gap: 8px;
+  justify-items: center;
+  pointer-events: none;
 }
-.field .input {
-  min-height: 36px;
+.toast {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 0 8px 0 20px;
+  border-radius: 26px;
+  background: var(--hero);
+  color: var(--hero-ink);
+  box-shadow: var(--lead-shadow);
   font-size: 14px;
+  pointer-events: auto;
+  animation: pop 300ms var(--spring) both;
 }
-.signin-submit {
-  width: 100%;
+.toast .btn {
   min-height: 36px;
-  margin-top: 4px;
+  color: var(--hero-ink);
+  border-color: color-mix(in srgb, var(--hero-ink) 22%, transparent);
 }
+.toast :focus-visible {
+  outline-color: var(--hero-ink);
+}
+
+/* ===== Ageing / SLA track (6.14): 6px, filling with age ===== */
+.track {
+  position: relative;
+  display: block;
+  height: 6px;
+  min-width: 48px;
+  border-radius: 3px;
+  background: var(--track);
+  overflow: visible;
+}
+.track-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--bar);
+  transition: width var(--t-status) var(--ease);
+}
+.track-fill.late {
+  background: color-mix(in srgb, var(--red) 75%, var(--track));
+}
+.track-fill.done {
+  background: var(--green);
+}
+.track-today {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--accent-ink);
+}
+
+/* ===== Notes in a form or a card ===== */
 .form-error,
 .notice {
   display: flex;
   align-items: flex-start;
-  gap: 7px;
-  padding: 8px 10px;
+  gap: 8px;
+  padding: 10px 14px;
   margin-bottom: 14px;
-  border-radius: var(--radius);
-  font-size: 13px;
+  border-radius: var(--r-small);
+  font-size: 14px;
 }
 .form-error {
-  color: var(--neg);
-  background: var(--neg-wash);
-  border: 1px solid color-mix(in srgb, var(--neg) 40%, transparent);
+  color: var(--red);
+  background: var(--red-soft);
 }
 .notice {
   color: var(--ink);
-  background: var(--signal-wash);
-  border: 1px solid color-mix(in srgb, var(--signal) 45%, transparent);
+  background: var(--amber-soft);
+}
+.notice > svg {
+  color: var(--amber);
 }
 .form-error svg,
 .notice svg {
   margin-top: 2px;
 }
+.field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.field .input,
+.field select {
+  width: 100%;
+}
+
+/* ===== Sign-in ===== */
+.signin-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--gutter) 32px;
+}
+.signin-theme {
+  position: fixed;
+  z-index: 5;
+  top: 14px;
+  right: 14px;
+}
+.signin-card {
+  display: grid;
+  gap: 14px;
+  width: min(420px, 100%);
+  margin: auto;
+  padding-top: 64px; /* clear of the theme button */
+}
+.signin-brand.lead {
+  padding: 22px 22px 20px;
+}
+.signin-brand .lead-figure {
+  font-size: 34px;
+  line-height: 40px;
+}
+.signin-body {
+  padding: 22px;
+}
+.signin-body h1 {
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 700;
+}
+.signin-lede {
+  margin: 4px 0 18px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--muted);
+}
+.signin-submit {
+  width: 100%;
+  margin-top: 6px;
+}
 
 /* ===== Motion that explains a change (all of it off under reduced motion: tokens.css) ===== */
+@keyframes pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  70% {
+    transform: scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+.pop {
+  animation: pop var(--t-pop) var(--spring) both;
+}
+.rise {
+  animation: rise var(--t-rise) var(--ease) both;
+}
+.rise-1 {
+  animation-delay: 40ms;
+}
+.rise-2 {
+  animation-delay: 80ms;
+}
+.rise-3 {
+  animation-delay: 120ms;
+}
+.rise-4 {
+  animation-delay: 160ms;
+}
+.rise-5 {
+  animation-delay: 200ms;
+}
+.rise-6 {
+  animation-delay: 240ms;
+}
 
 /* The release status has just moved (Blocked to Ready, Ready to Signed off): one pulse. */
 .release-changed {
-  animation: release-pulse var(--t-status) var(--ease);
+  animation: release-pulse var(--t-status) var(--spring);
 }
 @keyframes release-pulse {
   0% {
@@ -288,39 +966,43 @@
 }
 
 /* Rows arriving in a list fade in, the first ten a beat apart. */
-.list-enter tbody tr {
-  animation: row-in var(--t-panel) var(--ease) both;
+.list-enter tbody tr,
+.list-enter > .row {
+  animation: row-in var(--t-rise) var(--ease) both;
 }
-.list-enter tbody tr:nth-child(2) {
-  animation-delay: 15ms;
+.list-enter tbody tr:nth-child(2),
+.list-enter > .row:nth-child(2) {
+  animation-delay: 40ms;
 }
-.list-enter tbody tr:nth-child(3) {
-  animation-delay: 30ms;
+.list-enter tbody tr:nth-child(3),
+.list-enter > .row:nth-child(3) {
+  animation-delay: 80ms;
 }
-.list-enter tbody tr:nth-child(4) {
-  animation-delay: 45ms;
-}
-.list-enter tbody tr:nth-child(5) {
-  animation-delay: 60ms;
-}
-.list-enter tbody tr:nth-child(6) {
-  animation-delay: 75ms;
-}
-.list-enter tbody tr:nth-child(7) {
-  animation-delay: 90ms;
-}
-.list-enter tbody tr:nth-child(8) {
-  animation-delay: 105ms;
-}
-.list-enter tbody tr:nth-child(9) {
+.list-enter tbody tr:nth-child(4),
+.list-enter > .row:nth-child(4) {
   animation-delay: 120ms;
 }
-.list-enter tbody tr:nth-child(n + 10) {
-  animation-delay: 135ms;
+.list-enter tbody tr:nth-child(5),
+.list-enter > .row:nth-child(5) {
+  animation-delay: 160ms;
+}
+.list-enter tbody tr:nth-child(n + 6),
+.list-enter > .row:nth-child(n + 6) {
+  animation-delay: 200ms;
 }
 @keyframes row-in {
   from {
     opacity: 0;
-    transform: translateY(3px);
+    transform: translateY(10px);
   }
+}
+.signin-name {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.signin-name .brand-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
 }
