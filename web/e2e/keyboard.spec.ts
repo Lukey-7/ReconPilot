@@ -105,7 +105,7 @@ async function uploadAndRunByKeyboard(page: Page, asOf: string): Promise<void> {
   const chooser = page.waitForEvent("filechooser");
   await page.keyboard.press("Space");
   await (await chooser).setFiles(dayFiles(asOf));
-  await expect(page.getByText(/^The files are valid/)).toBeVisible();
+  await expect(page.locator(".up-validation").getByText(/^The files are valid/)).toBeVisible();
 
   const run = page.getByRole("button", { name: "Run the day" });
   await tabTo(page, run);
@@ -229,10 +229,12 @@ test("a second approver signs off through the dialog, and the next day is loaded
   await expect(result).toBeFocused();
 
   // The next business day is open: go to it and load and run it.
-  const next = page.getByRole("button", { name: /^Go to Tue 10 Nov 2026/ });
+  const next = page.getByRole("button", { name: "Go to the next day" });
   await tabTo(page, next);
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(new RegExp(`/signoff\\?.*day=${DAY_TWO}`)); // the screen moves to that day
+  // The address changes a moment before the app has drawn the new day; wait for the app, as a person would.
+  await expect(page.getByLabel("Business day")).toHaveValue(DAY_TWO);
   await goTo(page, "u", /^Upload and run/);
   await expect(page).toHaveURL(new RegExp(`day=${DAY_TWO}`));
   await uploadAndRunByKeyboard(page, DAY_TWO);

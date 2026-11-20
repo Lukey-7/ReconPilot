@@ -22,6 +22,7 @@ import {
   type ReactNode,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -265,7 +266,9 @@ export function useShortcut(keys: string, handler: (event: KeyboardEvent) => voi
   const handlerRef = useRef(handler);
   const whenRef = useRef(when);
 
-  useEffect(() => {
+  // Updated as the render commits, so a key pressed straight after a change (another day, say)
+  // runs the handler that sees it.
+  useLayoutEffect(() => {
     handlerRef.current = handler;
     whenRef.current = when;
   });
@@ -317,7 +320,7 @@ export function useCommand(label: string, run: () => void, options: CommandOptio
   const { group = "General", enabled = true, keywords, keys } = options;
   const runRef = useRef(run);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     runRef.current = run;
   });
 
