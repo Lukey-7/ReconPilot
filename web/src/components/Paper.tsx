@@ -9,6 +9,7 @@
  * - <Records> with <Record label>: facts, label left and value right.
  * - <Track value max tone today>: the 6px ageing / SLA track.
  * - <Shimmer width height> and <ProgressLine label>: loading.
+ * - <Avatar name>: a gradient initials circle, its gradient chosen by the name.
  */
 import type { CSSProperties, ReactNode } from "react";
 
@@ -150,5 +151,29 @@ export function ProgressLine({ label = "Loading" }: { label?: string }) {
     <div className="progress-line" role="progressbar" aria-label={label}>
       <span className="sr-only">{label}</span>
     </div>
+  );
+}
+
+/** Initials for an avatar: "Asha Rao" as AR, "ops" as OP. */
+export function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const first = parts[0] ?? "?";
+  const last = parts.length > 1 ? (parts[parts.length - 1] ?? "") : "";
+  return (last ? first.charAt(0) + last.charAt(0) : first.slice(0, 2)).toUpperCase();
+}
+
+/** One of the four avatar gradients (1 to 4), chosen by the name so a person keeps theirs. */
+export function avatarTone(name: string): number {
+  let sum = 0;
+  for (const ch of name) sum += ch.charCodeAt(0);
+  return (sum % 4) + 1;
+}
+
+/** A gradient circle with white initials. Decorative: the name beside it says who. */
+export function Avatar({ name, className = "" }: { name: string; className?: string }) {
+  return (
+    <span className={`avatar avatar-${avatarTone(name)} ${className}`.trim()} aria-hidden="true">
+      {initials(name)}
+    </span>
   );
 }
