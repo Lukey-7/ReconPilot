@@ -67,8 +67,8 @@ test("an administrator manages a user and a fund", async ({ page }) => {
     await page.getByRole("menuitem", { name: "Administration" }).click({ timeout: 2_000 });
   }).toPass({ timeout: 20_000 });
   await expect(page.getByRole("heading", { level: 1, name: "Administration: users" })).toBeVisible();
-  const users = page.getByRole("table", { name: /Every user/ });
-  await expect(users.getByRole("row", { name: /Admin One/ })).toContainText("You");
+  const users = page.getByRole("list", { name: /Every user/ });
+  await expect(users.getByRole("listitem").filter({ hasText: "Admin One" })).toContainText("You");
   await expectAccessible(page, "Administration: users");
 
   await page.getByRole("button", { name: "Add a user" }).click();
@@ -80,7 +80,7 @@ test("an administrator manages a user and a fund", async ({ page }) => {
   await add.getByLabel("Password again").fill("Harbour-Lantern-9052");
   await add.getByRole("button", { name: "Add user" }).click();
   await expect(add).toBeHidden();
-  const row = users.getByRole("row", { name: /Temporary Nine/ });
+  const row = users.getByRole("listitem").filter({ hasText: "Temporary Nine" });
   await expect(row).toContainText("Viewer");
 
   await row.getByRole("button", { name: /Manage/ }).click();

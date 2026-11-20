@@ -39,9 +39,9 @@ test("the analyst reads every fund's settings, switches fund, and the choice fol
   await signIn(page, "analyst1");
   await page.getByRole("link", { name: /^Funds/ }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Funds" })).toBeVisible();
-  const list = page.getByRole("table", { name: /Every fund/ });
-  await expect(list.getByRole("row")).toHaveCount(3);
-  await expect(list.getByRole("row", { name: /E2E1/ })).toContainText("Working");
+  const list = page.getByRole("list", { name: /Every fund/ });
+  await expect(list.getByRole("listitem")).toHaveCount(2);
+  await expect(list.getByRole("listitem").filter({ hasText: "E2E1" })).toContainText("Working");
   const settings = page.getByRole("region", { name: /Settings for E2E1/ });
   await expect(settings.getByText("Read-only")).toBeVisible();
   await expect(settings.getByText("1.00 bp of NAV")).toBeVisible();
@@ -86,7 +86,7 @@ test("the analyst loads the files in two goes, sees each file's checks, and runs
   await expectAccessible(page, "Upload and run, files missing");
 
   await page.getByLabel(/Choose the day/).setInputFiles(files.filter((f) => !first.includes(f)));
-  await expect(page.getByText(/^The files are valid/)).toBeVisible();
+  await expect(page.locator(".up-validation").getByText(/^The files are valid/)).toBeVisible();
   await expect(checklist.getByText("Missing, needed for the run")).toHaveCount(0);
   await page.getByRole("button", { name: "Run the day" }).click();
   await expect(page.getByRole("link", { name: "Work the cases" })).toBeVisible({ timeout: 60_000 });

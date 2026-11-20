@@ -36,7 +36,7 @@ async function uploadAndRun(page: Page, asOf: string, label: string): Promise<vo
   await expect(page.getByRole("heading", { level: 1, name: "Upload and run" })).toBeVisible();
   await expect(page.getByText(`No files have been uploaded for ${label} yet.`)).toBeVisible();
   await page.getByLabel(/Choose the day/).setInputFiles(dayFiles(asOf));
-  await expect(page.getByText(/^The files are valid/)).toBeVisible();
+  await expect(page.locator(".up-validation").getByText(/^The files are valid/)).toBeVisible();
   await expect(page.getByRole("table", { name: `Files held for ${label}` }).getByRole("row")).toHaveCount(
     dayFiles(asOf).length + 1,
   );
@@ -169,7 +169,7 @@ test("a second approver signs off and the next business day opens", async ({ pag
   });
   expect(refused.status()).toBe(409);
 
-  await page.getByRole("button", { name: `Go to ${DAY_TWO_LABEL}` }).click();
+  await page.getByRole("button", { name: "Go to the next day" }).click();
   await expect(page).toHaveURL(new RegExp(`day=${DAY_TWO}`));
   await page.getByRole("link", { name: /^Upload/ }).click();
   await signOut(page);
