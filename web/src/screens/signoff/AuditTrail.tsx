@@ -10,6 +10,7 @@ import { ApiError } from "../../api/client";
 import { useDayAudit } from "../../api/queries";
 import type { AuditEntry } from "../../api/types";
 import { Icon } from "../../components/Icon";
+import { SectionHead } from "../../components/Paper";
 import { ErrorLine, Loading } from "../../components/QueryState";
 import { count, plural, timestamp } from "../../format";
 import { EXPORT_NAMES, auditActionLabel, causeLabel, releaseReasonLabel, roleLabel } from "../../vocabulary";
@@ -129,7 +130,7 @@ function Entry({ entry }: { entry: AuditEntry }) {
       <span className="so-entry-seq fig" title={`Hash ${entry.hash}`}>
         #{entry.seq}
       </span>
-      <span className="so-entry-when faint">{timestamp(entry.ts)}</span>
+      <span className="so-entry-when">{timestamp(entry.ts)}</span>
       <span className="so-entry-what">
         <strong>{auditActionLabel(entry.action)}</strong>
         {entry.case_id && (
@@ -142,7 +143,7 @@ function Entry({ entry }: { entry: AuditEntry }) {
       </span>
       <span className="so-entry-who">
         {entry.actor}
-        {entry.role && <span className="faint"> ({roleLabel(entry.role)})</span>}
+        {entry.role && <span className="muted"> ({roleLabel(entry.role)})</span>}
       </span>
     </li>
   );
@@ -213,14 +214,14 @@ export function AuditTrail({ fund, asOf }: { fund: string; asOf: string }) {
 
   return (
     <section className="so-block" aria-labelledby="so-h-audit">
-      <div className="so-block-head">
-        <h2 id="so-h-audit">Audit trail</h2>
-        {audit && <span className="faint">{plural(audit.entries.length, "entry", "entries")} for this day</span>}
-        <Link className="so-log-link" to={href("/audit", { only_day: "1" })}>
+      <SectionHead label="Hash-chained log" title="Audit trail" id="so-h-audit" />
+      <div className="so-block-note so-audit-note">
+        {audit && <span>{plural(audit.entries.length, "entry", "entries")} for this day</span>}
+        <Link className="btn quiet so-log-link" to={href("/audit", { only_day: "1" })}>
           Open in the audit log
         </Link>
       </div>
-      {body}
+      <div className="card so-audit-card">{body}</div>
     </section>
   );
 }

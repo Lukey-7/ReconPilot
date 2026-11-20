@@ -6,7 +6,8 @@
  * status (or, for four-eyes, `blocking_for_me`) names it.
  */
 import type { Overview, Reason, ReleaseForMe, RoleName } from "../../api/types";
-import { Icon } from "../../components/Icon";
+import { type StatusKind, StatusPill } from "../../components/Labels";
+import { SectionHead } from "../../components/Paper";
 import { plural } from "../../format";
 import { releaseConditionLabel } from "../../vocabulary";
 import { checksSummary } from "../overview/ReleaseSection";
@@ -14,7 +15,7 @@ import { CaseIdList } from "./CaseIdList";
 
 type State = "met" | "unmet" | "na";
 
-interface Condition {
+export interface Condition {
   code: string;
   state: State;
   /** The server's reasons when unmet; otherwise one line saying why it holds. */
@@ -99,7 +100,7 @@ export function conditionsFor(
   return [...out, fourEyes];
 }
 
-const ICONS: Record<State, "check" | "warn" | "dot"> = { met: "check", unmet: "warn", na: "dot" };
+const KINDS: Record<State, StatusKind> = { met: "done", unmet: "late", na: "neutral" };
 const WORDS: Record<State, string> = { met: "Met", unmet: "Not met", na: "For the signer" };
 
 export function Conditions({
@@ -117,36 +118,33 @@ export function Conditions({
   const unmet = conditions.filter((c) => c.state === "unmet").length;
   return (
     <section className="so-block" aria-labelledby="so-h-conds">
-      <div className="so-block-head">
-        <h2 id="so-h-conds">Release conditions</h2>
-        <span className="faint">
-          {release.signed_off
-            ? "as checked at sign-off"
-            : unmet
-              ? `${plural(unmet, "condition")} not met · checked again on the server at sign-off`
-              : "checked again on the server at sign-off"}
-        </span>
-      </div>
-      <ul className="so-conds">
+      <SectionHead label="Before release" title="Release conditions" id="so-h-conds" />
+      <p className="so-block-note">
+        {release.signed_off
+          ? "as checked at sign-off"
+          : unmet
+            ? `${plural(unmet, "condition")} not met · checked again on the server at sign-off`
+            : "checked again on the server at sign-off"}
+      </p>
+      <ul className="list so-conds">
         {conditions.map((c) => (
-          <li key={c.code} data-condition={c.code} data-state={c.state}>
-            <span className={`so-cond-state tone-${c.state}`}>
-              <Icon name={ICONS[c.state]} />
-              {WORDS[c.state]}
-            </span>
-            <div className="so-cond-body">
-              <p className="so-cond-title">{releaseConditionLabel(c.code)}</p>
+          <li key={c.code} className="row so-cond" data-condition={c.code} data-state={c.state}>
+            <div className="row-main">
+              <p className="row-title">{releaseConditionLabel(c.code)}</p>
               {c.state === "unmet" ? (
                 c.reasons.map((r, i) => (
                   <div key={`${r.code}-${i}`} className="so-cond-reason">
-                    <p>{r.message}</p>
+                    <p className="row-sub">{r.message}</p>
                     <CaseIdList ids={r.case_ids} />
                   </div>
                 ))
               ) : (
-                <p className="so-cond-detail">{c.detail}</p>
+                <p className="row-sub">{c.detail}</p>
               )}
             </div>
+            <StatusPill kind={KINDS[c.state]} className="so-cond-state">
+              {WORDS[c.state]}
+            </StatusPill>
           </li>
         ))}
       </ul>

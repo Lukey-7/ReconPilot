@@ -9,6 +9,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { OverviewCase } from "../../api/types";
 import { DataTable } from "../../components/DataTable";
 import { StatusLabel } from "../../components/Labels";
+import { SectionHead } from "../../components/Paper";
 import { MISSING, count, plural } from "../../format";
 import { roleLabel, statusLabel } from "../../vocabulary";
 import { CaseLink, currentCause, securityText } from "../overview/caseLinks";
@@ -52,10 +53,10 @@ const columns: ColumnDef<OverviewCase, string>[] = [
     accessorFn: (c) => (c.status === "PENDING" ? "" : c.reviewed_by),
     cell: ({ row }) => {
       const c = row.original;
-      if (c.status === "PENDING" || !c.reviewed_by) return <span className="faint">{MISSING}</span>;
+      if (c.status === "PENDING" || !c.reviewed_by) return <span className="muted">{MISSING}</span>;
       return (
         <span>
-          {c.reviewed_by} <span className="faint">({roleLabel(c.reviewed_role)})</span>
+          {c.reviewed_by} <span className="muted">({roleLabel(c.reviewed_role)})</span>
         </span>
       );
     },
@@ -73,7 +74,7 @@ const columns: ColumnDef<OverviewCase, string>[] = [
           {note}
         </span>
       ) : (
-        <span className="faint">{MISSING}</span>
+        <span className="muted">{MISSING}</span>
       );
     },
   },
@@ -84,33 +85,35 @@ export function WhoDecided({ cases }: { cases: OverviewCase[] }) {
   const pending = cases.filter((c) => c.status === "PENDING").length;
   return (
     <section className="so-block" aria-labelledby="so-h-who">
-      <div className="so-block-head">
-        <h2 id="so-h-who">Who decided what</h2>
-        <span className="faint">
-          {cases.length ? `${plural(cases.length, "open case")}${pending ? `, ${count(pending)} pending` : ""}` : "no open cases"}
-        </span>
-      </div>
+      <SectionHead label="Four-eyes" title="Who decided what" id="so-h-who" />
+      <p className="so-block-note">
+        {cases.length ? `${plural(cases.length, "open case")}${pending ? `, ${count(pending)} pending` : ""}` : "no open cases"}
+      </p>
       {deciders.length > 0 && (
-        <ul className="so-deciders" aria-label="People who decided cases today">
+        <ul className="list so-deciders" aria-label="People who decided cases today">
           {deciders.map((d) => (
-            <li key={d.user}>
-              <strong>{d.user}</strong> <span className="faint">{roleLabel(d.role)}</span>{" "}
-              <span className="fig">{plural(d.cases, "case")}</span>
+            <li key={d.user} className="row">
+              <span className="row-main">
+                <span className="row-title">{d.user}</span> <span className="row-sub">{roleLabel(d.role)}</span>
+              </span>{" "}
+              <span className="row-value">{plural(d.cases, "case")}</span>
             </li>
           ))}
         </ul>
       )}
       {cases.length > 0 ? (
-        <DataTable
-          data={cases}
-          columns={columns}
-          caption="Open cases and who decided them"
-          captionHidden
-          getRowId={(c) => c.case_id}
-          className="so-who-table"
-        />
+        <div className="card so-who-card">
+          <DataTable
+            data={cases}
+            columns={columns}
+            caption="Open cases and who decided them"
+            captionHidden
+            getRowId={(c) => c.case_id}
+            className="so-who-table"
+          />
+        </div>
       ) : (
-        <p className="muted">No case is open for this day, so there is nothing to decide.</p>
+        <p className="card empty-state">No case is open for this day, so there is nothing to decide.</p>
       )}
     </section>
   );

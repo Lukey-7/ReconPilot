@@ -11,7 +11,7 @@
  * when the request arrives; a refusal (409 with reasons) is shown in the server's words.
  */
 import * as Dialog from "@radix-ui/react-dialog";
-import { useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router";
 
 import { ApiError } from "../../api/client";
@@ -27,6 +27,132 @@ import { releaseReasonLabel } from "../../vocabulary";
 import { CaseIdList } from "./CaseIdList";
 
 type Refusal = { message: string; reasons: Reason[] };
+
+/** Where the day after a signed-off one is: generated (demo), open for files, or already loaded. */
+function nextDayOf(days: ReturnType<typeof useWorkspace>["days"], asOf: string, demo: boolean) {
+  if (!days) return null;
+  const next = days.next_day;
+  const later = days.latest_day && days.latest_day > asOf ? days.latest_day : null;
+  if (next && next > asOf) return { kind: demo ? ("generate" as const) : ("open" as const), day: next };
+  if (later) return { kind: "loaded" as const, day: later };
+  return null;
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+}
+
+/** The tick drawn in its ring (800 ms), then the mark (450 ms). Decorative: the words say it. */
+const TICK_MS = 800 + 450;
+
+/**
+ * The done moment (Paper 6.13), shown once a sign-off made here has gone through: the tick
+ * drawn in a ring, a dark pill moving from "Signing off" to "Signed off", the day's summary,
+ * and the next business day as the one primary. The result sentence is the box's existing
+ * live region and takes focus, so it is what a screen reader hears; the pill is decorative.
+ * Under reduced motion nothing animates and the pill reads "Signed off" at once.
+ */
+function DoneMoment({
+  fund,
+  asOf,
+  day,
+  openCases,
+  demo,
+  result,
+}: {
+  fund: FundSummary;
+  asOf: string;
+  day: Day | undefined;
+  openCases: number | null;
+  demo: boolean;
+  result: ReactNode;
+}) {
+  const { days, setDay, href } = useWorkspace();
+  const [settled, setSettled] = useState(prefersReducedMotion);
+  useEffect(() => {
+    if (settled) return;
+    const timer = window.setTimeout(() => setSettled(true), TICK_MS);
+    return () => window.clearTimeout(timer);
+  }, [settled]);
+  const nav = day?.nav ?? null;
+  const target = nextDayOf(days, asOf, demo);
+
+  let next;
+  if (target?.kind === "generate") {
+    next = (
+      <>
+        <p className="so-done-next">
+          The next business day, <strong>{dayLabel(target.day)}</strong>, can now be generated from the demo’s synthetic
+          data.
+        </p>
+        <Link className="btn primary so-done-go" to={href("/upload", { day: target.day })}>
+          Go to the next day
+        </Link>
+      </>
+    );
+  } else if (target) {
+    next = (
+      <>
+        <p className="so-done-next">
+          {target.kind === "open" ? "The next business day, " : "A later business day, "}
+          <strong>{dayLabel(target.day)}</strong>
+          {target.kind === "open" ? ", is open for its files." : ", is already loaded."}
+        </p>
+        <button type="button" className="btn primary so-done-go" onClick={() => setDay(target.day)}>
+          Go to the next day
+        </button>
+      </>
+    );
+  } else {
+    next = (
+      <Link className="btn primary so-done-go" to={href("/overview")}>
+        Open the overview
+      </Link>
+    );
+  }
+
+  return (
+    <div className={settled ? "so-done settled" : "so-done"}>
+      <span className="so-done-pill" aria-hidden="true">
+        {settled ? "Signed off" : "Signing off"}
+      </span>
+      <svg className="so-tick" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+        <circle className="so-tick-ring" cx="32" cy="32" r="28" pathLength={1} />
+        <path className="so-tick-mark" d="M20.5 33.5l7.5 7.5 15.5-17" pathLength={1} />
+      </svg>
+      {result}
+      <dl className="records so-done-summary">
+        <div className="record">
+          <dt>Fund</dt>
+          <dd>{fund.name}</dd>
+        </div>
+        <div className="record">
+          <dt>Business day</dt>
+          <dd>{dayLabel(asOf)}</dd>
+        </div>
+        <div className="record">
+          <dt>NAV, {fund.base_currency}</dt>
+          <dd className="fig">{money(nav?.nav)}</dd>
+        </div>
+        <div className="record">
+          <dt>NAV per share</dt>
+          <dd className="fig">{perShare(nav?.nav_per_share)}</dd>
+        </div>
+        <div className="record">
+          <dt>Movement</dt>
+          <dd className="fig">{signedPercent(nav?.detail?.movement)}</dd>
+        </div>
+        {openCases != null && (
+          <div className="record">
+            <dt>Open cases, all decided</dt>
+            <dd className="fig">{count(openCases)}</dd>
+          </div>
+        )}
+      </dl>
+      {next}
+    </div>
+  );
+}
 
 function NextDay({ asOf, demo }: { asOf: string; demo: boolean }) {
   const { days, setDay, href } = useWorkspace();
@@ -253,14 +379,24 @@ export function SignOffBox({
 
   let body;
   if (signedOff) {
-    body = (
+    const result = (
+      <p className="so-msg" aria-live="polite" tabIndex={-1} ref={resultRef}>
+        {done ? "Signed off. " : ""}
+        The NAV was signed off by <strong>{day?.signed_off_by ?? "an approver"}</strong>
+        {day?.signed_off_at ? `, ${timestamp(day.signed_off_at)}` : ""}. The day is locked: its files, cases and
+        decisions can no longer change.
+      </p>
+    );
+    body = done ? (
+      <DoneMoment fund={fund} asOf={asOf} day={day} openCases={openCases} demo={!!user.demo} result={result} />
+    ) : (
       <>
-        <p className="so-msg" aria-live="polite" tabIndex={-1} ref={resultRef}>
-          {done ? "Signed off. " : ""}
-          The NAV was signed off by <strong>{day?.signed_off_by ?? "an approver"}</strong>
-          {day?.signed_off_at ? `, ${timestamp(day.signed_off_at)}` : ""}. The day is locked: its files, cases and
-          decisions can no longer change.
-        </p>
+        <div className="so-locked">
+          <span className="tile-box" aria-hidden="true">
+            <Icon name="lock" />
+          </span>
+          {result}
+        </div>
         <NextDay asOf={asOf} demo={!!user.demo} />
       </>
     );
@@ -270,17 +406,19 @@ export function SignOffBox({
       <>
         {blocked ? (
           <div className="so-msg so-blocked" id={describedBy}>
-            <p className="so-blocked-title">
+            <span className="tile-box" aria-hidden="true">
               <Icon name="lock" />
-              {blocked.title}
-            </p>
-            <p>{blocked.text}</p>
-            {blocked.reasons.map((r, i) => (
-              <div key={`${r.code}-${i}`} className="so-cond-reason">
-                <p>{r.message}</p>
-                <CaseIdList ids={r.case_ids} label="Cases you decided" />
-              </div>
-            ))}
+            </span>
+            <div className="so-blocked-body">
+              <p className="so-blocked-title">{blocked.title}</p>
+              <p>{blocked.text}</p>
+              {blocked.reasons.map((r, i) => (
+                <div key={`${r.code}-${i}`} className="so-cond-reason">
+                  <p>{r.message}</p>
+                  <CaseIdList ids={r.case_ids} label="Cases you decided" />
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
           <p className="so-msg" id={describedBy}>
@@ -338,8 +476,8 @@ export function SignOffBox({
   }
 
   return (
-    <section className="so-block so-sign" aria-labelledby="so-h-sign" data-state={state}>
-      <div className="so-block-head">
+    <section className="card so-sign" aria-labelledby="so-h-sign" data-state={state}>
+      <div className="so-sign-head">
         <h2 id="so-h-sign">Sign off</h2>
         <ReleaseBadge state={state} />
       </div>

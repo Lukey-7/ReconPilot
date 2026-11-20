@@ -1,13 +1,27 @@
 /*
- * NAV sign-off. Wide screens: the conditions and who decided what on the left, the
- * sign-off action and the audit trail on the right (the Ledger's sign-off page). Narrow
- * screens stack them with the action first, then the conditions, decisions and trail.
+ * NAV sign-off, in Paper. The lead card (release status and four-eyes) first and full
+ * width; then, on wide screens, the conditions and who decided what on the left and the
+ * sign-off action, unlocking and the audit trail on the right. Narrow screens stack them
+ * with the action first, then the conditions, decisions and trail.
  */
+
+.so-lead {
+  margin-bottom: var(--s-8);
+}
+.so-lead .lead-caption {
+  max-width: 62ch;
+}
+@media (max-width: 479px) {
+  .so-lead .lead-figure {
+    font-size: 32px;
+    line-height: 38px;
+  }
+}
 
 .so-grid {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: var(--s-8);
 }
 .so-col {
   display: contents;
@@ -30,144 +44,123 @@
 @media (min-width: 1100px) {
   .so-grid {
     display: grid;
-    grid-template-columns: minmax(0, 7fr) minmax(320px, 5fr);
+    grid-template-columns: minmax(0, 7fr) minmax(340px, 5fr);
     align-items: start;
   }
   .so-col {
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: var(--s-8);
     min-width: 0;
   }
 }
 
-/* ===== A block ===== */
+/* ===== A register: mono label, heading, one muted line, then its card ===== */
 .so-block {
-  background: var(--panel);
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  padding: 14px 16px 16px;
   min-width: 0;
 }
-.so-block h2 {
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 10px;
+.so-block .section-head {
+  margin-bottom: 2px;
 }
-.so-block-head {
+.so-block-note {
   display: flex;
-  align-items: baseline;
   flex-wrap: wrap;
-  gap: 4px 10px;
-  margin-bottom: 10px;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--muted);
 }
-.so-block-head h2 {
-  margin-bottom: 0;
-}
-.so-block-head .faint {
-  font-size: 12.5px;
-}
-.so-block-head .so-log-link {
-  margin-left: auto;
-  font-size: 12.5px;
+.so-audit-note .so-log-link {
+  margin-inline-start: auto;
 }
 
-/* ===== Release conditions ===== */
-.so-conds {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border-top: 1px solid var(--rule);
-}
-.so-conds > li {
-  display: grid;
-  grid-template-columns: 112px minmax(0, 1fr);
-  gap: 4px 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--rule);
-  font-size: 13px;
-}
-.so-cond-state {
+/* Case ids: mono codes in the accent ink, each a 24px target. */
+.so-screen .ov-case {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-weight: 600;
-  white-space: nowrap;
-  align-self: start;
+  min-height: 24px;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--accent-ink);
+  text-underline-offset: 3px;
 }
-.so-cond-state svg,
-.so-chain svg,
-.so-blocked-title svg,
-.so-refusal svg {
-  width: 14px;
-  height: 14px;
-  flex: none;
+
+/* ===== Release conditions: one card, hairline rows, a pill with its word on the right ===== */
+.so-cond.row {
+  align-items: flex-start;
+  flex-wrap: nowrap;
+  padding-block: 14px;
 }
-.tone-met {
-  color: var(--pos);
+.so-cond .row-main {
+  gap: 3px;
 }
-.tone-unmet {
-  color: var(--signal);
-}
-.tone-na {
-  color: var(--ink-3);
-}
-.tone-broken {
-  color: var(--neg);
-}
-.so-cond-title {
-  font-weight: 600;
-  color: var(--ink);
-}
-.so-cond-detail,
-.so-cond-reason p {
+.so-cond .row-sub {
   color: var(--ink-2);
-  margin-top: 2px;
+}
+.so-cond-state {
+  flex: none;
+  margin-top: -1px;
 }
 .so-cond-reason + .so-cond-reason {
   margin-top: 6px;
 }
-@media (max-width: 640px) {
-  .so-conds > li {
-    grid-template-columns: minmax(0, 1fr);
+@media (max-width: 479px) {
+  .so-cond.row {
+    flex-wrap: wrap;
   }
 }
 
-/* Case ids under a reason */
 .so-cases ul {
   list-style: none;
-  margin: 4px 0 0;
+  margin: 2px 0 0;
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 2px 12px;
+  gap: 0 14px;
 }
 .so-more {
-  margin-top: 6px;
+  margin-top: 4px;
 }
 .so-more summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
   cursor: pointer;
   color: var(--accent-ink);
   font-size: 13px;
-  width: fit-content;
 }
 .so-more > ul,
 .so-more > ol {
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 /* ===== Who decided what ===== */
 .so-deciders {
-  list-style: none;
-  margin: 0 0 10px;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 18px;
-  font-size: 13px;
+  margin-bottom: 10px;
 }
-.so-deciders .fig {
-  color: var(--ink-2);
+.so-deciders .row {
+  min-height: 56px;
+}
+.so-deciders .row-main {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+}
+.so-deciders .row-value {
+  font-size: 15px;
+  font-weight: 600;
+}
+.so-who-card {
+  padding: 4px 8px;
+  overflow: hidden;
+}
+.so-who-card .data-table th,
+.so-who-card .data-table td {
+  padding-inline: 10px;
 }
 .so-who-table .so-note {
   max-width: 22ch;
@@ -177,58 +170,85 @@
 }
 
 /* ===== Sign off ===== */
-.so-sign[data-state="blocked"] {
-  border-inline-start: 3px solid var(--signal);
+.so-sign {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px 20px;
 }
-.so-sign[data-state="ready"],
-.so-sign[data-state="signedOff"] {
-  border-inline-start: 3px solid var(--pos);
-}
-.so-sign .so-block-head {
+.so-sign-head {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.so-sign-head h2 {
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
 }
 .so-msg {
-  font-size: 13.5px;
+  font-size: 14px;
+  line-height: 20px;
   color: var(--ink-2);
-  max-width: 60ch;
-  margin-bottom: 12px;
+}
+.so-msg:focus {
+  outline: none;
+}
+.so-msg:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 4px;
+  border-radius: 6px;
 }
 .so-msg strong {
   color: var(--ink);
+  font-weight: 600;
 }
-.so-blocked p + p,
-.so-blocked .so-cond-reason {
-  margin-top: 4px;
+.so-blocked,
+.so-locked {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.so-blocked-body {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
 }
 .so-blocked-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  font-size: 16px;
+  line-height: 21px;
   font-weight: 600;
   color: var(--ink);
 }
+.so-blocked .so-cond-reason {
+  margin-top: 6px;
+}
 .so-sign-btn {
-  min-height: 36px;
-  padding-inline: 16px;
+  width: 100%;
 }
 .so-refusal {
-  margin-top: 12px;
-  padding: 10px 12px;
-  border: 1px solid color-mix(in srgb, var(--neg) 45%, transparent);
-  background: var(--neg-wash);
-  border-radius: var(--radius);
-  font-size: 13px;
+  padding: 12px 16px;
+  border-radius: var(--r-small);
+  background: var(--red-soft);
+  font-size: 14px;
+  line-height: 20px;
 }
 .so-refusal > p {
   display: flex;
-  gap: 6px;
-  align-items: baseline;
-  color: var(--neg);
+  gap: 8px;
+  align-items: flex-start;
+  color: var(--red);
   font-weight: 600;
+}
+.so-refusal > p svg {
+  flex: none;
+  margin-top: 3px;
 }
 .so-refusal ul {
   margin: 6px 0 0;
-  padding-inline-start: 20px;
+  padding-inline-start: 22px;
   color: var(--ink-2);
 }
 .so-reason-name {
@@ -239,47 +259,244 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 14px;
-  padding-top: 12px;
-  border-top: 1px solid var(--rule);
-  font-size: 13.5px;
+  gap: 10px 14px;
+  padding-top: 14px;
+  border-top: var(--hairline) solid var(--line);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--ink-2);
+}
+.so-next strong {
+  color: var(--ink);
+  font-weight: 600;
 }
 
 /* Confirmation */
 .so-dialog .so-figs {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 10px 18px;
-  margin: 14px 0 18px;
+  gap: 12px 18px;
+  margin: 16px 0 20px;
 }
 .so-figs dt {
-  font-size: 12px;
-  color: var(--ink-3);
+  font-size: 13px;
+  color: var(--muted);
 }
 .so-figs dd {
   margin: 2px 0 0;
-  font-size: 15px;
+  font-size: 17px;
+  font-weight: 600;
   color: var(--ink);
+  white-space: nowrap;
 }
 .so-dialog-actions {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
+/* ===== The done moment (6.13) ===== */
+.so-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding-top: 4px;
+  text-align: center;
+  animation: rise var(--t-rise) var(--ease) both;
+}
+.so-done-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 16px 0 12px;
+  border-radius: 16px;
+  background: var(--hero);
+  color: var(--hero-ink);
+  box-shadow: var(--lead-shadow);
+  font: 600 13.5px/1 var(--font);
+}
+.so-done-pill::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--hero-muted);
+  animation: so-breathe 900ms ease-in-out infinite alternate;
+}
+.so-done.settled .so-done-pill::before {
+  background: var(--green);
+  animation: none;
+}
+@keyframes so-breathe {
+  to {
+    opacity: 0.35;
+  }
+}
+.so-tick {
+  width: 72px;
+  height: 72px;
+  overflow: visible;
+}
+.so-tick-ring {
+  fill: var(--green-soft);
+  stroke: var(--green);
+  stroke-width: 2.5;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transform: rotate(-90deg);
+  transform-origin: 32px 32px;
+  animation: so-draw 800ms var(--ease) forwards;
+}
+.so-tick-mark {
+  fill: none;
+  stroke: var(--green);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: so-draw 450ms var(--ease) 800ms forwards;
+}
+@keyframes so-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .so-done,
+  .so-done-pill::before,
+  .so-tick-ring,
+  .so-tick-mark {
+    animation: none;
+  }
+  .so-tick-ring,
+  .so-tick-mark {
+    stroke-dashoffset: 0;
+  }
+}
+.so-done .so-msg {
+  max-width: 44ch;
+}
+.so-done-summary {
+  align-self: stretch;
+  padding: 2px 16px;
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--r-small);
+  background: var(--surface);
+  text-align: left;
+}
+.so-done-summary dd {
+  color: var(--ink);
+  font-weight: 500;
+}
+.so-done-summary dd.fig {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.so-done-next {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--ink-2);
+}
+.so-done-next strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.so-done-go {
+  align-self: stretch;
+}
+
+/* ===== Unlocking, under the action: calm, one card, amber only while a request waits ===== */
+.so-screen .ul-block {
+  margin-top: 12px;
+  gap: 10px;
+  padding: 18px 20px;
+  background: var(--surface-fill);
+  background-color: var(--surface);
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--card-shadow);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--ink-2);
+}
+.so-screen .ul-block.waiting {
+  border-color: color-mix(in srgb, var(--amber) 45%, var(--line));
+}
+.so-screen .ul-block h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.so-screen .ul-block.waiting h2 svg {
+  color: var(--amber);
+}
+.so-screen .ul-block strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.so-screen .ul-reason {
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.so-screen .ul-block .ad-actions {
+  justify-content: flex-start;
+}
+.so-screen .ul-block .ad-done {
+  color: var(--green);
+}
+.so-screen .ul-history summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  color: var(--accent-ink);
+}
+.so-screen .ul-history li {
+  border-top: var(--hairline) solid var(--line);
+}
+
 /* ===== Audit trail ===== */
+.so-audit-card {
+  padding: 4px 18px;
+}
 .so-chain {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
-  font-size: 13px;
-  margin-bottom: 10px;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 0;
+  font-size: 13.5px;
+  line-height: 19px;
+  font-weight: 500;
+}
+.so-chain svg {
+  flex: none;
+  margin-top: 2px;
+}
+.so-chain.tone-met {
+  color: var(--green);
+}
+.so-chain.tone-broken {
+  color: var(--red);
 }
 .so-entries {
   list-style: none;
   margin: 0;
   padding: 0;
-  border-top: 1px solid var(--rule);
+}
+.so-chain + .so-entries,
+.so-chain + .so-earlier,
+.so-earlier + .so-entries {
+  border-top: var(--hairline) solid var(--line);
 }
 .so-entry {
   display: grid;
@@ -287,35 +504,44 @@
   grid-template-areas:
     "seq what who"
     "seq when when";
-  gap: 1px 10px;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--rule);
-  font-size: 13px;
+  gap: 2px 12px;
+  padding: 10px 0;
+  font-size: 13.5px;
+  line-height: 19px;
+}
+.so-entry + .so-entry {
+  border-top: var(--hairline) solid var(--line);
 }
 .so-entry-seq {
   grid-area: seq;
-  color: var(--ink-3);
-  font-size: 12px;
   min-width: 4ch;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
 }
 .so-entry-what {
   grid-area: what;
   min-width: 0;
   overflow-wrap: anywhere;
 }
+.so-entry-what strong {
+  font-weight: 600;
+}
 .so-entry-who {
   grid-area: who;
   text-align: right;
   white-space: nowrap;
+  color: var(--ink-2);
 }
 .so-entry-when {
   grid-area: when;
-  font-size: 12px;
-}
-.so-entry .ov-case {
-  font-family: var(--font-fig);
   font-size: 12.5px;
+  color: var(--muted);
 }
 .so-earlier {
-  margin: 0 0 8px;
+  margin: 0;
+  padding: 6px 0;
+}
+.so-earlier[open] > summary {
+  margin-bottom: 4px;
 }

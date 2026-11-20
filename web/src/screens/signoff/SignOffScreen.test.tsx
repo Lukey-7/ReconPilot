@@ -375,8 +375,14 @@ describe("Sign-off screen", () => {
     // The strip agrees.
     const strip = screen.getByRole("region", { name: "NAV and release status" });
     expect(await within(strip).findByText("Signed off")).toBeInTheDocument();
-    // The next business day is open for its files.
-    const next = await within(after).findByRole("button", { name: "Go to Wed 11 Nov 2026" });
+    // The done moment: the day's summary, and the next business day, open for its files, as the one primary.
+    const summary = after.querySelector<HTMLElement>(".so-done-summary");
+    expect(summary).not.toBeNull();
+    expect(within(summary as HTMLElement).getByText("251,234,567.89")).toBeInTheDocument();
+    expect(await within(after).findByText("Wed 11 Nov 2026")).toBeInTheDocument();
+    expect(within(after).getByText(/is open for its files/)).toBeInTheDocument();
+    const next = await within(after).findByRole("button", { name: "Go to the next day" });
+    expect(next).toHaveClass("primary");
     await user.click(next);
     await waitFor(() => expect(location()).toContain("day=2026-11-11"));
   });
