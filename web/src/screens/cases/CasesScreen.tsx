@@ -245,6 +245,7 @@ function Workbench({ fund, currency, asOf }: { fund: string; currency: string; a
           signedOffBy={day.data?.signed_off_by ?? null}
           beforeShortcut={beforeShortcut}
           nothingOpen={nothingOpen}
+          currency={currency}
         />
         <EvidencePane detail={detail.data} currency={currency} mode={mode} setMode={setMode} />
       </div>

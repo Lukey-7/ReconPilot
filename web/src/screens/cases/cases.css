@@ -1,68 +1,70 @@
 /*
- * The case workbench: three panes that stay put (queue, case, evidence), each scrolling
- * inside itself, with the decision bar fixed at the foot of the case pane. The evidence
- * pane widens for long figures or collapses to a rail for long AI text.
+ * The case workbench in Paper: three cards that stay put (queue, case, evidence), each
+ * scrolling inside itself, with the decision bar fixed at the foot of the case card. The
+ * case opens on its own lead card (NAV impact and status). The evidence pane widens for
+ * long figures or collapses to a rail for long AI text.
+ * Builds on the shared layer (components.css): .lead, .records, .data-table, .chip, .seg,
+ * .status, .tag, .track, .toast, .btn.
  */
 
 .main:has(.wb-screen) {
-  padding-bottom: 12px;
+  padding-bottom: 16px;
 }
 .wb-screen .screen-head {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .wb {
   --wb-top: 200px;
   display: grid;
-  gap: 10px;
-  height: calc(100dvh - var(--wb-top) - 12px);
+  gap: 12px;
+  height: calc(100dvh - var(--wb-top) - 16px);
   min-height: 520px;
-  grid-template-columns: minmax(360px, 31fr) minmax(0, 44fr) minmax(300px, 25fr);
+  grid-template-columns: minmax(380px, 31fr) minmax(0, 44fr) minmax(300px, 25fr);
   transition: grid-template-columns var(--t-panel) var(--ease);
 }
 .wb.wb-ev-wide {
-  grid-template-columns: minmax(340px, 27fr) minmax(0, 35fr) minmax(380px, 38fr);
+  grid-template-columns: minmax(360px, 27fr) minmax(0, 35fr) minmax(380px, 38fr);
 }
 .wb.wb-ev-collapsed {
-  grid-template-columns: minmax(360px, 33fr) minmax(0, 67fr) 44px;
+  grid-template-columns: minmax(380px, 33fr) minmax(0, 67fr) 52px;
 }
 
-/* ===== A pane ===== */
+/* ===== A pane: one card ===== */
 .wb-pane {
   display: flex;
   flex-direction: column;
   min-height: 0;
   min-width: 0;
-  background: var(--panel);
-  border: 1px solid var(--rule);
-  border-radius: 4px;
+  background: var(--surface-fill);
+  background-color: var(--surface);
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--card-shadow);
   overflow: hidden;
 }
 .wb-pane-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 4px 10px;
   flex-wrap: wrap;
-  min-height: 38px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--rule);
+  min-height: 48px;
+  padding: 10px 16px;
+  border-bottom: var(--hairline) solid var(--line);
 }
 .wb-pane-head h2 {
-  font-size: 14px;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
 }
 .wb-pane-meta {
-  font-size: 12.5px;
-  color: var(--ink-3);
+  font-size: 13px;
+  color: var(--muted);
 }
 .wb-pane-tools {
   margin-inline-start: auto;
   display: inline-flex;
-  gap: 2px;
-}
-.wb-pane-tools .btn {
-  min-height: 24px;
-  padding: 1px 8px;
-  font-size: 12.5px;
+  gap: 4px;
 }
 .wb-pane-body {
   flex: 1;
@@ -71,21 +73,21 @@
   overscroll-behavior: contain;
 }
 .wb-empty {
-  padding: 18px 14px;
-  color: var(--ink-3);
+  padding: 24px 16px;
+  color: var(--ink-2);
 }
 
 /* ===== Queue ===== */
 .wb-tools {
   display: grid;
   gap: 8px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--rule);
+  padding: 12px 14px;
+  border-bottom: var(--hairline) solid var(--line);
 }
 .wb-search {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 .wb-search .input {
   flex: 1;
@@ -98,9 +100,8 @@
 }
 .wb-select select {
   width: 100%;
-  min-height: 28px;
-  padding: 2px 6px;
-  font-size: 13px;
+  font-size: 14px;
+  padding-inline-start: 14px;
 }
 .wb-chips {
   display: flex;
@@ -109,31 +110,16 @@
   gap: 4px;
 }
 .wb-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 26px;
-  padding: 1px 9px;
-  border: 1px solid var(--rule-strong);
-  border-radius: 99px;
-  background: transparent;
-  color: var(--ink-2);
-  font-size: 12.5px;
-  cursor: pointer;
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
 }
-.wb-chip:hover {
-  color: var(--ink);
-  border-color: var(--ink-3);
-}
-.wb-chip[aria-pressed="true"] {
-  background: var(--accent-wash);
-  border-color: var(--accent-ink);
-  color: var(--ink);
+.wb-chip svg.i {
+  width: 14px;
+  height: 14px;
 }
 .wb-clear {
   margin-inline-start: auto;
-  min-height: 26px;
-  font-size: 12.5px;
 }
 .wb-q-body .table-wrap {
   overflow: visible;
@@ -142,37 +128,47 @@
   position: sticky;
   top: 0;
   z-index: 1;
+  background: var(--surface);
+}
+.wb-queue th:first-child,
+.wb-queue td:first-child {
+  padding-left: 16px;
+}
+.wb-queue th:last-child,
+.wb-queue td:last-child {
+  padding-right: 14px;
 }
 .wb-queue td {
-  height: auto;
-  padding-block: 6px;
+  height: 44px;
+  padding-block: 10px;
   vertical-align: top;
 }
 .wb-queue tbody tr {
-  scroll-margin-top: 34px;
+  scroll-margin-top: 36px;
 }
 .wb-q-case,
 .wb-q-fig,
 .wb-q-status {
   display: grid;
-  gap: 1px;
+  gap: 2px;
   justify-items: start;
 }
 .wb-q-fig {
   justify-items: end;
 }
 .wb-q-id {
-  font-family: var(--font-fig);
-  font-weight: 600;
   font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink);
 }
 .wb-q-sec,
 .wb-q-sub,
 .wb-sub {
-  font-size: 12px;
-  color: var(--ink-3);
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--muted);
 }
-/* The selected row's wash darkens the background: keep secondary text at 4.5:1 on it. */
+/* The selected row's wash shifts the background: keep secondary text at 4.5:1 on it. */
 .data-table tr.selected .wb-q-sec,
 .data-table tr.selected .wb-q-sub,
 .data-table tr.selected .wb-q-unit {
@@ -185,36 +181,30 @@
   white-space: nowrap;
 }
 .wb-q-unit {
-  color: var(--ink-3);
+  color: var(--muted);
   margin-inline-start: 1px;
 }
 .wb-flags {
   display: flex;
   flex-wrap: wrap;
-  gap: 3px;
-  margin-top: 3px;
+  gap: 4px;
+  margin-top: 4px;
 }
 .wb-flag svg {
   width: 11px;
   height: 11px;
 }
-.wb-flag-sla {
-  color: var(--neg);
-  border-color: color-mix(in srgb, var(--neg) 45%, transparent);
-}
-.wb-flag-ai {
-  color: var(--accent-ink);
-  border-color: color-mix(in srgb, var(--accent-ink) 55%, transparent);
-}
-.wb-flag-escalated {
-  color: var(--ink);
+.wb-flags .status {
+  height: 22px;
+  padding: 0 8px;
+  font-size: 12px;
 }
 
 /* ===== Case ===== */
 .wb-case {
   display: grid;
-  gap: 18px;
-  padding: 12px 14px 18px;
+  gap: 22px;
+  padding: 16px 16px 22px;
   animation: wb-swap var(--t-panel) var(--ease);
 }
 @keyframes wb-swap {
@@ -227,220 +217,221 @@
     transform: none;
   }
 }
-.wb-case-title {
+
+/* The case's lead card: what it costs and where it stands. */
+.wb-lead {
+  padding: 18px 20px 18px;
+}
+.wb-lead-title {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 4px 12px;
+  gap: 2px 12px;
 }
-.wb-case-title h2 {
-  font: 600 18px/1.2 var(--font-fig);
-  letter-spacing: -0.01em;
+.wb-lead-title h2 {
+  font: 500 13px/18px var(--mono);
+  letter-spacing: 0.5px;
+  color: var(--hero-ink);
 }
 .wb-case-sec {
-  color: var(--ink-2);
+  font-size: 13px;
+  color: var(--hero-muted);
 }
-.wb-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
+.wb-lead-impact {
+  margin: 12px 0 0;
 }
-.wb-tags .tag {
-  white-space: normal;
-  padding: 1px 7px;
-}
-.wb-facts {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+.wb-lead-impact dd {
   margin: 0;
-  border: 1px solid var(--rule);
-  border-radius: 4px;
 }
-.wb-facts > div {
-  padding: 7px 10px;
-  border-inline-start: 1px solid var(--rule);
-  min-width: 0;
+.wb-lead .lead-figure {
+  font-size: 36px;
+  line-height: 42px;
 }
-.wb-facts > div:first-child {
-  border-inline-start: 0;
+.wb-lead-unit {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--hero-muted);
 }
-.wb-facts dt {
-  font-size: 12px;
-  color: var(--ink-3);
+.wb-lead-as {
+  font-size: 13px;
+  color: var(--hero-muted);
+}
+.wb-lead .lead-foot .tag {
+  white-space: normal;
+  height: auto;
+  min-height: 22px;
+  padding-block: 2px;
+}
+.wb-lead .lead-foot .status.info {
+  white-space: normal;
+  height: auto;
+  min-height: 24px;
+}
+
+/* Facts under the lead card: records, with the age as a 6px track. */
+.wb-facts {
+  margin-top: -6px;
+}
+.wb-facts .record {
+  align-items: center;
 }
 .wb-facts dd {
-  margin: 2px 0 0;
-  display: grid;
-  gap: 1px;
-  justify-items: start;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
   font-weight: 600;
 }
 .wb-facts dd .wb-sub {
   font-weight: 400;
 }
+.wb-facts .track {
+  width: 140px;
+}
+.wb-fact-line {
+  white-space: nowrap;
+}
+.wb-unit {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--muted);
+}
 
+/* Sections: a mono register label as the heading, the meta beside it. */
 .wb-section-h {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 2px 10px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 .wb-section-h h3 {
-  font-size: 14px;
+  font: 500 10.5px/14px var(--mono);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 .wb-section-meta {
-  font-size: 12.5px;
-  color: var(--ink-3);
+  font-size: 13px;
+  color: var(--muted);
 }
 .wb-disagree {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  margin-bottom: 8px;
-  border: 1px dashed var(--accent-ink);
-  border-radius: 4px;
-  background: var(--accent-wash);
-  color: var(--ink);
-  font-weight: 600;
+  margin-bottom: 10px;
 }
-.wb-disagree svg {
-  color: var(--accent-ink);
+.wb-disagree .status {
+  height: auto;
+  min-height: 24px;
+  padding-block: 4px;
+  white-space: normal;
+  line-height: 1.3;
 }
 .wb-agree-line {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   font-size: 13px;
-  color: var(--ink-3);
+  color: var(--muted);
 }
+/* Rules and AI: two calm cards side by side. */
 .wb-opinions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 .wb-opinion {
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  padding: 10px 12px;
-  background: var(--panel-2);
+  display: grid;
+  align-content: start;
+  gap: 4px;
   min-width: 0;
-}
-.wb-opinion-ai {
-  border-color: color-mix(in srgb, var(--accent-ink) 45%, var(--rule));
+  padding: 14px 16px;
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--r-small);
+  background: var(--surface-2);
 }
 .wb-op-who {
   display: flex;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 2px 8px;
-  font-size: 12px;
-  color: var(--ink-3);
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.wb-op-who > span:first-child {
+  font-weight: 600;
+  color: var(--ink-2);
 }
 .wb-op-cause {
-  font-size: 16px;
+  font-size: 17px;
+  line-height: 22px;
   font-weight: 600;
   margin-top: 2px;
 }
 .wb-op-text {
-  font-size: 13.5px;
-  line-height: 1.55;
+  font-size: 14px;
+  line-height: 1.5;
   color: var(--ink-2);
   max-width: 76ch;
   overflow-wrap: anywhere;
 }
 .wb-conf {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 160px);
   align-items: center;
-  gap: 8px;
-  margin: 4px 0 8px;
-  font-size: 12.5px;
+  gap: 10px;
+  margin: 2px 0 6px;
+  font-size: 13px;
   color: var(--ink-2);
-}
-.wb-meter {
-  flex: 1;
-  max-width: 160px;
-  height: 5px;
-  border-radius: 3px;
-  background: var(--rule);
-  overflow: hidden;
-}
-.wb-meter > span {
-  display: block;
-  height: 100%;
-  background: var(--bar);
-}
-.wb-opinion-ai .wb-meter > span {
-  background: var(--accent-ink);
 }
 .wb-steps {
   margin: 0;
   padding-inline-start: 1.4em;
   display: grid;
-  gap: 5px;
+  gap: 6px;
   color: var(--ink-2);
   max-width: 80ch;
 }
 .wb-steps li::marker {
-  color: var(--ink-3);
+  color: var(--muted);
   font-weight: 600;
 }
 .wb-tabs {
-  display: flex;
-  gap: 2px;
-  border-bottom: 1px solid var(--rule);
-}
-.wb-tabs [role="tab"] {
-  border: 0;
-  background: none;
-  padding: 5px 10px;
-  margin-bottom: -1px;
-  color: var(--ink-3);
-  font-weight: 600;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-}
-.wb-tabs [role="tab"][aria-selected="true"] {
-  color: var(--ink);
-  border-bottom-color: var(--accent-ink);
+  margin-bottom: 8px;
 }
 .wb-tabs [role="tab"]:disabled {
   cursor: not-allowed;
-  opacity: 0.55;
+  opacity: 0.45;
 }
 .wb-query {
   position: relative;
 }
 .wb-query pre {
   margin: 0;
-  padding: 10px 12px 44px;
-  background: var(--bg);
-  border: 1px solid var(--rule);
-  border-top: 0;
-  border-radius: 0 0 4px 4px;
+  padding: 14px 16px 56px;
+  background: var(--surface-2);
+  border-radius: var(--r-small);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  font: 13px/1.55 var(--font-ui);
+  font: 14px/1.55 var(--font);
   color: var(--ink);
 }
 .wb-copy {
   position: absolute;
-  right: 8px;
-  bottom: 8px;
+  right: 10px;
+  bottom: 10px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 .wb-copy-tip {
-  font-size: 12px;
-  color: var(--pos);
+  font-size: 12.5px;
+  color: var(--green);
+}
+.wb-copy .btn {
+  background: var(--surface);
 }
 .wb-copy .btn[data-copied] {
-  color: var(--pos);
-  border-color: var(--pos);
+  color: var(--green);
 }
 .wb-history {
   list-style: none;
@@ -449,28 +440,27 @@
 }
 .wb-history li {
   display: grid;
-  grid-template-columns: 50px minmax(0, 1fr);
-  gap: 0 10px;
-  padding: 6px 0;
-  border-top: 1px solid var(--rule);
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 0 12px;
+  padding: 10px 0;
 }
-.wb-history li:first-child {
-  border-top: 0;
+.wb-history li + li {
+  border-top: var(--hairline) solid var(--line);
 }
 .wb-h-seq {
-  color: var(--ink-3);
-  font: 12px/1.6 var(--font-fig);
+  color: var(--muted);
+  font: 500 12px/1.7 var(--mono);
   text-align: end;
 }
 .wb-h-what {
   font-weight: 600;
 }
 .wb-h-by {
-  font-size: 12.5px;
-  color: var(--ink-3);
+  font-size: 13px;
+  color: var(--muted);
 }
 .wb-h-note {
-  font-size: 13px;
+  font-size: 13.5px;
   color: var(--ink-2);
   overflow-wrap: anywhere;
 }
@@ -478,64 +468,71 @@
 /* ===== Decision bar ===== */
 .wb-decision {
   display: grid;
-  gap: 8px;
-  padding: 10px 14px 12px;
-  border-top: 1px solid var(--rule-strong);
-  background: var(--panel);
-  box-shadow: 0 -8px 14px -12px rgba(0, 0, 0, 0.6);
+  gap: 10px;
+  padding: 14px 16px 16px;
+  border-top: var(--hairline) solid var(--line-strong);
+  background: var(--surface);
 }
 .wb-state {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: 4px 10px;
-  font-size: 13px;
+  font-size: 13.5px;
   color: var(--ink-2);
 }
 .wb-state strong {
   color: var(--ink);
+  font-weight: 600;
 }
 .wb-state-note {
   color: var(--ink-2);
   overflow-wrap: anywhere;
 }
 .wb-advice {
-  font-size: 13px;
+  font-size: 13.5px;
+  line-height: 1.45;
   color: var(--ink-2);
+}
+.wb-advice strong {
+  color: var(--ink);
+  font-weight: 600;
 }
 .wb-advice-esc {
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 8px;
   color: var(--ink);
 }
 .wb-advice-esc svg {
-  color: var(--signal);
+  flex: none;
+  align-self: center;
+  color: var(--amber);
 }
 .wb-note-field label {
   display: block;
-  font-size: 12px;
-  color: var(--ink-3);
-  margin-bottom: 2px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-bottom: 4px;
 }
 .wb-note-field textarea {
   width: 100%;
-  min-height: 32px;
+  min-height: 44px;
   resize: vertical;
-  line-height: 1.4;
 }
 .wb-note-field textarea[aria-invalid="true"] {
-  border-color: var(--neg);
+  border-color: var(--red);
 }
 .wb-required {
-  color: var(--signal);
+  color: var(--amber);
   font-weight: 600;
 }
 .wb-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 .wb-reject.wb-armed,
 .wb-reclass.wb-armed select {
@@ -544,115 +541,152 @@
 }
 .wb-reclass {
   display: inline-flex;
-  align-items: stretch;
+  align-items: center;
+  gap: 6px;
 }
 .wb-reclass select {
-  border-radius: var(--radius) 0 0 var(--radius);
-  border-inline-end: 0;
-  max-width: 170px;
-}
-.wb-reclass .btn {
-  border-radius: 0 var(--radius) var(--radius) 0;
+  max-width: 180px;
+  min-height: var(--btn-h);
+  font-size: 15px;
 }
 .wb-outcome {
   display: flex;
   align-items: baseline;
-  gap: 6px;
-  font-size: 13px;
+  gap: 8px;
+  font-size: 13.5px;
   overflow-wrap: anywhere;
 }
-.wb-outcome-done {
-  color: var(--pos);
+.wb-outcome svg {
+  flex: none;
+  align-self: center;
 }
 .wb-outcome-error {
-  color: var(--neg);
+  color: var(--red);
   font-weight: 600;
+}
+/* The confirming toast after a decision (the shared .toast, dark pill at the foot). */
+.toast.wb-outcome-done {
+  padding: 0 22px 0 18px;
+  font-weight: 500;
+}
+.toast.wb-outcome-done svg {
+  color: var(--hero-ink);
 }
 .wb-readonly {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  font-size: 13px;
+  font-size: 13.5px;
   color: var(--ink-2);
 }
+.wb-readonly svg {
+  flex: none;
+  align-self: center;
+}
 
-/* ===== Evidence ===== */
+/* ===== Evidence: records, book against custodian ===== */
 .wb-ev-body {
   display: grid;
-  gap: 18px;
+  gap: 22px;
   align-content: start;
-  padding: 12px;
+  padding: 16px;
 }
 .wb-ev-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 14px;
 }
 .wb-ev-table caption {
   caption-side: top;
   text-align: left;
-  padding: 8px 0 4px;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--ink-2);
+  padding: 10px 0 4px;
+  font: 500 10.5px/14px var(--mono);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 .wb-ev-table th,
 .wb-ev-table td {
-  padding: 5px 5px;
-  border-bottom: 1px solid var(--rule);
+  padding: 9px 6px;
   vertical-align: top;
 }
+.wb-ev-table tr + tr > th,
+.wb-ev-table tr + tr > td,
+.wb-ev-table tbody tr:first-child > th,
+.wb-ev-table tbody tr:first-child > td {
+  border-top: var(--hairline) solid var(--line);
+}
+.wb-ev-table th:first-child,
+.wb-ev-table td:first-child {
+  padding-left: 0;
+}
+.wb-ev-table th:last-child,
+.wb-ev-table td:last-child {
+  padding-right: 0;
+}
 .wb-ev-table thead th {
-  font-size: 12px;
+  padding-block: 0 8px;
+  font-size: 12.5px;
   font-weight: 500;
-  color: var(--ink-3);
+  color: var(--muted);
   text-align: left;
 }
 .wb-ev-table thead th.num {
   text-align: right;
 }
 .wb-ev-table tbody th {
-  font-weight: 600;
+  font-weight: 500;
   text-align: left;
-  color: var(--ink-2);
+  color: var(--muted);
 }
 .wb-ev-table th .wb-sub {
   display: block;
-  font-weight: 400;
   overflow-wrap: anywhere;
 }
 .wb-ev-table td.num {
-  font-family: var(--font-fig);
-  font-size: 12.5px;
+  font-family: var(--font);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: var(--ink);
 }
 .wb-ev-table td .wb-sub {
   display: block;
 }
-.wb-diff {
-  font-weight: 600;
-  color: var(--ink);
+/* Break ids and references are codes. */
+.wb-ev-table tbody th .wb-sub:first-of-type {
+  font-family: var(--mono);
+  font-size: 11.5px;
 }
-.wb-agree {
-  color: var(--ink-3);
+.wb-diff {
+  font-weight: 700;
+}
+.wb-ev-table td.num.wb-diff {
+  font-weight: 700;
+}
+.wb-ev-table td.num.wb-agree {
+  color: var(--muted);
+  font-weight: 400;
 }
 .wb-agree svg {
-  width: 11px;
-  height: 11px;
+  width: 12px;
+  height: 12px;
   margin-inline-end: 3px;
 }
 .wb-ev-kind {
   display: block;
+  font-weight: 600;
   color: var(--ink);
 }
 .wb-note {
-  margin-top: 6px;
-  font-size: 12.5px;
-  color: var(--ink-3);
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--muted);
 }
 .wb-records summary {
   cursor: pointer;
   color: var(--accent-ink);
   font-size: 13px;
+  font-weight: 500;
   width: fit-content;
 }
 .wb-ev-collapsed {
@@ -663,7 +697,7 @@
   flex-direction: column;
   justify-content: flex-start;
   gap: 10px;
-  padding: 12px 0;
+  padding: 16px 0;
   border-radius: 0;
 }
 .wb-rail-label {
@@ -692,39 +726,44 @@
     position: sticky;
     bottom: 0;
     z-index: 2;
+    border-radius: 0 0 var(--r-card) var(--r-card);
   }
   .wb-case-pane {
     overflow: visible;
   }
   .wb-ev-collapsed {
-    min-height: 44px;
+    min-height: 52px;
   }
   .wb-ev-rail {
     flex-direction: row;
+    padding: 0 16px;
   }
   .wb-rail-label {
     writing-mode: horizontal-tb;
   }
 }
-@media (max-width: 760px) {
-  .wb-facts {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .wb-facts > div {
-    border-inline-start: 0;
-    border-top: 1px solid var(--rule);
-  }
+@media (max-width: 767px) {
   .wb-opinions {
     grid-template-columns: minmax(0, 1fr);
   }
   .wb-selects {
     grid-template-columns: minmax(0, 1fr);
   }
+  .wb-case {
+    padding-inline: 12px;
+  }
+  .wb-lead .lead-figure {
+    font-size: 30px;
+    line-height: 36px;
+  }
+  .wb-decision {
+    bottom: calc(62px + 22px + 12px);
+  }
 }
 
 /* The case across days: one compact row per run day, the day on show picked out. */
 .wb-days {
-  font-size: 12.5px;
+  font-size: 13px;
 }
 .wb-days td .wb-sub {
   display: block;

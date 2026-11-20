@@ -10,6 +10,7 @@ import { Link } from "react-router";
 import type { CaseDay, CaseDetail, CaseHistoryEntry, RoleName } from "../../api/types";
 import { Icon } from "../../components/Icon";
 import { StatusLabel } from "../../components/Labels";
+import { Record, Records, Track } from "../../components/Paper";
 import { ErrorLine } from "../../components/QueryState";
 import { bp, count, dayLabel, money, plural, timestamp } from "../../format";
 import { useWorkspace } from "../../shell/workspace";
@@ -37,12 +38,10 @@ function Confidence({ value }: { value: number | null }) {
   if (value == null) return null;
   const pct = Math.round(Math.max(0, Math.min(1, value)) * 100);
   return (
-    <p className="wb-conf">
-      <span>Confidence {pct}%</span>
-      <span className="wb-meter" aria-hidden="true">
-        <span style={{ width: `${pct}%` }} />
-      </span>
-    </p>
+    <div className="wb-conf">
+      <span>Confidence <span className="fig">{pct}%</span></span>
+      <Track value={pct} max={100} />
+    </div>
   );
 }
 
@@ -72,8 +71,7 @@ function Opinions({ detail }: { detail: CaseDetail }) {
     <Section title="Suggested cause" meta="the rules first, the AI's second opinion beside it; the AI never changes a figure">
       {c.ai_flag ? (
         <p className="wb-disagree">
-          <Icon name="warn" />
-          {c.ai_flag}
+          <span className="status info">{c.ai_flag}</span>
         </p>
       ) : (
         accepted &&
@@ -177,7 +175,7 @@ function DraftQuery({ detail }: { detail: CaseDetail }) {
 
   return (
     <Section title="Draft custodian query" meta="copy it into your email; nothing is sent from here">
-      <div className="wb-tabs" role="tablist" aria-label="Draft from">
+      <div className="seg wb-tabs" role="tablist" aria-label="Draft from">
         {tab("ai", "AI draft", !hasAi)}
         {tab("rules", "Rules draft")}
       </div>
@@ -187,7 +185,7 @@ function DraftQuery({ detail }: { detail: CaseDetail }) {
           <span className="wb-copy-tip" role="status">
             {copied === "yes" ? "Copied" : copied === "failed" ? "Copy failed: select the text instead" : ""}
           </span>
-          <button type="button" className="btn" onClick={copy} data-copied={copied === "yes" || undefined}>
+          <button type="button" className="btn quiet" onClick={copy} data-copied={copied === "yes" || undefined}>
             {copied === "yes" && <Icon name="check" />}
             Copy query
           </button>
@@ -356,6 +354,7 @@ export interface CasePaneProps {
   signedOffBy: string | null;
   beforeShortcut: () => boolean;
   nothingOpen: string;
+  currency: string;
 }
 
 export function CasePane({
@@ -370,6 +369,7 @@ export function CasePane({
   signedOffBy,
   beforeShortcut,
   nothingOpen,
+  currency,
 }: CasePaneProps) {
   let body: ReactNode;
   if (error) body = <ErrorLine error={error} retry={retry} />;
@@ -379,8 +379,9 @@ export function CasePane({
     const c = detail.case;
     body = (
       <div className="wb-case" key={detail.case_id}>
-        <div>
-          <div className="wb-case-title">
+        {/* The case's lead card: what it costs, and where it stands. */}
+        <div className="lead wb-lead">
+          <div className="wb-lead-title">
             <h2 id="wb-h-case" tabIndex={-1}>
               {detail.case_id}
             </h2>
@@ -389,7 +390,20 @@ export function CasePane({
               {detail.security_id && detail.security_name ? ` (${detail.security_id})` : ""}
             </span>
           </div>
-          <div className="wb-tags">
+          <dl className="wb-lead-impact">
+            <dt className="lead-label">NAV impact</dt>
+            <dd className="lead-figure">
+              {money(c.nav_impact, { signed: true })} <span className="wb-lead-unit">{currency}</span>
+            </dd>
+            <dd className="lead-caption">
+              <span className="fig">{bp(c.nav_impact_bp)}</span> of NAV
+            </dd>
+          </dl>
+          <div className="lead-foot">
+            <StatusLabel status={detail.is_open ? c.status : "CLEARED"} />
+            {c.final_category && c.status === "RECLASSIFIED" && (
+              <span className="wb-lead-as">as {causeLabel(c.final_category)}</span>
+            )}
             {c.material && <FlagTag flag="material">Material: {bp(c.nav_impact_bp)} of NAV</FlagTag>}
             {c.escalated && (
               <FlagTag flag="escalated">
@@ -404,51 +418,35 @@ export function CasePane({
             {c.ai_flag && <FlagTag flag="ai" />}
           </div>
         </div>
-        <dl className="wb-facts">
-          <div>
-            <dt>NAV impact</dt>
-            <dd>
-              <span className="fig">{money(c.nav_impact, { signed: true })}</span>
-              <span className="wb-sub fig">{bp(c.nav_impact_bp)}</span>
-            </dd>
-          </div>
-          <div>
-            <dt>Gross exposure</dt>
-            <dd className="fig">{money(c.gross_exposure)}</dd>
-          </div>
-          <div>
-            <dt>Age</dt>
-            <dd>
+        <Records className="wb-facts">
+          <Record label="Gross exposure">
+            <span className="fig">{money(c.gross_exposure)}</span> <span className="wb-unit">{currency}</span>
+          </Record>
+          <Record label="Age">
+            <span className="wb-fact-line">
               <span className="fig">{count(c.age_days)}</span> business {c.age_days === 1 ? "day" : "days"}
-              {c.first_seen && <span className="wb-sub">since {dayLabel(c.first_seen)}</span>}
-            </dd>
-          </div>
-          <div>
-            <dt>SLA</dt>
-            <dd>
-              {c.sla_breached ? (
-                <span className="st tone-neg">
-                  <Icon name="clock" />
-                  Breached
-                </span>
-              ) : (
-                <>
-                  <span className="fig">{count(c.sla_days)}</span> {c.sla_days === 1 ? "day" : "days"}
-                </>
-              )}
-              <span className="wb-sub">{c.material ? "material case" : "standard case"}</span>
-            </dd>
-          </div>
-          <div>
-            <dt>Status</dt>
-            <dd>
-              <StatusLabel status={detail.is_open ? c.status : "CLEARED"} />
-              {c.final_category && c.status === "RECLASSIFIED" && (
-                <span className="wb-sub">as {causeLabel(c.final_category)}</span>
-              )}
-            </dd>
-          </div>
-        </dl>
+              {c.first_seen && <span className="wb-sub"> since {dayLabel(c.first_seen)}</span>}
+            </span>
+            <Track
+              value={c.age_days}
+              max={Math.max(c.sla_days, c.age_days, 1)}
+              tone={!detail.is_open ? "done" : c.sla_breached ? "late" : "ok"}
+            />
+          </Record>
+          <Record label="SLA">
+            {c.sla_breached ? (
+              <span className="st tone-neg">
+                <Icon name="clock" />
+                Breached
+              </span>
+            ) : (
+              <>
+                <span className="fig">{count(c.sla_days)}</span> {c.sla_days === 1 ? "day" : "days"}
+              </>
+            )}
+            <span className="wb-sub">, {c.material ? "material case" : "standard case"}</span>
+          </Record>
+        </Records>
         <Opinions detail={detail} />
         {c.ai_status === "ACCEPTED" && c.ai_steps.length > 0 && (
           <Section title="Investigation steps" meta="from the AI">

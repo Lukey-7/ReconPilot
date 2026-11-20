@@ -7,7 +7,8 @@
  * Keys: a approves, r rejects (or moves to the note when it is empty), c moves to the cause,
  * Ctrl+Enter in the note submits the decision being made. Viewers get no bar, only a line.
  */
-import { type KeyboardEvent, useId, useRef, useState } from "react";
+import { type KeyboardEvent, useCallback, useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { ApiError } from "../../api/client";
 import { useDecision } from "../../api/queries";
@@ -22,7 +23,7 @@ import { CAUSES, CAUSE_LABELS, causeLabel, roleLabel, statusLabel } from "../../
 type Armed = "reject" | "reclassify" | null;
 
 type Outcome =
-  | { kind: "done"; message: string }
+  | { kind: "done"; message: string; seq: number }
   | { kind: "refused"; status: number; message: string; sentVersion: number }
   | { kind: "invalid"; message: string };
 
@@ -87,6 +88,33 @@ export interface DecisionBarProps {
   beforeShortcut: () => boolean;
 }
 
+/** How long the confirming toast stays (Paper's toast: 4 s). */
+export const TOAST_MS = 4000;
+
+/**
+ * A recorded decision, confirmed in words in a dark toast at the foot of the window. The API
+ * has no undo (a later decision replaces this one and is logged separately), so the toast
+ * only confirms. The decision is also read out by the shell's live region and stays on the
+ * bar's state line, so nothing is lost when the toast goes; it stays while pointed at.
+ */
+function DoneToast({ message, onGone }: { message: string; onGone: () => void }) {
+  const [held, setHeld] = useState(false);
+  useEffect(() => {
+    if (held) return;
+    const timer = setTimeout(onGone, TOAST_MS);
+    return () => clearTimeout(timer);
+  }, [held, onGone]);
+  return createPortal(
+    <div className="toast-region">
+      <p className="toast wb-outcome wb-outcome-done" onMouseEnter={() => setHeld(true)} onMouseLeave={() => setHeld(false)}>
+        <Icon name="check" />
+        {message}
+      </p>
+    </div>,
+    document.body,
+  );
+}
+
 export function DecisionBar({ detail, fund, asOf, role, signedOffBy, beforeShortcut }: DecisionBarProps) {
   const c = detail.case;
   const decision = useDecision(fund, asOf);
@@ -96,6 +124,9 @@ export function DecisionBar({ detail, fund, asOf, role, signedOffBy, beforeShort
   const [note, setNote] = useState("");
   const [armed, setArmed] = useState<Armed>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const doneSeq = useRef(0);
+  /** The confirming toast has had its time: clear it, unless something else has replaced it. */
+  const toastGone = useCallback(() => setOutcome((o) => (o?.kind === "done" ? null : o)), []);
   const aiDisagrees = c.ai_status === "ACCEPTED" && !!c.ai_category && c.ai_category !== c.category;
   const current = c.final_category ?? c.category;
   const [cause, setCause] = useState<string>(() =>
@@ -124,7 +155,8 @@ export function DecisionBar({ detail, fund, asOf, role, signedOffBy, beforeShort
               ? ` as ${causeLabel(updated.case.final_category)}`
               : "";
           const message = `${verb} ${updated.case_id}${as}. Recorded in the audit log.`;
-          setOutcome({ kind: "done", message });
+          doneSeq.current += 1;
+          setOutcome({ kind: "done", message, seq: doneSeq.current });
           // The line above can move as the bar changes to its decided state, so the result is
           // also read out from the shell's live region, worded for a listener.
           announce(`Decision recorded: ${verb} ${updated.case_id}${as}.`);
@@ -213,10 +245,7 @@ export function DecisionBar({ detail, fund, asOf, role, signedOffBy, beforeShort
   const decided = c.status !== "PENDING";
   const outcomeLine =
     outcome == null ? null : outcome.kind === "done" ? (
-      <p className="wb-outcome wb-outcome-done">
-        <Icon name="check" />
-        {outcome.message}
-      </p>
+      <DoneToast key={outcome.seq} message={outcome.message} onGone={toastGone} />
     ) : (
       <p className="wb-outcome wb-outcome-error" role="alert">
         <Icon name="warn" />

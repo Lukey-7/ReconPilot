@@ -37,7 +37,7 @@ const columns = [
       const row = c.row.original;
       return (
         <div className="wb-q-case">
-          <span className="wb-q-id">{row.case_id}</span>
+          <span className="wb-q-id mono">{row.case_id}</span>
           <span className="wb-q-sec">{securityText(row)}</span>
           <Flags c={row} />
         </div>
@@ -277,7 +277,7 @@ export function QueuePane({
             <button
               key={flag}
               type="button"
-              className="wb-chip"
+              className="chip wb-chip"
               aria-pressed={!!filters[flag]}
               onClick={() => setFilter(flag, !filters[flag])}
             >
@@ -286,7 +286,7 @@ export function QueuePane({
             </button>
           ))}
           {filtered && (
-            <button type="button" className="btn ghost wb-clear" onClick={clearFilters}>
+            <button type="button" className="btn quiet wb-clear" onClick={clearFilters}>
               Clear filters
             </button>
           )}

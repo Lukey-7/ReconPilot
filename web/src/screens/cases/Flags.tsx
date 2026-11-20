@@ -1,6 +1,7 @@
 /**
- * A case's flags as labelled tags (material, escalated, past SLA, AI disagrees): words, not
- * letters or colour, so a flag reads the same to everyone. Flags are labels, not buttons.
+ * A case's flags as labelled tags (material, escalated, past SLA) and an info pill (AI
+ * disagrees): words, not letters or colour, so a flag reads the same to everyone. Flags are
+ * labels, not buttons.
  */
 import type { ReactNode } from "react";
 
@@ -22,6 +23,14 @@ export function caseFlags(c: Pick<QueueCase, "material" | "escalated" | "sla_bre
 }
 
 export function FlagTag({ flag, children }: { flag: FlagKey; children?: ReactNode }) {
+  // The AI disagreeing is information, not a fault: an info pill (a dot and the words).
+  if (flag === "ai") {
+    return (
+      <span className="status info wb-flag wb-flag-ai" data-flag={flag}>
+        {children ?? FLAGS[flag]}
+      </span>
+    );
+  }
   return (
     <span className={`tag wb-flag wb-flag-${flag}`} data-flag={flag}>
       <Icon name={ICONS[flag]} />
