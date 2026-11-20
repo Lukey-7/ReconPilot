@@ -19,6 +19,7 @@ import { type FormEvent, useId, useState } from "react";
 import { ApiError } from "../../api/client";
 import { useUser } from "../../auth/AuthContext";
 import { Icon } from "../../components/Icon";
+import { type StatusKind, StatusPill } from "../../components/Labels";
 import { ErrorLine } from "../../components/QueryState";
 import { dayLabel, timestamp } from "../../format";
 import { type UnlockRequest, useAskUnlock, useConfirmUnlock, useDeclineUnlock, useUnlock } from "./api";
@@ -31,6 +32,15 @@ const STATUS_WORDS: Record<string, string> = {
   declined: "Declined",
   withdrawn: "Withdrawn",
   expired: "Expired unconfirmed",
+};
+
+/** Each request's status as a pill: waiting amber, unlocked green, declined red. */
+const STATUS_KINDS: Record<string, StatusKind> = {
+  pending: "wait",
+  confirmed: "done",
+  declined: "late",
+  withdrawn: "neutral",
+  expired: "neutral",
 };
 
 function FormError({ error }: { error: unknown }) {
@@ -141,17 +151,20 @@ function History({ requests }: { requests: UnlockRequest[] }) {
       </summary>
       <ol>
         {requests.map((r) => (
-          <li key={r.id}>
-            <strong>{STATUS_WORDS[r.status] ?? r.status}</strong>: asked by {r.requested_by ?? "a former user"},{" "}
-            {timestamp(r.requested_at)}: &ldquo;{r.reason}&rdquo;
-            {r.decided_by && r.status !== "expired" && (
-              <>
-                {" "}
-                {r.status === "withdrawn" ? "Withdrawn" : r.status === "confirmed" ? "Confirmed" : "Declined"} by{" "}
-                {r.decided_by}, {timestamp(r.decided_at)}
-                {r.decision_note ? `: “${r.decision_note}”` : ""}.
-              </>
-            )}
+          <li key={r.id} className="ul-req">
+            <StatusPill kind={STATUS_KINDS[r.status] ?? "neutral"}>{STATUS_WORDS[r.status] ?? r.status}</StatusPill>
+            <div className="ul-req-main">
+              <p>
+                Asked by {r.requested_by ?? "a former user"}, {timestamp(r.requested_at)}: &ldquo;{r.reason}&rdquo;
+              </p>
+              {r.decided_by && r.status !== "expired" && (
+                <p className="muted">
+                  {r.status === "withdrawn" ? "Withdrawn" : r.status === "confirmed" ? "Confirmed" : "Declined"} by{" "}
+                  {r.decided_by}, {timestamp(r.decided_at)}
+                  {r.decision_note ? `: “${r.decision_note}”` : ""}.
+                </p>
+              )}
+            </div>
           </li>
         ))}
       </ol>
@@ -189,9 +202,12 @@ export function UnlockPanel({ fund, asOf }: { fund: string; asOf: string }) {
   if (pending) {
     body = (
       <>
-        <h2 id="ul-h">
-          <Icon name="warn" /> Unlock requested
-        </h2>
+        <div className="ul-head">
+          <h2 id="ul-h">
+            <Icon name="warn" /> Unlock requested
+          </h2>
+          <StatusPill kind="wait">{STATUS_WORDS.pending}</StatusPill>
+        </div>
         <p>
           <strong>{pending.requested_by}</strong> asked to unlock {day} on {timestamp(pending.requested_at)}:
         </p>

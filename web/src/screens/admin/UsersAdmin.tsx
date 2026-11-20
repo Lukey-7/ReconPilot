@@ -1,10 +1,10 @@
 /**
  * Users: everyone who can sign in, their role and whether they can now.
  *
- * The table is the whole job at a glance: name, role, administrator or not, active,
+ * The list is the whole job at a glance: name, role, administrator or not, active,
  * locked or deactivated, last sign-in and whether they are signed in now. "Manage" opens
  * one person's changes (role, administrator, reset password, unlock, deactivate) in a
- * dialog, so the table stays quiet. Every change is made by the server, ends the person's
+ * dialog, so the list stays quiet. Every change is made by the server, ends the person's
  * sessions where it must (role, administrator, password, deactivation), and is written
  * to the audit log; the dialog says so in plain words. Your own account cannot be changed
  * here: another administrator does that.
@@ -16,8 +16,10 @@ import { ApiError } from "../../api/client";
 import type { RoleName } from "../../api/types";
 import { useUser } from "../../auth/AuthContext";
 import { Icon } from "../../components/Icon";
+import { StatusPill } from "../../components/Labels";
+import { Avatar, Lead, SectionHead } from "../../components/Paper";
 import { ErrorLine, Loading } from "../../components/QueryState";
-import { plural, timestamp } from "../../format";
+import { count, plural, timestamp } from "../../format";
 import { ROLES, roleLabel } from "../../vocabulary";
 import {
   type AdminUser,
@@ -48,26 +50,11 @@ function FormError({ error }: { error: unknown }) {
   );
 }
 
+/** Whether they can sign in, as a status pill with its word. */
 function Status({ user }: { user: AdminUser }) {
-  if (!user.is_active) {
-    return (
-      <span className="ad-state">
-        <Icon name="cross" /> Deactivated
-      </span>
-    );
-  }
-  if (user.locked) {
-    return (
-      <span className="ad-state locked">
-        <Icon name="lock" /> Locked until {timestamp(user.locked_until)}
-      </span>
-    );
-  }
-  return (
-    <span className="ad-state">
-      <Icon name="check" /> Active
-    </span>
-  );
+  if (!user.is_active) return <StatusPill kind="neutral">Deactivated</StatusPill>;
+  if (user.locked) return <StatusPill kind="wait">Locked until {timestamp(user.locked_until)}</StatusPill>;
+  return <StatusPill kind="done">Active</StatusPill>;
 }
 
 // --------------------------------------------------------------------------- add a user
@@ -416,70 +403,66 @@ export function UsersAdmin() {
   const current = managing ? list.find((u) => u.username === managing) : undefined;
   const locked = list.filter((u) => u.locked).length;
 
+  const active = list.filter((u) => u.is_active).length;
+
   return (
-    <section className="ad-block" aria-labelledby="ad-h-users">
-      <div className="ad-block-head">
-        <h2 id="ad-h-users">Users</h2>
-        <span className="muted">
-          {plural(list.filter((u) => u.is_active).length, "active user")}
-          {locked ? `, ${plural(locked, "locked account")}` : ""}
-        </span>
-        <button type="button" className="btn" onClick={() => setAdding(true)}>
-          Add a user
-        </button>
-      </div>
-      <div className="table-wrap">
-        <table className="data-table ad-users">
-          <caption className="sr-only">Every user, their role, whether they are an administrator and can sign in</caption>
-          <thead>
-            <tr>
-              <th scope="col">User</th>
-              <th scope="col">Role</th>
-              <th scope="col">Administrator</th>
-              <th scope="col">Status</th>
-              <th scope="col">Last sign-in</th>
-              <th scope="col">Signed in now</th>
-              <th scope="col">
-                <span className="sr-only">Manage</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((u) => (
-              <tr key={u.username} className={u.is_active ? undefined : "ad-inactive"}>
-                <th scope="row">
-                  {u.display_name}
-                  <span className="ad-handle mono">{u.username}</span>
-                </th>
-                <td>{roleLabel(u.role)}</td>
-                <td>{u.is_admin ? "Yes" : "No"}</td>
-                <td>
+    <>
+      <Lead
+        className="ad-lead"
+        aria-label="Active users"
+        label="Active users"
+        figure={count(active)}
+        caption={`${active} of ${plural(list.length, "user")} can sign in`}
+        foot={
+          <>
+            {locked > 0 && <StatusPill kind="wait">{plural(locked, "locked account")}</StatusPill>}
+            <button type="button" className="btn primary" onClick={() => setAdding(true)}>
+              Add a user
+            </button>
+          </>
+        }
+      />
+      <section className="ad-section" aria-labelledby="ad-h-users">
+        <SectionHead label="Sign-in" title="Users" count={count(list.length)} id="ad-h-users" />
+        <ul className="list ad-users" aria-label="Every user, their role, whether they are an administrator and can sign in">
+          {list.map((u) => (
+            <li key={u.username} className={u.is_active ? "row ad-user" : "row ad-user ad-inactive"}>
+              <Avatar name={u.display_name || u.username} />
+              <div className="row-main">
+                <p className="row-title">
+                  {u.display_name} <span className="ad-handle mono">{u.username}</span>
+                </p>
+                <p className="row-sub">
+                  {u.last_login_at ? `Last sign-in ${timestamp(u.last_login_at)}` : "Never signed in"}
+                  {u.live_sessions ? "; signed in now" : ""}
+                </p>
+                <p className="ad-pills">
                   <Status user={u} />
-                </td>
-                <td>{u.last_login_at ? timestamp(u.last_login_at) : "Never"}</td>
-                <td>{u.live_sessions ? "Yes" : "No"}</td>
-                <td className="ad-action">
-                  {u.username === me.username ? (
-                    <span className="tag">You</span>
-                  ) : (
-                    <button
-                      type="button"
-                      className="btn"
-                      aria-label={`Manage ${u.display_name} (${u.username})`}
-                      onClick={() => setManaging(u.username)}
-                    >
-                      Manage
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p className="faint">Your own account is changed by another administrator, so nobody can lock everyone out.</p>
-      <AddUserDialog open={adding} onOpenChange={setAdding} />
-      {current && <ManageUserDialog key={current.username} user={current} onClose={() => setManaging(null)} />}
-    </section>
+                  <span className="tag">{roleLabel(u.role)}</span>
+                  {u.is_admin && <span className="tag">Administrator</span>}
+                </p>
+              </div>
+              <div className="ad-user-act">
+                {u.username === me.username ? (
+                  <span className="tag">You</span>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn quiet"
+                    aria-label={`Manage ${u.display_name} (${u.username})`}
+                    onClick={() => setManaging(u.username)}
+                  >
+                    Manage
+                  </button>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+        <p className="ad-foot">Your own account is changed by another administrator, so nobody can lock everyone out.</p>
+        <AddUserDialog open={adding} onOpenChange={setAdding} />
+        {current && <ManageUserDialog key={current.username} user={current} onClose={() => setManaging(null)} />}
+      </section>
+    </>
   );
 }

@@ -1,121 +1,113 @@
 /*
- * Administration: users and funds, one job each, reached from the user menu. Panels are
- * Night desk's quiet slate; the signal colour appears only where something needs the
- * administrator (a locked account, AI about to send evidence out, an unlock waiting).
+ * Administration (Paper): users and funds, one job each, reached from the user menu. A
+ * segmented control between the two, then the lead card (active users, or funds), then
+ * calm cards: users as one hairline list, the fund's settings as a form of pill fields,
+ * the AI switch and the business calendar. Amber appears only where something waits on
+ * the administrator (a locked account, evidence about to leave, an unlock waiting).
  */
 
 .ad-tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid var(--rule);
-}
-.ad-tabs a {
-  padding: 6px 12px;
-  color: var(--ink-2);
-  text-decoration: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-}
-.ad-tabs a:hover {
-  color: var(--ink);
-}
-.ad-tabs a.active {
-  color: var(--ink);
-  border-bottom-color: var(--accent-ink);
-  font-weight: 600;
+  margin-bottom: var(--s-7);
 }
 
+.ad-lead {
+  margin-bottom: var(--s-8);
+}
+@media (max-width: 479px) {
+  .ad-lead .lead-figure {
+    font-size: 32px;
+    line-height: 38px;
+  }
+}
+
+/* ===== Funds: settings on the left, AI and calendar on the right on wide screens ===== */
 .ad-grid {
   display: grid;
-  gap: 18px;
+  gap: var(--s-8);
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
 }
 @media (min-width: 1100px) {
   .ad-grid {
-    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    grid-template-columns: minmax(0, 7fr) minmax(340px, 5fr);
   }
 }
 .ad-col {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: var(--s-8);
   min-width: 0;
 }
 
 .ad-block {
-  background: var(--panel);
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  padding: 14px 16px 16px;
-  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-}
-.ad-block h2 {
-  font-size: 15px;
-  font-weight: 600;
-}
-.ad-block h3 {
-  font-size: 13px;
-  font-weight: 600;
+  gap: 14px;
+  min-width: 0;
+  padding: 18px 20px 20px;
+  font-size: 14px;
+  line-height: 20px;
   color: var(--ink-2);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
-.ad-block-head {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px 10px;
-}
-.ad-block-head .btn {
-  margin-inline-start: auto;
+.ad-block > .section-head {
+  margin: 0;
 }
 .ad-block p {
   margin: 0;
 }
 
-.ad-users th[scope="row"] {
-  text-align: left;
-  font-weight: 600;
-  background: none;
+/* ===== Users: one hairline list ===== */
+.ad-section > .section-head {
+  margin-top: 0;
+}
+.ad-users .ad-user {
+  align-items: flex-start;
+  flex-wrap: nowrap;
+  gap: 14px;
+  padding-block: 14px;
+}
+.ad-user .avatar {
+  width: 38px;
+  height: 38px;
+  font-size: 14px;
+}
+.ad-user .row-main {
+  gap: 3px;
+}
+.ad-user .row-title {
   color: var(--ink);
-  font-size: 13px;
 }
-.ad-users .ad-handle {
-  display: block;
+.ad-handle {
+  margin-inline-start: 6px;
   font-weight: 400;
-  color: var(--ink-2);
+  color: var(--muted);
 }
-.ad-users .ad-action {
-  text-align: right;
-  white-space: nowrap;
-}
-.ad-users tr.ad-inactive th,
-.ad-users tr.ad-inactive td {
-  color: var(--ink-3);
-}
-.tag svg,
-.ad-state svg {
-  width: 12px;
-  height: 12px;
-}
-.ad-state {
-  display: inline-flex;
+.ad-pills {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  margin-top: 5px;
 }
-.ad-state.locked {
-  color: var(--signal);
+.ad-user-act {
+  flex: none;
+  align-self: center;
+}
+.ad-user.ad-inactive .row-title,
+.ad-user.ad-inactive .avatar {
+  opacity: 0.6;
+}
+.ad-foot {
+  margin: 12px 4px 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--muted);
 }
 
-/* Forms: label above field, fields in a grid of two on wide panels. */
+/* ===== Forms: label above a pill field, two to a row on wide cards ===== */
 .ad-form {
   display: grid;
-  gap: 12px 16px;
+  gap: 14px 16px;
   grid-template-columns: minmax(0, 1fr);
 }
 @media (min-width: 720px) {
@@ -123,55 +115,62 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-.ad-form fieldset {
-  border: 0;
-  margin: 0;
-  padding: 0;
-  display: contents;
+.ad-form .ad-group {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: var(--hairline) solid var(--line);
 }
 .ad-field {
   display: grid;
-  gap: 4px;
-  font-size: 13px;
-  color: var(--ink-2);
+  gap: 6px;
   min-width: 0;
+  align-content: start;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  color: var(--muted);
 }
 .ad-field .input,
 .ad-field select,
 .ad-field textarea {
-  min-height: 34px;
-  font-size: 14px;
   width: 100%;
 }
 .ad-field textarea {
-  min-height: 72px;
+  min-height: 96px;
   resize: vertical;
 }
 .ad-field .ad-hint {
-  font-size: 12.5px;
-  color: var(--ink-3);
+  font-weight: 400;
+  color: var(--muted);
 }
 .ad-unit {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
 }
 .ad-unit .input {
   flex: 1;
   min-width: 0;
 }
 .ad-unit span {
-  color: var(--ink-3);
+  font-weight: 400;
+  color: var(--muted);
   white-space: nowrap;
 }
 .ad-check {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  font-size: 13.5px;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--ink-2);
 }
 .ad-check input {
-  margin-top: 3px;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  accent-color: var(--accent-a);
 }
 .ad-span {
   grid-column: 1 / -1;
@@ -181,166 +180,235 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 .ad-actions .ad-saved {
-  margin-inline-end: auto;
-  color: var(--pos);
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  margin-inline-end: auto;
   font-size: 13px;
+  color: var(--green);
 }
 .ad-form-error {
   margin-bottom: 0;
 }
 
-/* The manage-user dialog: one row per action. */
+/* ===== The manage-user dialog: one section per action, hairlines between ===== */
 .ad-manage {
   display: flex;
   flex-direction: column;
-  gap: 0;
-  margin-top: 8px;
+  margin-top: 12px;
 }
 .ad-manage > div {
-  padding: 12px 0;
-  border-top: 1px solid var(--rule);
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding: 14px 0;
+  border-top: var(--hairline) solid var(--line);
 }
 .ad-manage h3 {
-  font-size: 13.5px;
+  font-size: 15px;
+  line-height: 20px;
   font-weight: 600;
   color: var(--ink);
+}
+.ad-manage p {
+  margin: 0;
 }
 .ad-row {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 8px;
+  gap: 10px;
+}
+.ad-row > .muted {
+  flex: 1 1 200px;
+  align-self: center;
 }
 .ad-row .ad-field {
   flex: 1 1 200px;
 }
 
-/* The AI switch. */
+/* ===== The AI switch ===== */
 .ad-ai-state {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px 10px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.ad-ai-state .muted {
+  font-weight: 400;
+}
+/* The warning that evidence leaves the building: a calm amber notice, its word first. */
+.ad-warn {
+  margin: 14px 0 12px;
+  line-height: 20px;
+}
+.ad-warn strong {
   font-weight: 600;
 }
-.ad-ai-state .tag.on {
-  color: var(--pos);
-}
-.ad-warn {
-  margin-bottom: 0;
+.ad-block details summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  cursor: pointer;
+  font-size: 13px;
 }
 .ad-providers {
-  margin: 0;
+  margin: 8px 0 0;
   padding: 0;
   list-style: none;
   font-size: 13px;
+  line-height: 18px;
 }
 .ad-providers li {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px 8px;
-  padding: 6px 0;
-  border-top: 1px solid var(--rule);
+  gap: 2px 10px;
+  padding: 8px 0;
+  border-top: var(--hairline) solid var(--line);
 }
 .ad-providers li span:first-child {
-  font-weight: 600;
   min-width: 11em;
+  font-weight: 600;
+  color: var(--ink);
 }
 
-/* The calendar. */
+/* ===== The business calendar: hairline rows ===== */
 .ad-dates {
   margin: 0;
   padding: 0;
   list-style: none;
+  border-top: var(--hairline) solid var(--line);
+  border-bottom: var(--hairline) solid var(--line);
 }
 .ad-dates li {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 5px 0;
-  border-top: 1px solid var(--rule);
-  font-variant-numeric: tabular-nums;
+  min-height: 48px;
+  color: var(--ink);
+}
+.ad-dates li + li {
+  border-top: var(--hairline) solid var(--line);
+}
+.ad-dates .tag svg {
+  width: 12px;
+  height: 12px;
+}
+.ad-block > .ad-row .btn {
+  flex: none;
 }
 
-/* Unlocking a day (on the sign-off screen). */
+/* ===== Unlocking a day (shown on sign-off, which adds its own scoped touches) ===== */
 .ul-block {
-  background: var(--panel);
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  padding: 14px 16px 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  padding: 18px 20px;
+  background: var(--surface-fill);
+  background-color: var(--surface);
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--card-shadow);
 }
 .ul-block.waiting {
-  border-color: color-mix(in srgb, var(--signal) 55%, var(--rule));
+  border-color: color-mix(in srgb, var(--amber) 45%, var(--line));
 }
 .ul-block h2 {
-  font-size: 15px;
+  font-size: 16px;
+  line-height: 22px;
   font-weight: 600;
 }
 .ul-block p {
   margin: 0;
 }
+.ul-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+}
 .ul-reason {
   margin: 0;
-  padding: 8px 10px;
-  border-inline-start: 2px solid var(--rule-strong);
-  background: var(--panel-2);
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--surface-2);
   color: var(--ink);
   white-space: pre-wrap;
 }
 .ul-history summary {
   cursor: pointer;
-  color: var(--ink-2);
   font-size: 13px;
+  color: var(--accent-ink);
 }
 .ul-history ol {
   margin: 8px 0 0;
   padding: 0;
   list-style: none;
   font-size: 13px;
+  line-height: 18px;
 }
 .ul-history li {
-  padding: 6px 0;
-  border-top: 1px solid var(--rule);
+  padding: 10px 0;
+  border-top: var(--hairline) solid var(--line);
+}
+.ul-req {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.ul-req .status {
+  flex: none;
+  margin-top: -3px;
+}
+.ul-req-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  color: var(--ink-2);
 }
 
 .ad-dialog-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 14px;
+  gap: 10px;
+  margin-top: 16px;
 }
 .dialog .ad-form {
-  margin-top: 12px;
+  margin-top: 14px;
 }
 .ad-ack {
   margin-top: 12px;
 }
-.ad-top {
-  margin-bottom: 14px;
-}
 .ad-done {
   display: flex;
   align-items: flex-start;
-  gap: 7px;
-  margin: 10px 0 0;
-  color: var(--pos);
+  gap: 8px;
+  margin: 12px 0 0;
   font-size: 13px;
+  line-height: 18px;
+  color: var(--green);
 }
 .ad-done svg {
   margin-top: 2px;
 }
 .so-area-sign .ul-block {
   margin-top: 18px;
+}
+
+/* Inside a card, an empty list is one quiet line, not a full empty state. */
+.ad-block .empty-state {
+  padding: 14px 0;
+  justify-items: start;
+  text-align: left;
+  color: var(--muted);
+  border-top: var(--hairline) solid var(--line);
+  border-bottom: var(--hairline) solid var(--line);
 }

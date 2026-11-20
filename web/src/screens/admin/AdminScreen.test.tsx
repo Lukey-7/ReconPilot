@@ -114,8 +114,8 @@ describe("Administration: users", () => {
   it("lists every user with role, status and sign-in, and never offers to change your own account", async () => {
     mockApi(routes());
     renderApp("/admin/users?fund=GEF1&day=2026-11-10");
-    const table = await screen.findByRole("table", { name: /Every user/ });
-    const rows = within(table).getAllByRole("row").slice(1);
+    const list = await screen.findByRole("list", { name: /Every user/ });
+    const rows = within(list).getAllByRole("listitem");
     expect(rows).toHaveLength(4);
     expect(rows[0]).toHaveTextContent("Ada Admin");
     expect(within(rows[0]!).getByText("You")).toBeInTheDocument();
@@ -123,7 +123,10 @@ describe("Administration: users", () => {
     expect(rows[2]).toHaveTextContent("Locked until");
     expect(rows[3]).toHaveTextContent("Deactivated");
     expect(rows[3]).toHaveTextContent("Never");
-    expect(screen.getByText("3 active users, 1 locked account")).toBeInTheDocument();
+    const lead = screen.getByRole("region", { name: "Active users" });
+    expect(lead).toHaveTextContent("3");
+    expect(within(lead).getByText("3 of 4 users can sign in")).toBeInTheDocument();
+    expect(within(lead).getByText("1 locked account")).toBeInTheDocument();
   });
 
   it("adds a user, checking the two passwords agree first", async () => {

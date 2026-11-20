@@ -19,8 +19,10 @@ import { type FormEvent, useId, useState } from "react";
 
 import { ApiError } from "../../api/client";
 import { Icon } from "../../components/Icon";
+import { StatusPill } from "../../components/Labels";
+import { Lead, SectionHead } from "../../components/Paper";
 import { Empty, ErrorLine, Loading } from "../../components/QueryState";
-import { dayLabel } from "../../format";
+import { count, dayLabel } from "../../format";
 import { useWorkspace } from "../../shell/workspace";
 import { ASSET_CLASS_LABELS, CHECK_SETTING_LABELS } from "../../vocabulary";
 import {
@@ -172,7 +174,7 @@ function NumberField({
       <span className="ad-unit">
         <input
           id={id}
-          className="input mono"
+          className="input fig"
           type="number"
           inputMode="decimal"
           min="0"
@@ -219,10 +221,16 @@ function SettingsPanel({ fund }: { fund: AdminFund }) {
   }
 
   return (
-    <section className="ad-block" aria-labelledby="ad-h-settings">
-      <h2 id="ad-h-settings">
-        Settings for <span className="mono">{fund.code}</span>
-      </h2>
+    <section className="card ad-block" aria-labelledby="ad-h-settings">
+      <SectionHead
+        label="Settings"
+        title={
+          <>
+            Settings for <span className="mono">{fund.code}</span>
+          </>
+        }
+        id="ad-h-settings"
+      />
       <form className="ad-form two" onSubmit={submit}>
         <div className="ad-field ad-span">
           <label htmlFor={nameId}>Fund name</label>
@@ -235,7 +243,7 @@ function SettingsPanel({ fund }: { fund: AdminFund }) {
             onChange={(e) => set("name")(e.target.value)}
           />
         </div>
-        <h3 className="ad-span">Cases</h3>
+        <h3 className="mono-label ad-span ad-group">Cases</h3>
         <NumberField
           label="Materiality"
           unit="bp of NAV"
@@ -264,7 +272,7 @@ function SettingsPanel({ fund }: { fund: AdminFund }) {
           value={draft.sla_days_other}
           onChange={set("sla_days_other")}
         />
-        <h3 className="ad-span">Release checks</h3>
+        <h3 className="mono-label ad-span ad-group">Release checks</h3>
         <NumberField
           label={CHECK_SETTING_LABELS.max_price_age_days}
           unit="days old at most"
@@ -310,7 +318,7 @@ function SettingsPanel({ fund }: { fund: AdminFund }) {
           <Saved text={saved} />
           <button
             type="button"
-            className="btn ghost"
+            className="btn quiet"
             disabled={!dirty || save.isPending}
             onClick={() => {
               setDraft(draftOf(fund));
@@ -442,17 +450,13 @@ function AiPanel({ fund }: { fund: AdminFund }) {
         <p className="ad-ai-state">
           {fund.ai.enabled ? (
             <>
-              <span className="tag on">
-                <Icon name="check" /> On
-              </span>
-              {providerName(list, fund.ai.effective_provider)}
+              <StatusPill kind="done">On</StatusPill>
+              <span>{providerName(list, fund.ai.effective_provider)}</span>
               {fund.ai.model && <span className="muted mono">{fund.ai.model}</span>}
             </>
           ) : (
             <>
-              <span className="tag">
-                <Icon name="ring" /> Off
-              </span>
+              <StatusPill kind="neutral">Off</StatusPill>
               <span className="muted">Cases carry the rules&rsquo; suggestion only.</span>
             </>
           )}
@@ -474,7 +478,7 @@ function AiPanel({ fund }: { fund: AdminFund }) {
           </div>
           <button
             type="button"
-            className="btn primary"
+            className="btn"
             disabled={!target?.configured || unchanged}
             onClick={() => setConfirming(true)}
           >
@@ -521,8 +525,8 @@ function AiPanel({ fund }: { fund: AdminFund }) {
   }
 
   return (
-    <section className="ad-block" aria-labelledby="ad-h-ai">
-      <h2 id="ad-h-ai">AI second opinion</h2>
+    <section className="card ad-block" aria-labelledby="ad-h-ai">
+      <SectionHead label="AI" title="AI second opinion" id="ad-h-ai" />
       <p className="muted">
         Off until an administrator switches it on. Keys stay on the server; this page never sees them.
       </p>
@@ -554,8 +558,8 @@ function CalendarPanel({ fund }: { fund: AdminFund }) {
   }
 
   return (
-    <section className="ad-block" aria-labelledby="ad-h-cal">
-      <h2 id="ad-h-cal">Business calendar</h2>
+    <section className="card ad-block" aria-labelledby="ad-h-cal">
+      <SectionHead label="Calendar" title="Business calendar" id="ad-h-cal" />
       <p className="muted">
         Weekdays from {dayLabel(fund.start_date)} are business days, except these.{" "}
         {horizon
@@ -566,11 +570,11 @@ function CalendarPanel({ fund }: { fund: AdminFund }) {
         <ul className="ad-dates" aria-label="Non-business days">
           {fund.non_business_dates.map((d) => (
             <li key={d}>
-              <span>{dayLabel(d)}</span>
+              <span className="fig">{dayLabel(d)}</span>
               {editable(d) ? (
                 <button
                   type="button"
-                  className="btn ghost"
+                  className="btn quiet"
                   aria-label={`Remove ${dayLabel(d)}`}
                   disabled={save.isPending}
                   onClick={() =>
@@ -583,7 +587,7 @@ function CalendarPanel({ fund }: { fund: AdminFund }) {
                   Remove
                 </button>
               ) : (
-                <span className="faint">
+                <span className="tag">
                   <Icon name="lock" /> Worked
                 </span>
               )}
@@ -714,7 +718,7 @@ function AddFundDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
               Materiality, bp of NAV
               <input
                 id={`${ids}-m`}
-                className="input mono"
+                className="input fig"
                 type="number"
                 min="0"
                 step="any"
@@ -744,7 +748,7 @@ function AddFundDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
 // --------------------------------------------------------------------------- the screen
 
 export function FundsAdmin() {
-  const { fund, fundsLoading } = useWorkspace();
+  const { fund, funds, fundsLoading } = useWorkspace();
   const detail = useAdminFund(fund?.code ?? null);
   const [adding, setAdding] = useState(false);
 
@@ -767,20 +771,26 @@ export function FundsAdmin() {
 
   return (
     <>
-      <div className="ad-block-head ad-top">
-        <p className="muted">
-          {fund ? (
+      <Lead
+        className="ad-lead"
+        aria-label="Funds"
+        label="Funds"
+        figure={count(funds.length)}
+        caption={
+          fund ? (
             <>
               Working <span className="mono">{fund.code}</span>, {fund.name}. Choose another fund in the top bar.
             </>
           ) : (
             "No fund yet."
-          )}
-        </p>
-        <button type="button" className="btn" onClick={() => setAdding(true)}>
-          Add a fund
-        </button>
-      </div>
+          )
+        }
+        foot={
+          <button type="button" className="btn" onClick={() => setAdding(true)}>
+            Add a fund
+          </button>
+        }
+      />
       {body}
       <AddFundDialog open={adding} onOpenChange={setAdding} />
     </>

@@ -42,7 +42,7 @@ export function AdminScreen({ tab }: { tab: "users" | "funds" }) {
   return (
     <section className="screen ad-screen">
       <ScreenHeader title={title} />
-      <nav className="ad-tabs" aria-label="Administration">
+      <nav className="seg ad-tabs" aria-label="Administration">
         {ADMIN_TABS.map((t) => (
           <NavLink key={t.path} to={href(t.path)} className={({ isActive }) => (isActive ? "active" : undefined)}>
             {t.label}
