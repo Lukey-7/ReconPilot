@@ -1,117 +1,337 @@
-/* The frame: top bar, the sticky NAV strip, the screen area, dialogs, menus, popovers. */
+/*
+ * The frame (Paper): the glass top bar with the screens in a capsule, the quiet NAV strip
+ * under it, the screen area, and dialogs, menus and popovers as glass sheets.
+ *
+ * Glass pieces any screen may reuse: .glass (a translucent surface), .glass-btn (40px
+ * round button), .glass-chip (40px pill button or link), .glass-field (40px pill select).
+ */
 
 .skip-link {
   position: absolute;
   left: 8px;
-  top: -40px;
-  z-index: 50;
-  padding: 6px 10px;
-  background: var(--raise);
-  color: var(--ink);
-  border-radius: var(--radius);
+  top: -60px;
+  z-index: 70;
+  padding: 10px 16px;
+  border-radius: var(--r-pill);
+  background: var(--ink);
+  color: var(--bg);
+  font-weight: 600;
+  text-decoration: none;
 }
 .skip-link:focus {
   top: 8px;
 }
 
-/* The chrome's children take part in the page's flow, so the strip can stick to the top. */
-.chrome {
-  display: contents;
+/* ===== Glass ===== */
+.glass,
+.glass-btn,
+.glass-chip,
+.glass-field {
+  background-color: var(--glass);
+  border: var(--hairline) solid var(--glass-line);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
 }
-
-/* ===== Top bar ===== */
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-  padding: 8px var(--gutter);
-  background: var(--panel);
-  border-bottom: 1px solid var(--rule);
-}
-.brand-name {
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-}
-.screens {
-  display: flex;
-  gap: 2px;
-}
-.screens a {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 30px;
-  padding: 6px 10px;
-  border-radius: var(--radius);
-  color: var(--ink-2);
-  font-weight: 500;
-  text-decoration: none;
-  white-space: nowrap;
-}
-.screens a:hover {
-  color: var(--ink);
-  background: var(--panel-2);
-}
-.screens a.active {
-  color: var(--ink);
-  background: var(--raise);
-  box-shadow: inset 0 -2px 0 var(--accent);
-}
-.screens .kbd-hint {
-  margin-inline-start: 2px;
-}
-.badge {
+.glass-btn,
+.glass-chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px;
-  padding: 1px 6px;
-  border-radius: 9px;
-  font: 600 11.5px/1.4 var(--font-fig);
-  background: var(--signal-fill);
-  color: var(--signal-ink);
+  gap: 8px;
+  height: 40px;
+  color: var(--ink);
+  font: 500 14px/1 var(--font);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--t-fast) var(--ease),
+    transform var(--t-press) ease-out;
+}
+.glass-btn {
+  width: 40px;
+  padding: 0;
+  border-radius: 50%;
+}
+.glass-btn svg.i {
+  width: 18px;
+  height: 18px;
+}
+.glass-chip {
+  padding: 0 14px;
+  border-radius: 20px;
+}
+.glass-btn:hover,
+.glass-chip:hover {
+  background-color: var(--glass-strong);
+}
+.glass-btn:active,
+.glass-chip:active {
+  transform: scale(0.96);
+}
+select.glass-field {
+  min-height: 40px;
+  height: 40px;
+  border-radius: 20px;
+  font-size: 14px;
+  color: var(--ink);
+}
+select.glass-field:hover {
+  background-color: var(--glass-strong);
+  border-color: var(--glass-line);
+}
+
+/* ===== The chrome: top bar and NAV strip, sticky together ===== */
+.chrome {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+/* In a short window (a desk screen at 200% zoom, a laptop at 150%) and on a phone the chrome
+   scrolls away with the page rather than sticking, so it never covers the work. */
+@media (max-height: 560px), (max-width: 767px) {
+  .chrome {
+    position: static;
+  }
+}
+
+/* ===== Top bar: two rows ===== */
+.topbar {
+  display: grid;
+  gap: 10px;
+  padding: 12px var(--gutter);
+  background: color-mix(in srgb, var(--bg) 62%, transparent);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-bottom: var(--hairline) solid var(--line);
+}
+.topbar-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  min-width: 0;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 40px;
+}
+.brand-mark {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  background: var(--accent);
+  box-shadow: 0 4px 12px rgba(91, 140, 255, 0.35);
+}
+.brand-name {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+}
+
+/* The screens: a glass capsule with a springing lens behind the current one. */
+.screens {
+  display: flex;
+  min-width: 0;
+}
+.screens-list {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 26px;
+  background-color: var(--glass);
+  border: var(--hairline) solid var(--glass-line);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+}
+.nav-lens {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: 0;
+  border-radius: 20px;
+  background: var(--accent-tint);
+  box-shadow: inset 0 0 0 var(--hairline) rgba(124, 140, 255, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform var(--t-lens) var(--spring),
+    width var(--t-lens) var(--spring),
+    opacity var(--t-fast) var(--ease);
+}
+.nav-lens.on {
+  opacity: 1;
+}
+.screens a {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 20px;
+  color: var(--muted);
+  font-size: 14.5px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color var(--t-fast) var(--ease);
+}
+.screens a:hover {
+  color: var(--ink);
+}
+.screens a.active {
+  color: var(--ink);
+  font-weight: 600;
+}
+.screens a.active .nav-icon {
+  color: var(--accent-ink);
+}
+.screens a:focus-visible {
+  outline-offset: -2px;
+}
+.nav-icon.i {
+  width: 17px;
+  height: 17px;
+}
+.badge.count-pill {
+  margin-inline-start: 1px;
+}
+
+.tools,
+.finder {
+  margin-inline-start: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .context {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
+  min-width: 0;
 }
 .field-inline {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: var(--ink-2);
+  color: var(--muted);
+  min-width: 0;
 }
 .field-inline select {
-  max-width: 280px;
+  max-width: 320px;
 }
-.tools {
-  margin-inline-start: auto;
+/* The selects' own values say what they are; their names stay for screen readers. */
+.topbar .field-inline > span:first-child {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.fund-pick {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+}
+.funds-link.active {
+  background: var(--accent-tint);
+}
+.palette-btn {
+  min-width: 170px;
+  justify-content: flex-start;
+  color: var(--muted);
+}
+.palette-btn .kbd-hint {
+  margin-inline-start: auto;
+}
+.palette-btn kbd {
+  background: transparent;
 }
 .user-btn {
-  gap: 7px;
+  gap: 8px;
+  padding: 0 12px 0 4px;
+}
+.user-btn .avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
 }
 .user-name {
   color: var(--ink);
+  font-weight: 500;
 }
 .role-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 11px;
   font-size: 12px;
   font-weight: 600;
-  padding: 0 6px;
-  border: 1px solid var(--rule-strong);
-  border-radius: 2px;
-  color: var(--ink-2);
+  color: var(--muted);
+  background: var(--surface-2);
 }
-/* On a laptop the selects' own values say what they are; their names stay for screen readers. */
-@media (max-width: 1600px) {
-  .topbar .field-inline > span:first-child {
+.user-chev {
+  color: var(--muted);
+}
+
+@media (max-width: 1279px) {
+  .screens .nav-icon {
+    display: none;
+  }
+  .field-inline select {
+    max-width: 240px;
+  }
+  .role-switch select {
+    max-width: 180px;
+  }
+}
+/* A tablet: the screens take a line of their own under the brand. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .topbar-main .screens {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .screens a {
+    padding: 0 12px;
+  }
+}
+
+/* A phone: the screens move to the floating capsule at the bottom of the window. */
+@media (max-width: 767px) {
+  /* No backdrop filter here: it would make the bar the fixed capsule's containing block. */
+  .topbar {
+    padding-block: 10px;
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .topbar-row {
+    gap: 8px;
+  }
+  .role-tag,
+  .user-chev,
+  .palette-btn .kbd-hint {
+    display: none;
+  }
+  .user-btn {
+    padding: 0 4px;
+  }
+  .user-btn .user-name {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -120,151 +340,197 @@
     clip-path: inset(50%);
     white-space: nowrap;
   }
-}
-@media (max-width: 1180px) {
-  .screens .kbd-hint,
-  .tools .kbd-hint {
-    display: none;
+  .context,
+  .finder {
+    flex-basis: 100%;
+  }
+  .finder {
+    margin-inline-start: 0;
+  }
+  .palette-btn {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .context .field-inline {
+    flex: 1 1 100%;
+  }
+  .context .fund-pick {
+    flex: 1 1 100%;
+  }
+  .context .fund-pick .field-inline {
+    flex: 1 1 auto;
+  }
+  .field-inline select {
+    width: 100%;
+    max-width: none;
+  }
+  .role-switch .field-inline select {
+    max-width: 190px;
+  }
+  .screens {
+    position: fixed;
+    z-index: 35;
+    left: 16px;
+    right: 16px;
+    bottom: 22px;
+    justify-content: center;
+  }
+  .screens-list {
+    width: 100%;
+    height: 62px;
+    padding: 5px;
+    border-radius: 31px;
+    background-color: var(--glass-strong);
+  }
+  .screens a {
+    flex: 1 1 0;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    min-width: 0;
+    height: 52px;
+    padding: 0 2px;
+    border-radius: 26px;
+    font-size: 11px;
+    line-height: 1;
+  }
+  .screens .nav-icon,
+  .screens .nav-icon.i {
+    display: block;
+    width: 22px;
+    height: 22px;
+  }
+  .nav-label {
+    max-width: 100%;
+    overflow: hidden;
+  }
+  .nav-lens {
+    top: 5px;
+    bottom: 5px;
+    border-radius: 26px;
+  }
+  .screens .badge.count-pill {
+    position: absolute;
+    top: 3px;
+    right: calc(50% - 22px);
+    min-width: 18px;
+    height: 18px;
+    font-size: 10.5px;
+  }
+  /* Content scrolls clear of the capsule: bar height + 40px. */
+  .main {
+    padding-bottom: calc(62px + 22px + 40px);
   }
 }
 
-/* ===== NAV strip (Night desk's rail): sticky on every screen ===== */
+/* ===== NAV strip: the quiet one-line record under the top bar ===== */
 .strip {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto;
-  align-items: stretch;
-  background: var(--panel);
-  border-bottom: 1px solid var(--rule);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 22px;
+  min-height: 48px;
+  padding: 6px var(--gutter);
+  background: color-mix(in srgb, var(--bg) 62%, transparent);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-bottom: var(--hairline) solid var(--line);
+  font-size: 13.5px;
 }
 .strip-empty {
   display: block;
-  padding: 12px var(--gutter);
+  padding-block: 14px;
 }
 .strip > div {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 1px;
-  padding: 9px var(--gutter);
-  border-inline-end: 1px solid var(--rule);
+  align-items: baseline;
+  gap: 8px;
   min-width: 0;
 }
 .strip .lbl {
-  font-size: 12px;
-  color: var(--ink-3);
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
 }
 .strip .big {
-  font: 500 19px/1.15 var(--font-fig);
-  font-variant-numeric: tabular-nums slashed-zero;
-  letter-spacing: -0.02em;
+  font: 600 15px/1.2 var(--font);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .strip .mv {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 12.5px;
+  font-size: 13px;
   white-space: nowrap;
 }
 .strip .mv .fig {
-  font-size: 12.5px;
+  font-size: 13px;
 }
 .strip .lamp {
-  position: relative;
-  flex-direction: row;
+  flex: 1 1 320px;
   align-items: center;
-  justify-content: flex-start;
   flex-wrap: wrap;
-  gap: 4px 12px;
-  background: var(--signal-wash);
-  transition: background-color var(--t-status) var(--ease);
-}
-.strip .lamp::before {
-  content: "";
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: 0;
-  width: 4px;
-  background: var(--signal-fill);
-  transition: background-color var(--t-status) var(--ease);
-}
-.strip .lamp[data-state="ready"],
-.strip .lamp[data-state="signedOff"] {
-  background: var(--pos-wash);
-}
-.strip .lamp[data-state="ready"]::before,
-.strip .lamp[data-state="signedOff"]::before {
-  background: var(--pos);
+  gap: 4px 10px;
 }
 .strip .why {
   color: var(--ink-2);
-  font-size: 13px;
+  font-size: 13.5px;
   min-width: 0;
 }
 .reasons-btn {
-  min-height: 26px;
-  padding: 2px 8px;
-  font-size: 13px;
+  min-height: 30px;
 }
 .strip .go {
-  justify-content: center;
-  border-inline-end: 0;
+  margin-inline-start: auto;
 }
-@media (max-width: 900px) {
-  .strip {
-    grid-template-columns: 1fr 1fr;
-  }
-  .strip .lamp,
-  .strip .go {
-    grid-column: span 2;
-  }
-}
-/* In a short window (a desk screen at 200% zoom, a laptop at 150%) the strip scrolls away
-   with the page rather than sticking, so it never covers the work or the focused control. */
-@media (max-height: 560px) {
-  .strip {
-    position: static;
-  }
+.strip .go .btn {
+  min-height: 32px;
 }
 
-/* ===== Release badge ===== */
+/* ===== Release badge: a status pill with its icon ===== */
 .release-badge {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  font-weight: 700;
-  font-size: 15px;
+  gap: 6px;
+  height: 26px;
+  padding: 0 11px 0 9px;
+  border-radius: 13px;
+  font: 600 13px/1 var(--font);
   white-space: nowrap;
 }
-.release-badge svg {
-  width: 16px;
-  height: 16px;
+.release-badge svg.i {
+  width: 14px;
+  height: 14px;
 }
 .release-blocked {
-  color: var(--signal);
+  color: var(--amber);
+  background: var(--amber-soft);
 }
 .release-ready,
 .release-signedOff {
-  color: var(--pos);
+  color: var(--green);
+  background: var(--green-soft);
+}
+.release-pending {
+  color: var(--muted);
+  background: var(--surface-2);
 }
 
 /* ===== Screens ===== */
 .main {
-  padding: 14px var(--gutter) 40px;
+  padding: 22px var(--gutter) 48px;
 }
 .main:focus {
   outline: none;
 }
 .screen {
-  animation: screen-in var(--t-panel) var(--ease);
+  animation: screen-in var(--t-rise) var(--ease);
 }
 @keyframes screen-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -275,15 +541,24 @@
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 6px 14px;
-  margin-bottom: 14px;
+  gap: 4px 16px;
+  margin-bottom: 18px;
 }
 .screen-head h1 {
-  font-size: 19px;
-  font-weight: 600;
+  font-size: 32px;
+  line-height: 38px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 .screen-head p {
-  font-size: 13.5px;
+  font-size: 14px;
+  color: var(--muted);
+}
+@media (max-width: 767px) {
+  .screen-head h1 {
+    font-size: 28px;
+    line-height: 34px;
+  }
 }
 .boot {
   display: grid;
@@ -291,12 +566,14 @@
   min-height: 60vh;
 }
 
-/* ===== Dialogs, menus, popovers (Radix) ===== */
+/* ===== Dialogs, menus, popovers (Radix): glass sheets over the scrim ===== */
 .scrim {
   position: fixed;
   inset: 0;
   z-index: 40;
   background: var(--scrim);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   animation: fade-in var(--t-fast) var(--ease);
 }
 .dialog {
@@ -308,12 +585,14 @@
   width: min(560px, calc(100vw - 32px));
   max-height: calc(100vh - 64px);
   overflow: auto;
-  padding: 18px 20px 20px;
-  background: var(--panel);
-  border: 1px solid var(--rule-strong);
-  border-radius: 4px;
-  box-shadow: var(--shadow);
-  animation: dialog-in var(--t-panel) var(--ease);
+  padding: 20px 22px 22px;
+  background-color: var(--glass-strong);
+  border: var(--hairline) solid var(--glass-line);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-radius: var(--r-lead);
+  box-shadow: var(--pop-shadow);
+  animation: dialog-in var(--t-pop) var(--spring);
 }
 .dialog:focus {
   outline: none;
@@ -326,7 +605,8 @@
   margin-bottom: 6px;
 }
 .dialog-head h2 {
-  font-size: 17px;
+  font-size: 20px;
+  font-weight: 700;
 }
 @keyframes fade-in {
   from {
@@ -336,17 +616,18 @@
 @keyframes dialog-in {
   from {
     opacity: 0;
-    transform: translate(-50%, calc(-50% + 6px));
+    transform: translate(-50%, -50%) scale(0.96);
   }
 }
 .help-group {
-  margin-top: 16px;
+  margin-top: 18px;
 }
 .help-group h3 {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-3);
   margin-bottom: 4px;
+  font: 500 10.5px/14px var(--mono);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 .help-group dl {
   margin: 0;
@@ -355,8 +636,10 @@
   display: grid;
   grid-template-columns: 150px 1fr;
   gap: 12px;
+  align-items: center;
+  min-height: 40px;
   padding: 6px 0;
-  border-top: 1px solid var(--rule);
+  border-top: var(--hairline) solid var(--line);
 }
 .help-row dd {
   margin: 0;
@@ -364,47 +647,64 @@
 .keys .then {
   margin: 0 5px;
   font-size: 12px;
-  color: var(--ink-3);
+  color: var(--muted);
 }
 
 .menu,
 .popover {
   z-index: 45;
-  min-width: 220px;
+  min-width: 230px;
   padding: 6px;
-  background: var(--raise);
-  border: 1px solid var(--rule-strong);
-  border-radius: 4px;
-  box-shadow: var(--shadow);
-  animation: fade-in var(--t-fast) var(--ease);
+  background-color: var(--glass-strong);
+  border: var(--hairline) solid var(--glass-line);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-radius: var(--r-small);
+  box-shadow: var(--pop-shadow);
+  animation: menu-in 300ms var(--spring);
+}
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
 }
 .menu-label {
-  padding: 6px 8px;
+  padding: 8px 10px;
   font-size: 13px;
-  color: var(--ink-2);
+  color: var(--muted);
+}
+.menu-label strong {
+  color: var(--ink);
 }
 .menu-sep {
-  height: 1px;
-  margin: 4px 0;
-  background: var(--rule);
+  height: var(--hairline);
+  margin: 4px 6px;
+  background: var(--line-strong);
 }
 .menu-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: var(--radius);
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 10px;
   cursor: pointer;
   outline: none;
 }
+.menu-item svg.i {
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+}
 .menu-item[data-highlighted] {
-  background: var(--accent-wash);
+  background: var(--surface-2);
   color: var(--ink);
 }
 .popover {
   position: relative;
   max-width: min(460px, calc(100vw - 32px));
-  padding: 12px 36px 12px 14px;
+  padding: 14px 44px 14px 16px;
 }
 .popover-title {
   font-weight: 600;
@@ -417,49 +717,25 @@
 }
 .popover li {
   display: grid;
-  gap: 1px;
-  padding: 6px 0;
-  border-top: 1px solid var(--rule);
-  font-size: 13px;
+  gap: 2px;
+  padding: 8px 0;
+  border-top: var(--hairline) solid var(--line);
+  font-size: 13.5px;
 }
 .popover li:first-child {
   border-top: 0;
 }
 .reason-code {
   font-weight: 600;
-  color: var(--signal);
+  color: var(--amber);
 }
 .popover-close {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  min-height: 26px;
-  padding: 2px 6px;
-}
-
-/* The fund selector and, beside it, the way to every fund and its settings. */
-.fund-pick {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-.funds-link.active {
-  color: var(--ink);
-  background: var(--raise);
-  box-shadow: inset 0 -2px 0 var(--accent);
+  top: 8px;
+  right: 8px;
 }
 
 /* ===== Command palette (Ctrl+K) ===== */
-.palette-btn {
-  min-width: 150px;
-  justify-content: flex-start;
-  color: var(--ink-2);
-  background: var(--bg);
-  border-color: var(--field);
-}
-.palette-btn .kbd-hint {
-  margin-inline-start: auto;
-}
 .dialog.palette {
   top: 12vh;
   transform: translateX(-50%);
@@ -469,27 +745,32 @@
   flex-direction: column;
   padding: 0;
   overflow: hidden;
-  animation: palette-in var(--t-panel) var(--ease);
+  animation: palette-in var(--t-pop) var(--spring);
 }
 @keyframes palette-in {
   from {
     opacity: 0;
-    transform: translate(-50%, -6px);
+    transform: translate(-50%, -8px) scale(0.97);
   }
 }
 .pal-field {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--rule);
-  color: var(--ink-3);
+  gap: 12px;
+  min-height: 56px;
+  padding: 0 20px;
+  border-bottom: var(--hairline) solid var(--line-strong);
+  color: var(--muted);
+}
+.pal-field svg.i {
+  width: 18px;
+  height: 18px;
 }
 .pal-input {
   flex: 1;
   min-width: 0;
   font: inherit;
-  font-size: 15px;
+  font-size: 17px;
   color: var(--ink);
   background: transparent;
   border: 0;
@@ -497,41 +778,43 @@
   padding: 2px 0;
 }
 .pal-input::placeholder {
-  color: var(--ink-3);
+  color: var(--muted);
 }
 .pal-list {
   overflow-y: auto;
-  padding: 6px 8px 8px;
+  padding: 6px 8px 10px;
 }
 .pal-group + .pal-group {
   margin-top: 6px;
 }
 .pal-group-name {
-  padding: 8px 8px 4px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink-3);
+  padding: 10px 12px 4px;
+  font: 500 10.5px/14px var(--mono);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 .pal-option {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
-  padding: 7px 8px;
-  border-radius: var(--radius);
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 12px;
   cursor: pointer;
 }
 .pal-option.active {
-  background: var(--accent-wash);
-  box-shadow: inset 2px 0 0 var(--accent);
+  background: var(--accent-tint);
 }
 .pal-label {
   color: var(--ink);
+  font-weight: 500;
   white-space: nowrap;
 }
 .pal-detail {
   font-size: 13px;
-  color: var(--ink-3);
+  color: var(--muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -540,13 +823,13 @@
   grid-column: 3;
 }
 .pal-empty {
-  padding: 14px 8px;
+  padding: 16px 12px;
 }
 .pal-foot {
   display: flex;
-  gap: 16px;
-  padding: 8px 16px;
-  border-top: 1px solid var(--rule);
+  gap: 18px;
+  padding: 10px 20px;
+  border-top: var(--hairline) solid var(--line-strong);
   font-size: 12px;
 }
 .pal-foot kbd {

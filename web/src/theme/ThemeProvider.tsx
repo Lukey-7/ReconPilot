@@ -1,5 +1,5 @@
 /**
- * Theme: Night desk dark by default, a light theme for accessibility.
+ * Theme: Midnight (dark) by default, Paper (light) by choice.
  *
  * Dark whatever the system prefers (the owner's decision: dark is the default); light only
  * when the user chooses it with the theme button. The choice of light is kept in
@@ -76,7 +76,7 @@ export function ThemeToggle() {
   const { theme, toggle } = useTheme();
   const next = theme === "dark" ? "light" : "dark";
   return (
-    <button type="button" className="btn ghost icon-btn" onClick={toggle} aria-label={`Switch to the ${next} theme`}>
+    <button type="button" className="glass-btn" onClick={toggle} aria-label={`Switch to the ${next} theme`}>
       <Icon name={theme === "dark" ? "sun" : "moon"} />
     </button>
   );

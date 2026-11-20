@@ -1,5 +1,5 @@
-// Applies the light theme before React starts when the user chose it, so the page never
-// flashes dark first. With no saved choice the page is dark (Night desk), whatever the
+// Applies the Paper (light) theme before React starts when the user chose it, so the page never
+// flashes dark first. With no saved choice the page is Midnight (dark), whatever the
 // system prefers. Keep the storage key in step with src/theme/ThemeProvider.tsx.
 (function () {
   try {

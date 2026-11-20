@@ -1,5 +1,5 @@
 /**
- * The sticky NAV strip shown on every screen (Night desk's rail): NAV, NAV per share and
+ * The NAV strip under the top bar on every screen, a quiet one-line record: NAV, NAV per share and
  * its movement, the day's one release status with its reasons, and the way to sign-off.
  *
  * Figures come from the day record (`GET .../days/{as_of}`) and the status from the
@@ -95,7 +95,7 @@ export function NavStrip() {
         </p>
         {!signedOff && reasons.length > 0 && (
           <Popover.Root>
-            <Popover.Trigger className="btn ghost reasons-btn">
+            <Popover.Trigger className="btn quiet reasons-btn">
               {reasons.length === 1 ? "Reason" : `All ${reasons.length} reasons`}
               <Icon name="chevron" />
             </Popover.Trigger>
@@ -119,7 +119,7 @@ export function NavStrip() {
         )}
       </div>
       <div className="go">
-        <Link className="btn" to={href("/signoff")}>
+        <Link className="btn quiet" to={href("/signoff")}>
           {signedOff ? "View sign-off" : "Open sign-off"}
           <Kbd keys="g s" />
         </Link>

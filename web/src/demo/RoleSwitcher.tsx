@@ -35,7 +35,7 @@ export function RoleSwitcher({ user }: { user: User }) {
     <div className="role-switch">
       <label className="field-inline">
         <span>Working as</span>
-        <select value={user.username} disabled={busy} onChange={(e) => void change(e.target.value)}>
+        <select className="glass-field" value={user.username} disabled={busy} onChange={(e) => void change(e.target.value)}>
           {members.map((m) => (
             <option key={m.username} value={m.username}>
               {m.display_name} · {roleLabel(m.role)}
