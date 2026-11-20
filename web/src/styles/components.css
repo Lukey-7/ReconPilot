@@ -310,7 +310,7 @@ button.row {
   background: transparent;
   text-align: left;
   cursor: pointer;
-  transition: background-color var(--t-fast) var(--ease);
+  transition: background-color var(--t-press) var(--ease);
 }
 a.row:hover,
 button.row:hover {
@@ -506,7 +506,7 @@ button.row:focus-visible {
   cursor: pointer;
   transition:
     background-color var(--t-lens) var(--spring),
-    color var(--t-fast) var(--ease);
+    color var(--t-press) var(--ease);
 }
 .seg > button:hover,
 .seg > a:hover {
@@ -549,8 +549,8 @@ button.row:focus-visible {
   font: 500 14px/1 var(--font);
   cursor: pointer;
   transition:
-    background-color var(--t-fast) var(--ease),
-    color var(--t-fast) var(--ease);
+    background-color var(--t-press) var(--ease),
+    color var(--t-press) var(--ease);
 }
 .chip:hover {
   color: var(--ink);
@@ -651,7 +651,7 @@ button.row:focus-visible {
 }
 .sort-icon {
   opacity: 0.35;
-  transition: transform var(--t-fast) var(--ease);
+  transition: transform var(--t-press) var(--ease);
 }
 .sort-icon.sorted-asc {
   opacity: 1;
@@ -662,7 +662,7 @@ button.row:focus-visible {
 }
 .data-table tr.activatable {
   cursor: pointer;
-  transition: background-color var(--t-fast) var(--ease);
+  transition: background-color var(--t-press) var(--ease);
 }
 .data-table tr.activatable:hover {
   background: color-mix(in srgb, var(--surface-2) 55%, transparent);
@@ -857,8 +857,8 @@ p.toast {
   display: block;
   height: 100%;
   border-radius: 3px;
-  background: var(--bar);
-  transition: width var(--t-status) var(--ease);
+  background: var(--track-fill);
+  transition: width var(--t-pop) var(--ease);
 }
 .track-fill.late {
   background: color-mix(in srgb, var(--red) 75%, var(--track));
@@ -1007,7 +1007,7 @@ p.toast {
 
 /* The release status has just moved (Blocked to Ready, Ready to Signed off): one pulse. */
 .release-changed {
-  animation: release-pulse var(--t-status) var(--spring);
+  animation: release-pulse var(--t-pop) var(--spring);
 }
 @keyframes release-pulse {
   0% {

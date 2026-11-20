@@ -167,7 +167,7 @@ textarea {
   color: var(--ink);
   font-size: 16px;
   max-width: 100%;
-  transition: border-color var(--t-fast) var(--ease);
+  transition: border-color var(--t-press) var(--ease);
 }
 select {
   padding-inline-end: 36px;
@@ -237,9 +237,9 @@ textarea:disabled {
   text-decoration: none;
   white-space: nowrap;
   transition:
-    background-color var(--t-fast) var(--ease),
-    border-color var(--t-fast) var(--ease),
-    color var(--t-fast) var(--ease),
+    background-color var(--t-press) var(--ease),
+    border-color var(--t-press) var(--ease),
+    color var(--t-press) var(--ease),
     transform var(--t-press) ease-out;
 }
 .btn:hover {

@@ -427,7 +427,7 @@ li > .ov-case {
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: 3px;
-  background: var(--bar);
+  background: var(--track-fill);
 }
 .ov-bar-fill.material {
   background: var(--ink-2);
@@ -533,8 +533,8 @@ li > .ov-case {
   fill: transparent;
 }
 .ov-trend-bar rect:not(.ov-trend-hit) {
-  fill: var(--bar);
-  transition: fill var(--t-fast) var(--ease);
+  fill: var(--track-fill);
+  transition: fill var(--t-press) var(--ease);
 }
 .ov-trend-bar.current rect:not(.ov-trend-hit) {
   fill: var(--accent-ink);

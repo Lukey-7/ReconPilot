@@ -303,8 +303,8 @@
   fill: var(--muted);
   fill-opacity: 0.5;
   transition:
-    height var(--t-panel) var(--ease),
-    y var(--t-panel) var(--ease);
+    height var(--t-lens) var(--ease),
+    y var(--t-lens) var(--ease);
 }
 .mi-bar.current rect {
   fill-opacity: 1;

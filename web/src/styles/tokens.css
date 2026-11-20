@@ -86,6 +86,7 @@
   --shimmer-a: #181a22;
   --shimmer-b: #282b38;
   --track: #2a2c38; /* the empty part of a 6px ageing track */
+  --track-fill: #6b6e80; /* its grey fill (inside SLA), and the muted trend bars */
 
   /* ----- Type ----- */
   --font: "Barlow", -apple-system, "Segoe UI", system-ui, sans-serif;
@@ -95,13 +96,10 @@
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   --spring: cubic-bezier(0.2, 0.85, 0.25, 1.15);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
-  --t-press: 90ms;
-  --t-fast: 150ms;
-  --t-panel: 180ms;
+  --t-press: 90ms; /* presses, and hover and colour changes */
   --t-lens: 380ms;
   --t-rise: 480ms;
   --t-pop: 520ms;
-  --t-status: 600ms;
 
   /* ----- Space and shape (section 5) ----- */
   --s-1: 4px;
@@ -122,29 +120,6 @@
   --gutter: 16px; /* side margin: 16px under 1024px, 24px from 1024px, 32px from 1440px */
   --btn-h: 54px; /* the pill buttons: 54px under 1024px, 44px on desktop */
   --field-h: 44px;
-
-  /* ----- Old Night desk names, kept so screens not yet restyled still render. ----- */
-  /* Each maps to its Paper equivalent; remove once no screen uses it. */
-  --panel: var(--surface);
-  --panel-2: var(--surface-2);
-  --raise: var(--surface-3);
-  --rule: var(--line);
-  --rule-strong: var(--line-strong);
-  --ink-3: var(--muted);
-  --signal: var(--amber);
-  --signal-fill: var(--amber);
-  --signal-ink: #1c1405;
-  --signal-wash: var(--amber-soft);
-  --pos: var(--green);
-  --pos-wash: var(--green-soft);
-  --neg: var(--red);
-  --neg-wash: var(--red-soft);
-  --bar: #6b6e80;
-  --bar-material: var(--ink-2);
-  --shadow: var(--pop-shadow);
-  --font-ui: var(--font);
-  --font-fig: var(--mono); /* screens use it for ids and codes; figures use .fig (Barlow) */
-  --radius: 10px;
 }
 
 :root[data-theme="light"] {
@@ -195,9 +170,7 @@
   --shimmer-a: #e6e2d8;
   --shimmer-b: #f3f0e9;
   --track: #e3dfd5;
-
-  --signal-ink: #ffffff;
-  --bar: #878a97;
+  --track-fill: #878a97;
 }
 
 @media (min-width: 1024px) {
@@ -216,12 +189,9 @@
 @media (prefers-reduced-motion: reduce) {
   :root {
     --t-press: 0ms;
-    --t-fast: 0ms;
-    --t-panel: 0ms;
     --t-lens: 0ms;
     --t-rise: 0ms;
     --t-pop: 0ms;
-    --t-status: 0ms;
   }
   *,
   *::before,

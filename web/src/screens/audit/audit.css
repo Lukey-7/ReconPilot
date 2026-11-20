@@ -170,8 +170,8 @@
   font-size: 14px;
   cursor: pointer;
   transition:
-    background-color var(--t-fast) var(--ease),
-    color var(--t-fast) var(--ease);
+    background-color var(--t-press) var(--ease),
+    color var(--t-press) var(--ease);
 }
 .al-check-field > span {
   padding: 0;
@@ -242,7 +242,7 @@
   color: var(--accent-ink);
   font: inherit;
   cursor: pointer;
-  transition: background-color var(--t-fast) var(--ease);
+  transition: background-color var(--t-press) var(--ease);
 }
 .al-seq .mono {
   font-size: 12px;
@@ -255,7 +255,7 @@
   width: 14px;
   height: 14px;
   transform: rotate(-90deg);
-  transition: transform var(--t-fast) var(--ease);
+  transition: transform var(--t-press) var(--ease);
 }
 .al-chev.open {
   transform: none;

@@ -21,7 +21,7 @@
   height: calc(100dvh - var(--wb-top) - 16px);
   min-height: 520px;
   grid-template-columns: minmax(380px, 31fr) minmax(0, 44fr) minmax(300px, 25fr);
-  transition: grid-template-columns var(--t-panel) var(--ease);
+  transition: grid-template-columns var(--t-lens) var(--ease);
 }
 .wb.wb-ev-wide {
   grid-template-columns: minmax(360px, 27fr) minmax(0, 35fr) minmax(380px, 38fr);
@@ -205,7 +205,7 @@
   display: grid;
   gap: 22px;
   padding: 16px 16px 22px;
-  animation: wb-swap var(--t-panel) var(--ease);
+  animation: wb-swap var(--t-press) var(--ease);
 }
 @keyframes wb-swap {
   from {

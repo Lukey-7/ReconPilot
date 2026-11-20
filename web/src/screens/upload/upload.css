@@ -60,8 +60,8 @@
   background: color-mix(in srgb, var(--surface-2) 35%, transparent);
   text-align: center;
   transition:
-    background-color var(--t-fast) var(--ease),
-    border-color var(--t-fast) var(--ease);
+    background-color var(--t-press) var(--ease),
+    border-color var(--t-press) var(--ease);
 }
 .up-drop.over {
   border-color: var(--accent-ink);

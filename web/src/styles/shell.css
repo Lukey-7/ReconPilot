@@ -46,7 +46,7 @@
   white-space: nowrap;
   cursor: pointer;
   transition:
-    background-color var(--t-fast) var(--ease),
+    background-color var(--t-press) var(--ease),
     transform var(--t-press) ease-out;
 }
 .glass-btn {
@@ -165,7 +165,7 @@ select.glass-field:hover {
   transition:
     transform var(--t-lens) var(--spring),
     width var(--t-lens) var(--spring),
-    opacity var(--t-fast) var(--ease);
+    opacity var(--t-press) var(--ease);
 }
 .nav-lens.on {
   opacity: 1;
@@ -183,7 +183,7 @@ select.glass-field:hover {
   font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
-  transition: color var(--t-fast) var(--ease);
+  transition: color var(--t-press) var(--ease);
 }
 .screens a:hover {
   color: var(--ink);
@@ -574,7 +574,7 @@ select.glass-field:hover {
   background: var(--scrim);
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
-  animation: fade-in var(--t-fast) var(--ease);
+  animation: fade-in var(--t-press) var(--ease);
 }
 .dialog {
   position: fixed;
