@@ -587,6 +587,7 @@ button.row:focus-visible {
 
 /* ===== Data table ===== */
 .table-wrap {
+  position: relative; /* keeps the sr-only caption inside the scroller, so it never widens the page */
   overflow-x: auto;
 }
 .data-table {
