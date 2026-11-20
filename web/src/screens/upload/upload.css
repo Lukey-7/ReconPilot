@@ -295,8 +295,11 @@
   flex-wrap: wrap;
   gap: 8px;
 }
+.up-next .btn {
+  flex: 1 1 0;
+}
 .up-next .btn.primary {
-  flex: 1 1 auto;
+  flex-basis: 100%;
 }
 .up-next-day {
   font-size: 13px;
@@ -395,8 +398,14 @@
   font-size: 13px;
   line-height: 18px;
 }
-.up-runs td.num {
+.up-runs td.num,
+.up-runs td:first-child {
   white-space: nowrap;
+}
+@media (max-width: 639px) {
+  .up-runs {
+    min-width: 500px;
+  }
 }
 .up-by {
   display: block;

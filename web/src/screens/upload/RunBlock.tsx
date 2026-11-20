@@ -140,6 +140,17 @@ export function RunBlock({
     keywords: "run the day engine start",
   });
 
+  const runButton = (
+    <button
+      type="button"
+      className={status === "ready" ? "btn" : "btn primary"}
+      disabled={run.isPending}
+      onClick={() => run.mutate()}
+    >
+      {status === "validated" ? "Run the day" : "Run again"}
+    </button>
+  );
+
   let body;
   if (status === "running") {
     body =
@@ -175,18 +186,13 @@ export function RunBlock({
             <Link className="btn" to={href("/overview")}>
               Open the overview
             </Link>
+            {/* Once the day has run, running it again sits beside the other secondary action. */}
+            {runnable && runButton}
           </p>
         )}
         {runnable && (
           <div className="up-run">
-            <button
-              type="button"
-              className={status === "ready" ? "btn" : "btn primary"}
-              disabled={run.isPending}
-              onClick={() => run.mutate()}
-            >
-              {status === "validated" ? "Run the day" : "Run again"}
-            </button>
+            {status !== "ready" && runButton}
             {status === "ready" && (
               <p className="muted">Running again keeps the decisions that still apply and records the rest as voided.</p>
             )}

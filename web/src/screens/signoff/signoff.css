@@ -9,7 +9,7 @@
   margin-bottom: var(--s-8);
 }
 .so-lead .lead-caption {
-  max-width: 62ch;
+  max-width: 90ch;
 }
 @media (max-width: 479px) {
   .so-lead .lead-figure {
@@ -537,6 +537,23 @@
   grid-area: when;
   font-size: 12.5px;
   color: var(--muted);
+}
+@media (max-width: 639px) {
+  .so-entry {
+    grid-template-areas:
+      "seq what"
+      "seq who"
+      "seq when";
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .so-entry-who {
+    text-align: left;
+    white-space: normal;
+  }
+}
+.so-who-table td:nth-child(3),
+.so-who-table td:nth-child(4) {
+  white-space: nowrap;
 }
 .so-earlier {
   margin: 0;
