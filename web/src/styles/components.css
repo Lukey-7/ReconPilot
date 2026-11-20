@@ -144,6 +144,34 @@
 .lead :focus-visible {
   outline-color: var(--hero-ink);
 }
+/* The contrast card is the other theme's surface (paper in Midnight, ink in Paper), so status
+   pills and release badges on it take that theme's status colours, which hold AA there. */
+.lead {
+  --red: #bd3337;
+  --red-soft: #fce8e6;
+  --amber: #925a0b;
+  --amber-soft: #faeed7;
+  --green: #21744c;
+  --green-soft: #e2f3e9;
+  --info: #3d5fc7;
+  --info-soft: #e8edfc;
+}
+:root[data-theme="light"] .lead {
+  --red: #ff6b6b;
+  --red-soft: #3c1818;
+  --amber: #f0b050;
+  --amber-soft: #34250e;
+  --green: #4cc38a;
+  --green-soft: #122e20;
+  --info: #8fb0ff;
+  --info-soft: #262836;
+}
+/* Neutral tags on the contrast card take its ink, as the neutral pill does. */
+.lead .tag {
+  color: var(--hero-ink);
+  background: color-mix(in srgb, var(--hero-ink) 8%, transparent);
+  box-shadow: inset 0 0 0 var(--hairline) color-mix(in srgb, var(--hero-ink) 22%, transparent);
+}
 /* Status pills on the contrast card keep their own soft fills. */
 .lead .status.neutral {
   background: color-mix(in srgb, var(--hero-ink) 10%, transparent);
@@ -775,6 +803,16 @@ button.row:focus-visible {
   font-size: 14px;
   pointer-events: auto;
   animation: pop 300ms var(--spring) both;
+}
+/* On a phone the toast sits above the floating capsule (62px, 22px from the bottom). */
+@media (max-width: 767px) {
+  .toast-region {
+    bottom: calc(62px + 22px + 12px);
+  }
+}
+.toast p,
+p.toast {
+  margin: 0;
 }
 .toast .btn {
   min-height: 36px;
